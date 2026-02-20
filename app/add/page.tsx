@@ -4,7 +4,7 @@ import { useUser } from '@/context/UserContext';
 import { Meal, UserRole } from '@/lib/types';
 import { Camera, Send, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 
 // Since we are using mock data in memory on server side (mostly), 
 // but here we are in a client component, we can't directly call server functions if we want persistence across pages 
@@ -36,10 +36,12 @@ export default function AddMealPage() {
         return null;
     }
 
-    // Initialize selectedUsers with current user once
-    if (selectedUsers.length === 0 && userProfile?.role) {
-        setSelectedUsers([userProfile.role]);
-    }
+    // Initialize selectedUsers with current user
+    useEffect(() => {
+        if (selectedUsers.length === 0 && userProfile?.role) {
+            setSelectedUsers([userProfile.role]);
+        }
+    }, [userProfile?.role]);
 
     const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -74,12 +76,19 @@ export default function AddMealPage() {
             // Import dynamically or assuming it's safe since lib/data uses client SDK
             // We need to import addMeal from lib/data.ts at the top check
             const { addMeal, users } = await import('@/lib/data');
+            const { uploadImage } = await import('@/lib/uploadImage');
+
+            // Upload image to Firebase Storage if present
+            let imageUrl: string | undefined;
+            if (imagePreview) {
+                imageUrl = await uploadImage(imagePreview);
+            }
 
             await addMeal({
                 userIds: selectedUsers,
                 description,
                 type,
-                imageUrl: imagePreview || undefined,
+                imageUrl,
                 timestamp: Date.now(),
             });
 

@@ -1,17 +1,20 @@
 import { Meal, UserRole } from './types';
 import { db } from './firebase';
-import { collection, addDoc, query, where, getDocs, orderBy, Timestamp, getDoc } from 'firebase/firestore';
+import {
+    collection, addDoc, query, where, getDocs, orderBy, Timestamp,
+    getDoc, doc, updateDoc, deleteDoc, onSnapshot
+} from 'firebase/firestore';
 
 export const users: UserRole[] = ['아빠', '엄마', '딸', '아들'];
 
 // Helper to convert Firestore timestamp to number
-const convertMeal = (doc: any): Meal => {
-    const data = doc.data();
+const convertMeal = (docSnap: any): Meal => {
+    const data = docSnap.data();
     // Backward compatibility: If userIds is missing, use userId wrapped in array
     const userIds = data.userIds || (data.userId ? [data.userId] : []);
 
     return {
-        id: doc.id,
+        id: docSnap.id,
         ...data,
         userIds,
         timestamp: data.timestamp?.toMillis ? data.timestamp.toMillis() : Date.now()
@@ -25,7 +28,6 @@ export const getMealsForDate = async (date: Date): Promise<Meal[]> => {
     const endOfDay = new Date(date);
     endOfDay.setHours(23, 59, 59, 999);
 
-    // Firestore queries are shallow. query by timestamp range
     const mealsRef = collection(db, 'meals');
     const q = query(
         mealsRef,
@@ -38,6 +40,41 @@ export const getMealsForDate = async (date: Date): Promise<Meal[]> => {
     return snapshot.docs.map(convertMeal);
 };
 
+/**
+ * Real-time subscription to meals for a given date.
+ * Returns an unsubscribe function.
+ */
+export const subscribeMealsForDate = (
+    date: Date,
+    onMeals: (meals: Meal[]) => void,
+    onError?: (error: Error) => void
+) => {
+    const startOfDay = new Date(date);
+    startOfDay.setHours(0, 0, 0, 0);
+
+    const endOfDay = new Date(date);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    const mealsRef = collection(db, 'meals');
+    const q = query(
+        mealsRef,
+        where('timestamp', '>=', Timestamp.fromDate(startOfDay)),
+        where('timestamp', '<=', Timestamp.fromDate(endOfDay)),
+        orderBy('timestamp', 'desc')
+    );
+
+    return onSnapshot(q,
+        (snapshot) => {
+            const meals = snapshot.docs.map(convertMeal);
+            onMeals(meals);
+        },
+        (error) => {
+            console.error('Failed to subscribe to meals', error);
+            onError?.(error);
+        }
+    );
+};
+
 export const addMeal = async (meal: Omit<Meal, 'id'>) => {
     const mealsRef = collection(db, 'meals');
     await addDoc(mealsRef, {
@@ -45,8 +82,6 @@ export const addMeal = async (meal: Omit<Meal, 'id'>) => {
         timestamp: Timestamp.fromMillis(meal.timestamp)
     });
 };
-
-import { doc, updateDoc, deleteDoc } from 'firebase/firestore';
 
 export const getMealById = async (id: string): Promise<Meal | null> => {
     const mealRef = doc(db, 'meals', id);
@@ -76,6 +111,3 @@ export const deleteMeal = async (id: string) => {
     await deleteDoc(mealRef);
 };
 
-/* 
-// Legacy synchronous functions removed
-*/

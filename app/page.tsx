@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from 'react';
-import { getMealsForDate } from '@/lib/data';
+import { subscribeMealsForDate } from '@/lib/data';
 import MealCard from '@/components/MealCard';
 import Link from 'next/link';
 import { useUser } from '@/context/UserContext';
@@ -18,22 +18,23 @@ export default function Home() {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [showCalendar, setShowCalendar] = useState(false);
 
-  const loadMeals = async () => {
-    setLoadingMeals(true);
-    try {
-      const data = await getMealsForDate(selectedDate);
-      setMeals(data);
-    } catch (error) {
-      console.error("Failed to load meals", error);
-    } finally {
-      setLoadingMeals(false);
-    }
-  };
-
   useEffect(() => {
-    if (userProfile?.role) {
-      loadMeals();
-    }
+    if (!userProfile?.role) return;
+
+    setLoadingMeals(true);
+    const unsubscribe = subscribeMealsForDate(
+      selectedDate,
+      (data) => {
+        setMeals(data);
+        setLoadingMeals(false);
+      },
+      (error) => {
+        console.error("Failed to load meals", error);
+        setLoadingMeals(false);
+      }
+    );
+
+    return () => unsubscribe();
   }, [userProfile?.role, selectedDate]);
 
   const onDateChange = (value: any) => {

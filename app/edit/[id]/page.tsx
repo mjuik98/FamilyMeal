@@ -81,12 +81,19 @@ export default function EditMealPage() {
 
         try {
             const { updateMeal } = await import('@/lib/data');
+            const { uploadImage } = await import('@/lib/uploadImage');
+
+            // Upload new image to Storage if it's a base64 data URI (not an existing URL)
+            let imageUrl: string | undefined = imagePreview || undefined;
+            if (imagePreview && imagePreview.startsWith('data:')) {
+                imageUrl = await uploadImage(imagePreview);
+            }
 
             await updateMeal(mealId, {
                 userIds: selectedUsers,
                 description,
                 type,
-                imageUrl: imagePreview || undefined,
+                imageUrl,
             });
 
             router.push('/');
