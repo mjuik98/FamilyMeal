@@ -2,7 +2,7 @@ import { Meal, UserRole } from './types';
 import { db } from './firebase';
 import {
     collection, addDoc, query, where, getDocs, orderBy, Timestamp,
-    getDoc, doc, updateDoc, deleteDoc, onSnapshot
+    getDoc, doc, updateDoc, deleteDoc, onSnapshot, limit
 } from 'firebase/firestore';
 
 export const users: UserRole[] = ['아빠', '엄마', '딸', '아들'];
@@ -117,30 +117,35 @@ export const deleteMeal = async (id: string) => {
  */
 export const getWeeklyStats = async (): Promise<{ date: Date; label: string; count: number }[]> => {
     const now = new Date();
-    const results: { date: Date; label: string; count: number }[] = [];
-
-    for (let i = 6; i >= 0; i--) {
+    const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
+    const dates = Array.from({ length: 7 }, (_, idx) => {
         const d = new Date(now);
-        d.setDate(d.getDate() - i);
-        const start = new Date(d); start.setHours(0, 0, 0, 0);
-        const end = new Date(d); end.setHours(23, 59, 59, 999);
+        d.setDate(d.getDate() - (6 - idx));
+        return d;
+    });
 
-        const mealsRef = collection(db, 'meals');
-        const q = query(
-            mealsRef,
-            where('timestamp', '>=', Timestamp.fromDate(start)),
-            where('timestamp', '<=', Timestamp.fromDate(end))
-        );
-        const snapshot = await getDocs(q);
+    return Promise.all(
+        dates.map(async (date) => {
+            const start = new Date(date);
+            start.setHours(0, 0, 0, 0);
+            const end = new Date(date);
+            end.setHours(23, 59, 59, 999);
 
-        const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
-        results.push({
-            date: d,
-            label: dayNames[d.getDay()],
-            count: snapshot.size,
-        });
-    }
-    return results;
+            const mealsRef = collection(db, 'meals');
+            const q = query(
+                mealsRef,
+                where('timestamp', '>=', Timestamp.fromDate(start)),
+                where('timestamp', '<=', Timestamp.fromDate(end))
+            );
+            const snapshot = await getDocs(q);
+
+            return {
+                date,
+                label: dayNames[date.getDay()],
+                count: snapshot.size,
+            };
+        })
+    );
 };
 
 /**
@@ -149,7 +154,7 @@ export const getWeeklyStats = async (): Promise<{ date: Date; label: string; cou
  */
 export const searchMeals = async (keyword: string): Promise<Meal[]> => {
     const mealsRef = collection(db, 'meals');
-    const q = query(mealsRef, orderBy('timestamp', 'desc'));
+    const q = query(mealsRef, orderBy('timestamp', 'desc'), limit(500));
     const snapshot = await getDocs(q);
     const all = snapshot.docs.map(convertMeal);
     const lower = keyword.toLowerCase();

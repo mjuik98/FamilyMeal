@@ -7,20 +7,6 @@ import { useRouter } from 'next/navigation';
 import { useState, useRef, useEffect } from 'react';
 import { useToast } from '@/components/Toast';
 
-// Since we are using mock data in memory on server side (mostly), 
-// but here we are in a client component, we can't directly call server functions if we want persistence across pages 
-// without an API.
-// HOWEVER, for this prototype, `lib/data.ts` is imported into the client bundle too if we are not careful.
-// To make it work properly with Next.js App Router, we should use Server Actions or API routes.
-// For simplicity in this step, I will create a Server Action or just use an API route.
-// Let's use a simple API route for data mutation to avoid client/server state mismatch.
-// Actually, `lib/data.ts` state is module-global. Next.js might separate server/client instances.
-// We should use an API route to be safe.
-
-// Let's quickly create app/api/meals/route.ts first? 
-// Or just try to stick to "use server" actions?
-// Let's use Server Actions for simplicity.
-
 export default function AddMealPage() {
     const { userProfile } = useUser();
     const router = useRouter();
@@ -32,18 +18,17 @@ export default function AddMealPage() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const { showToast } = useToast();
 
-    // Redirect if not logged in
-    if (!userProfile?.role) {
-        router.push('/');
-        return null;
-    }
-
-    // Initialize selectedUsers with current user
     useEffect(() => {
-        if (selectedUsers.length === 0 && userProfile?.role) {
+        if (!userProfile?.role) {
+            router.replace('/');
+            return;
+        }
+        if (selectedUsers.length === 0) {
             setSelectedUsers([userProfile.role]);
         }
-    }, [userProfile?.role]);
+    }, [userProfile?.role, router, selectedUsers.length]);
+
+    if (!userProfile?.role) return null;
 
     const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -75,9 +60,7 @@ export default function AddMealPage() {
         setIsSubmitting(true);
 
         try {
-            // Import dynamically or assuming it's safe since lib/data uses client SDK
-            // We need to import addMeal from lib/data.ts at the top check
-            const { addMeal, users } = await import('@/lib/data');
+            const { addMeal } = await import('@/lib/data');
             const { uploadImage } = await import('@/lib/uploadImage');
 
             // Upload image to Firebase Storage if present
@@ -104,10 +87,6 @@ export default function AddMealPage() {
         }
     };
 
-    // Need to import users list for rendering toggles. 
-    // Since we are inside component, let's use a hardcoded list or import it.
-    // Ideally import from lib/data but it might cause issues if not careful with server/client.
-    // But lib/data is client-safe (firebase client sdk).
     const ROLES: UserRole[] = ['아빠', '엄마', '딸', '아들'];
 
     return (

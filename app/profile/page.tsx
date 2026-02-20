@@ -2,7 +2,7 @@
 
 import { useUser } from '@/context/UserContext';
 import { users } from '@/lib/data';
-import { Check, LogOut } from 'lucide-react';
+import { LogOut } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { addMeal, getMealsForDate } from '@/lib/data';
-import { Meal } from '@/lib/types';
+import { Meal, UserRole } from '@/lib/types';
 
 export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
@@ -14,22 +14,27 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
     try {
         const body = await request.json();
+        const userIds: UserRole[] = Array.isArray(body.userIds)
+            ? body.userIds
+            : body.userId
+                ? [body.userId]
+                : [];
 
         // Validate body
-        if (!body.userId || !body.description || !body.type) {
+        if (!userIds.length || !body.description || !body.type) {
             return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
         }
 
-        const newMeal: Meal = {
-            id: Date.now().toString(),
-            userId: body.userId,
+        const newMeal: Omit<Meal, 'id'> = {
+            userId: userIds[0],
+            userIds,
             imageUrl: body.imageUrl,
             description: body.description,
             type: body.type,
             timestamp: body.timestamp || Date.now(),
         };
 
-        addMeal(newMeal);
+        await addMeal(newMeal);
 
         return NextResponse.json({ success: true, meal: newMeal });
     } catch (error) {
