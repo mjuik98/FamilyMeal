@@ -1,34 +1,20 @@
-// Paste these rules in Firebase Console > Firestore > Rules
-// (Also apply similar rules for Storage)
+// ===================================
+// Firebase Console > Firestore > 규칙 탭에 붙여넣기
+// ===================================
 
-// === Firestore Security Rules ===
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Users collection: each user can only read/write their own profile
+    // Users: 본인 프로필만 읽기/쓰기
     match /users/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
 
-    // Meals collection: authenticated users can read all, write their own
+    // Meals: 인증된 사용자만 읽기/쓰기
     match /meals/{mealId} {
       allow read: if request.auth != null;
       allow create: if request.auth != null;
       allow update, delete: if request.auth != null;
-    }
-  }
-}
-
-// === Storage Security Rules ===
-// Firebase Console > Storage > Rules
-rules_version = '2';
-service firebase.storage {
-  match /b/{bucket}/o {
-    match /meals/{imageFile} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null
-                    && request.resource.size < 5 * 1024 * 1024  // Max 5MB
-                    && request.resource.contentType.matches('image/.*');
     }
   }
 }

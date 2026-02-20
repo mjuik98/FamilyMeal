@@ -4,11 +4,12 @@ import Navbar from "@/components/Navbar";
 import { UserProvider } from "@/context/UserContext";
 
 export const metadata: Metadata = {
-  title: "Family Meal Tracker",
-  description: "Share your meals with family",
+  title: "가족 식사 기록",
+  description: "가족들과 함께 맛있는 추억을 남겨보세요",
   manifest: "/manifest.json",
   icons: {
-    apple: "/icons/icon-192x192.png",
+    apple: "/icons/icon.svg",
+    icon: "/icons/icon.svg",
   },
 };
 
@@ -17,7 +18,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
-  themeColor: "#ffffff",
+  themeColor: "#FAFAF5",
 };
 
 export default function RootLayout({
@@ -26,7 +27,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="ko">
       <body>
         <UserProvider>
           <div className="app-container">

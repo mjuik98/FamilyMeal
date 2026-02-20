@@ -1,61 +1,53 @@
 :root {
-  --background: #f0f4f8;
-  /* Very light cool grey */
-  --foreground: #1e293b;
-  /* Slate 800 */
+  --background: #FAFAF5;
+  --foreground: #1A1A1A;
 
-  --primary: #fb923c;
-  /* Orange 400 - Food appetite color */
+  --primary: #6B8E23;
+  --primary-light: #8FB339;
   --primary-foreground: #ffffff;
 
-  --secondary: #3b82f6;
-  /* Blue 500 */
-  --secondary-foreground: #ffffff;
+  --secondary: #F5F5EB;
+  --secondary-foreground: #4A4A4A;
 
-  --muted: #f1f5f9;
-  /* Slate 100 */
-  --muted-foreground: #64748b;
-  /* Slate 500 */
+  --muted: #F0F0E8;
+  --muted-foreground: #8C8C8C;
 
   --card: #ffffff;
-  --card-foreground: #1e293b;
+  --card-foreground: #1A1A1A;
 
-  --border: #e2e8f0;
-  /* Slate 200 */
-  --input: #e2e8f0;
+  --border: #E8E8E0;
+  --input: #E8E8E0;
 
-  --radius: 12px;
-  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-  --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --radius: 16px;
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.04);
+  --shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.08);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0f172a;
-    /* Slate 900 */
-    --foreground: #f8fafc;
-    /* Slate 50 */
+    --background: #111111;
+    --foreground: #F5F5F0;
 
-    --primary: #f97316;
-    /* Orange 500 */
+    --primary: #8FB339;
+    --primary-light: #A3C44D;
     --primary-foreground: #ffffff;
 
-    --secondary: #3b82f6;
-    --secondary-foreground: #ffffff;
+    --secondary: #1E1E1E;
+    --secondary-foreground: #D4D4D4;
 
-    --muted: #1e293b;
-    /* Slate 800 */
-    --muted-foreground: #94a3b8;
-    /* Slate 400 */
+    --muted: #1A1A1A;
+    --muted-foreground: #999999;
 
-    --card: #1e293b;
-    --card-foreground: #f8fafc;
+    --card: #1E1E1E;
+    --card-foreground: #F5F5F0;
 
-    --border: #334155;
-    /* Slate 700 */
-    --input: #334155;
+    --border: #2A2A2A;
+    --input: #2A2A2A;
   }
 }
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
 * {
   box-sizing: border-box;
@@ -68,6 +60,7 @@ body {
   color: var(--foreground);
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 a {
@@ -78,15 +71,11 @@ a {
 /* Mobile Container Layout */
 .app-container {
   max-width: 480px;
-  /* Mobile width */
   margin: 0 auto;
-  min-height: 100vh;
-  background: var(--card);
-  /* App background inside container */
+  min-height: 100dvh;
+  background: var(--background);
   position: relative;
-  box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
   padding-bottom: 80px;
-  /* Space for Navbar */
   display: flex;
   flex-direction: column;
 }
@@ -94,16 +83,22 @@ a {
 /* Typography */
 h1 {
   font-size: 1.5rem;
-  font-weight: 700;
-  letter-spacing: -0.025em;
+  font-weight: 800;
+  letter-spacing: -0.03em;
   margin-bottom: 1rem;
+  color: var(--foreground);
 }
 
 h2 {
   font-size: 1.25rem;
-  font-weight: 600;
-  letter-spacing: -0.025em;
+  font-weight: 700;
+  letter-spacing: -0.02em;
   margin-bottom: 0.75rem;
+}
+
+h3 {
+  font-weight: 700;
+  letter-spacing: -0.01em;
 }
 
 p {
@@ -163,6 +158,10 @@ p {
   color: var(--muted-foreground);
 }
 
+.text-muted-foreground {
+  color: var(--muted-foreground);
+}
+
 .font-bold {
   font-weight: 700;
 }
@@ -180,23 +179,31 @@ p {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: var(--radius);
-  font-weight: 500;
-  padding: 0.75rem 1rem;
+  border-radius: 14px;
+  font-weight: 600;
+  padding: 0.875rem 1.25rem;
   background: var(--primary);
   color: var(--primary-foreground);
   border: none;
   cursor: pointer;
-  transition: opacity 0.2s;
+  transition: all 0.2s ease;
+  font-size: 0.95rem;
+  letter-spacing: -0.01em;
 }
 
 .btn:hover {
-  opacity: 0.9;
+  background: var(--primary-light);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow);
+}
+
+.btn:active {
+  transform: translateY(0);
 }
 
 .btn-secondary {
-  background: var(--muted);
-  color: var(--foreground);
+  background: var(--secondary);
+  color: var(--secondary-foreground);
 }
 
 .card {
@@ -205,6 +212,81 @@ p {
   border-radius: var(--radius);
   overflow: hidden;
   box-shadow: var(--shadow-sm);
+  transition: box-shadow 0.2s ease;
+}
+
+.card:hover {
+  box-shadow: var(--shadow);
+}
+
+/* Form elements */
+input,
+textarea,
+select {
+  font-family: inherit;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 0 3px rgba(107, 142, 35, 0.15) !important;
+  outline: none;
+}
+
+/* Color badges */
+.bg-blue-100 {
+  background-color: #DBEAFE;
+}
+
+.text-blue-700 {
+  color: #1D4ED8;
+}
+
+.bg-pink-100 {
+  background-color: #FCE7F3;
+}
+
+.text-pink-700 {
+  color: #BE185D;
+}
+
+.bg-purple-100 {
+  background-color: #EDE9FE;
+}
+
+.text-purple-700 {
+  color: #7C3AED;
+}
+
+.bg-amber-100 {
+  background-color: #FEF3C7;
+}
+
+.text-amber-700 {
+  color: #B45309;
+}
+
+.bg-gray-100 {
+  background-color: #F3F4F6;
+}
+
+/* Primary button styles */
+.bg-primary {
+  background-color: var(--primary);
+}
+
+.text-white {
+  color: white;
+}
+
+.ring-primary {
+  --tw-ring-color: var(--primary);
+}
+
+.bg-card {
+  background-color: var(--card);
 }
 
 /* React Calendar Customization */
@@ -212,24 +294,68 @@ p {
   width: 100% !important;
   border: none !important;
   font-family: inherit !important;
+  background: transparent !important;
+}
+
+.react-calendar__tile {
+  border-radius: 12px !important;
+  transition: all 0.15s ease !important;
 }
 
 .react-calendar__tile--now {
-  background: #fff7ed !important;
+  background: rgba(107, 142, 35, 0.1) !important;
   color: var(--primary) !important;
+  font-weight: 700 !important;
 }
 
 .react-calendar__tile--now:enabled:hover,
 .react-calendar__tile--now:enabled:focus {
-  background: #ffedd5 !important;
+  background: rgba(107, 142, 35, 0.15) !important;
 }
 
 .react-calendar__tile--active {
   background: var(--primary) !important;
   color: white !important;
+  font-weight: 600 !important;
 }
 
 .react-calendar__tile--active:enabled:hover,
 .react-calendar__tile--active:enabled:focus {
-  background: var(--primary) !important;
+  background: var(--primary-light) !important;
+}
+
+.react-calendar__navigation button {
+  font-weight: 600 !important;
+  font-size: 1rem !important;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 4px;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-in {
+  animation: fadeIn 0.3s ease-out;
 }

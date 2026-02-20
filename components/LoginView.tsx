@@ -28,7 +28,7 @@ export default function LoginView() {
         return (
             <div className="flex flex-col items-center justify-center min-h-[60vh] gap-8 p-4 text-center">
                 <div className="space-y-2">
-                    <h1 className="text-3xl font-bold">우리 가족 식사 기록 🍽️</h1>
+                    <h1 className="text-3xl font-bold">가족 식사 기록 🍽️</h1>
                     <p className="text-muted">가족들과 함께 맛있는 추억을 남겨보세요</p>
                 </div>
 

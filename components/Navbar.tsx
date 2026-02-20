@@ -17,17 +17,19 @@ export default function Navbar() {
   return (
     <nav className="navbar">
       <Link href="/" className={`nav-item ${isActive('/') ? 'active' : ''}`}>
-        <Home size={24} />
+        <Home size={22} strokeWidth={isActive('/') ? 2.5 : 1.8} />
         <span>홈</span>
       </Link>
 
-      <Link href="/add" className={`nav-item ${isActive('/add') ? 'active' : ''}`}>
-        <PlusCircle size={24} />
-        <span>작성</span>
+      <Link href="/add" className="nav-item-center">
+        <div className={`nav-add-btn ${isActive('/add') ? 'active' : ''}`}>
+          <PlusCircle size={26} strokeWidth={2} />
+        </div>
+        <span className={isActive('/add') ? 'active-label' : ''}>작성</span>
       </Link>
 
       <Link href="/profile" className={`nav-item ${isActive('/profile') ? 'active' : ''}`}>
-        <User size={24} />
+        <User size={22} strokeWidth={isActive('/profile') ? 2.5 : 1.8} />
         <span>프로필</span>
       </Link>
 
@@ -39,8 +41,10 @@ export default function Navbar() {
           transform: translateX(-50%);
           width: 100%;
           max-width: 480px;
-          height: 70px;
-          background: var(--card);
+          height: 72px;
+          background: rgba(255, 255, 255, 0.95);
+          backdrop-filter: blur(12px);
+          -webkit-backdrop-filter: blur(12px);
           border-top: 1px solid var(--border);
           display: flex;
           justify-content: space-around;
@@ -54,13 +58,52 @@ export default function Navbar() {
           align-items: center;
           justify-content: center;
           color: var(--muted-foreground);
-          font-size: 0.75rem;
+          font-size: 0.7rem;
+          font-weight: 500;
           gap: 4px;
           flex: 1;
           height: 100%;
+          transition: color 0.2s;
         }
         .nav-item.active {
           color: var(--primary);
+          font-weight: 600;
+        }
+        .nav-item-center {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          font-size: 0.7rem;
+          font-weight: 500;
+          gap: 4px;
+          flex: 1;
+          height: 100%;
+          color: var(--muted-foreground);
+        }
+        .nav-add-btn {
+          width: 48px;
+          height: 48px;
+          border-radius: 16px;
+          background: var(--primary);
+          color: white;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          margin-top: -20px;
+          box-shadow: 0 4px 12px rgba(107, 142, 35, 0.35);
+          transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .nav-add-btn:hover {
+          transform: scale(1.05);
+          box-shadow: 0 6px 16px rgba(107, 142, 35, 0.45);
+        }
+        .nav-add-btn.active {
+          background: var(--primary-light);
+        }
+        .active-label {
+          color: var(--primary);
+          font-weight: 600;
         }
       `}</style>
     </nav>

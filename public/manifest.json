@@ -1,21 +1,16 @@
 {
-  "name": "Family Meal Tracker",
-  "short_name": "FamilyMeal",
-  "description": "Share your daily meals with your family",
+  "name": "가족 식사 기록",
+  "short_name": "식사기록",
+  "description": "가족들과 함께 맛있는 추억을 남겨보세요",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#ffffff",
+  "background_color": "#FAFAF5",
+  "theme_color": "#6B8E23",
   "icons": [
     {
-      "src": "/icons/icon-192x192.png",
-      "sizes": "192x192",
-      "type": "image/png"
-    },
-    {
-      "src": "/icons/icon-512x512.png",
-      "sizes": "512x512",
-      "type": "image/png"
+      "src": "/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
     }
   ]
 }
