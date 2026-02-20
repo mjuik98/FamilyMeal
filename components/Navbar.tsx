@@ -56,14 +56,14 @@ export default function Navbar() {
           padding-bottom: env(safe-area-inset-bottom);
         }
         .nav-item {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
+          display: grid;
+          grid-template-rows: 32px 16px;
+          justify-items: center;
+          align-content: center;
           color: var(--muted-foreground);
           font-size: 0.7rem;
           font-weight: 500;
-          gap: 2px;
+          row-gap: 2px;
           flex: 1;
           height: 100%;
           padding: 8px 0;
@@ -94,6 +94,9 @@ export default function Navbar() {
         }
         .nav-label {
           width: 40px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
           text-align: center;
           line-height: 1.1;
         }
