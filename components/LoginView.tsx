@@ -46,13 +46,13 @@ export default function LoginView() {
     // 2. Signed in but no role selected
     if (!userProfile?.role) {
         return (
-            <div className="flex flex-col items-center justify-center min-h-[70vh] gap-12 p-6 text-center animate-in">
+            <div className="flex flex-col items-center justify-center min-h-[70vh] gap-7 p-4 text-center animate-in">
                 <div className="space-y-3">
                     <h2 className="text-3xl font-extrabold tracking-tight">반가워요! 👋</h2>
                     <p className="text-lg text-muted-foreground">가족 중 누구신가요?</p>
                 </div>
 
-                <div className="grid grid-cols-2 gap-6 w-full max-w-md">
+                <div className="grid grid-cols-2 gap-4 w-full max-w-md">
                     {ROLES.map(({ role, emoji, label }) => {
                         const roleClass =
                             role === '아빠' ? 'role-dad' :
