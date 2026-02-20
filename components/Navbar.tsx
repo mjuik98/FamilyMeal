@@ -93,12 +93,13 @@ export default function Navbar() {
           color: white;
         }
         .nav-label {
-          width: 40px;
+          min-width: 40px;
           display: flex;
           align-items: center;
           justify-content: center;
           text-align: center;
           line-height: 1.1;
+          white-space: nowrap;
         }
       `}</style>
     </nav>
