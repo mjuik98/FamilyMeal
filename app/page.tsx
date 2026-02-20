@@ -80,8 +80,12 @@ export default function Home() {
     }
   };
 
-  const onDateChange = (value: any) => {
-    setSelectedDate(value);
+  const onDateChange = (value: Date | null | [Date | null, Date | null]) => {
+    if (value instanceof Date) {
+      setSelectedDate(value);
+    } else if (Array.isArray(value) && value[0] instanceof Date) {
+      setSelectedDate(value[0]);
+    }
     setShowCalendar(false); // Close calendar after selection
   };
 

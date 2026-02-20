@@ -11,6 +11,7 @@ export interface Meal {
   id: string; // Firestore Doc ID
   userId?: UserRole; // Deprecated, kept for legacy data
   userIds?: UserRole[]; // New field for multiple users
+  keywords?: string[]; // Search index tokens
   imageUrl?: string;
   description: string;
   type: '아침' | '점심' | '저녁' | '간식';

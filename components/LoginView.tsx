@@ -2,7 +2,7 @@
 
 import { useUser } from '@/context/UserContext';
 import { UserRole } from '@/lib/types';
-import { LogIn, UserCircle } from 'lucide-react';
+import { LogIn } from 'lucide-react';
 
 const ROLES: { role: UserRole; emoji: string; label: string }[] = [
     { role: '아빠', emoji: '👨', label: '아빠' },

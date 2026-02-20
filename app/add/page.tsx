@@ -2,7 +2,7 @@
 
 import { useUser } from '@/context/UserContext';
 import { Meal, UserRole } from '@/lib/types';
-import { Camera, Send, X } from 'lucide-react';
+import { Camera, Send } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState, useRef, useEffect } from 'react';
 import { useToast } from '@/components/Toast';
