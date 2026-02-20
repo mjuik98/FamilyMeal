@@ -12,7 +12,7 @@ const ROLES: { role: UserRole; emoji: string; label: string }[] = [
 ];
 
 export default function LoginView() {
-    const { user, userProfile, signInWithGoogle, selectRole, loading } = useUser();
+    const { user, userProfile, signInWithGoogle, selectRole, loading, authError } = useUser();
 
     if (loading) {
         return (
@@ -31,6 +31,12 @@ export default function LoginView() {
                     <h1 className="text-3xl font-bold">가족 식사 기록 🍽️</h1>
                     <p className="text-muted">가족들과 함께 맛있는 추억을 남겨보세요</p>
                 </div>
+
+                {authError && (
+                    <div className="p-4 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 rounded-lg text-sm border border-red-200 dark:border-red-800 animate-in fade-in slide-in-from-bottom-2">
+                        {authError}
+                    </div>
+                )}
 
                 <button
                     onClick={signInWithGoogle}

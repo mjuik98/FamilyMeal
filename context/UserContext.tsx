@@ -10,6 +10,7 @@ type UserContextType = {
     user: User | null;
     userProfile: UserProfile | null;
     loading: boolean;
+    authError: string | null;
     signInWithGoogle: () => Promise<void>;
     signOut: () => Promise<void>;
     selectRole: (role: UserRole) => Promise<void>;
@@ -21,12 +22,26 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     const [user, setUser] = useState<User | null>(null);
     const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
     const [loading, setLoading] = useState(true);
+    const [authError, setAuthError] = useState<string | null>(null);
 
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-            setUser(firebaseUser);
-
             if (firebaseUser) {
+                const allowedEmailsEnv = process.env.NEXT_PUBLIC_ALLOWED_EMAILS || "";
+                const allowedEmails = allowedEmailsEnv.split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
+
+                if (allowedEmails.length > 0 && firebaseUser.email && !allowedEmails.includes(firebaseUser.email.toLowerCase())) {
+                    await firebaseSignOut(auth);
+                    setUser(null);
+                    setUserProfile(null);
+                    setAuthError("우리 가족으로 등록되지 않은 계정입니다. 가족에게 문의해주세요!");
+                    setLoading(false);
+                    return;
+                }
+
+                setUser(firebaseUser);
+                setAuthError(null);
+
                 // Fetch user profile from Firestore
                 const userDocRef = doc(db, 'users', firebaseUser.uid);
                 const userDoc = await getDoc(userDocRef);
@@ -92,6 +107,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         user,
         userProfile,
         loading,
+        authError,
         signInWithGoogle,
         signOut,
         selectRole
