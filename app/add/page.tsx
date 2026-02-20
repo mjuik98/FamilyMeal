@@ -111,100 +111,156 @@ export default function AddMealPage() {
     const ROLES: UserRole[] = ['아빠', '엄마', '딸', '아들'];
 
     return (
-        <div className="p-4">
-            <h1 className="text-xl font-bold mb-4">식사 기록하기</h1>
+        <div style={{ padding: '20px 16px', paddingBottom: '100px' }}>
+            <h1 style={{ fontSize: '1.5rem', fontWeight: 800, letterSpacing: '-0.03em', marginBottom: '4px' }}>
+                식사 작성하기
+            </h1>
+            <p style={{ color: 'var(--muted-foreground)', fontSize: '0.875rem', marginBottom: '24px' }}>
+                오늘 먹은 음식을 기록해보세요
+            </p>
 
-            <form onSubmit={handleSubmit} className="flex flex-col gap-6">
-                {/* Image Upload */}
-                <div
-                    className="aspect-video bg-muted rounded-lg flex items-center justify-center cursor-pointer overflow-hidden relative border-2 border-dashed border-input hover:border-primary transition-colors"
-                    onClick={() => fileInputRef.current?.click()}
-                >
-                    {imagePreview ? (
-                        <>
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
-                            <button
-                                type="button"
-                                onClick={(e) => { e.stopPropagation(); setImagePreview(null); if (fileInputRef.current) fileInputRef.current.value = ''; }}
-                                className="absolute top-2 right-2 bg-black/50 text-white p-1 rounded-full"
-                            >
-                                <X size={16} />
+            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+
+                {/* Photo Section */}
+                <div style={{
+                    border: '1px solid var(--border)', borderRadius: '16px',
+                    overflow: 'hidden', background: 'var(--card)'
+                }}>
+                    <div style={{
+                        padding: '14px 16px', borderBottom: '1px solid var(--border)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'space-between'
+                    }}>
+                        <span style={{ fontWeight: 600, fontSize: '0.95rem' }}>📷 사진</span>
+                        {imagePreview && (
+                            <button type="button"
+                                onClick={() => { setImagePreview(null); if (fileInputRef.current) fileInputRef.current.value = ''; }}
+                                style={{
+                                    fontSize: '0.8rem', color: 'var(--muted-foreground)',
+                                    background: 'none', border: 'none', cursor: 'pointer'
+                                }}>
+                                삭제
                             </button>
-                        </>
-                    ) : (
-                        <div className="flex flex-col items-center text-muted-foreground">
-                            <Camera size={32} className="mb-2" />
-                            <span className="text-sm">사진 촬영/선택</span>
-                        </div>
-                    )}
+                        )}
+                    </div>
+                    <div
+                        onClick={() => fileInputRef.current?.click()}
+                        style={{
+                            aspectRatio: '16/9', display: 'flex', alignItems: 'center',
+                            justifyContent: 'center', cursor: 'pointer', background: 'var(--muted)',
+                            position: 'relative'
+                        }}
+                    >
+                        {imagePreview ? (
+                            /* eslint-disable-next-line @next/next/no-img-element */
+                            <img src={imagePreview} alt="Preview" style={{
+                                width: '100%', height: '100%', objectFit: 'cover'
+                            }} />
+                        ) : (
+                            <div style={{
+                                display: 'flex', flexDirection: 'column', alignItems: 'center',
+                                color: 'var(--muted-foreground)', gap: '8px'
+                            }}>
+                                <Camera size={36} strokeWidth={1.5} />
+                                <span style={{ fontSize: '0.85rem' }}>탭하여 사진 추가</span>
+                            </div>
+                        )}
+                    </div>
                 </div>
-                <input
-                    type="file"
-                    ref={fileInputRef}
-                    onChange={handleImageChange}
-                    accept="image/*"
-                    className="hidden"
-                />
+                <input type="file" ref={fileInputRef} onChange={handleImageChange}
+                    accept="image/*" style={{ display: 'none' }} />
 
-                {/* Participants */}
-                <div>
-                    <label className="block text-sm font-medium mb-2">누구와 함께 먹었나요?</label>
-                    <div className="flex gap-2 flex-wrap">
-                        {ROLES.map((role) => (
-                            <button
-                                key={role}
-                                type="button"
-                                onClick={() => toggleUser(role)}
-                                className={`px-4 py-2 rounded-full text-sm font-medium transition-all
-                                    ${selectedUsers.includes(role)
-                                        ? 'bg-primary text-white ring-2 ring-offset-2 ring-primary'
-                                        : 'bg-muted text-muted-foreground hover:bg-muted/80'}
-                                `}
-                            >
-                                {role} {selectedUsers.includes(role) && '✓'}
-                            </button>
-                        ))}
+                {/* Meal Details Section */}
+                <div style={{
+                    border: '1px solid var(--border)', borderRadius: '16px',
+                    overflow: 'hidden', background: 'var(--card)'
+                }}>
+                    <div style={{
+                        padding: '14px 16px', borderBottom: '1px solid var(--border)',
+                    }}>
+                        <span style={{ fontWeight: 600, fontSize: '0.95rem' }}>🍽️ 식사 정보</span>
+                    </div>
+
+                    {/* Meal Type Row */}
+                    <div style={{
+                        padding: '14px 16px', borderBottom: '1px solid var(--border)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'space-between'
+                    }}>
+                        <span style={{ fontSize: '0.9rem', color: 'var(--muted-foreground)' }}>식사 종류</span>
+                        <div style={{ display: 'flex', gap: '6px' }}>
+                            {(['아침', '점심', '저녁', '간식'] as const).map((t) => (
+                                <button key={t} type="button" onClick={() => setType(t)}
+                                    style={{
+                                        padding: '6px 14px', borderRadius: '20px',
+                                        fontSize: '0.85rem', fontWeight: type === t ? 600 : 400,
+                                        background: type === t ? 'var(--primary)' : 'var(--muted)',
+                                        color: type === t ? 'white' : 'var(--muted-foreground)',
+                                        border: 'none', cursor: 'pointer',
+                                        transition: 'all 0.15s ease'
+                                    }}>
+                                    {t}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Participants Row */}
+                    <div style={{
+                        padding: '14px 16px', borderBottom: '1px solid var(--border)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'space-between'
+                    }}>
+                        <span style={{ fontSize: '0.9rem', color: 'var(--muted-foreground)' }}>함께한 사람</span>
+                        <div style={{ display: 'flex', gap: '6px' }}>
+                            {ROLES.map((role) => (
+                                <button key={role} type="button" onClick={() => toggleUser(role)}
+                                    style={{
+                                        padding: '6px 14px', borderRadius: '20px',
+                                        fontSize: '0.85rem', fontWeight: selectedUsers.includes(role) ? 600 : 400,
+                                        background: selectedUsers.includes(role) ? 'var(--primary)' : 'var(--muted)',
+                                        color: selectedUsers.includes(role) ? 'white' : 'var(--muted-foreground)',
+                                        border: 'none', cursor: 'pointer',
+                                        transition: 'all 0.15s ease'
+                                    }}>
+                                    {role}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Description Row */}
+                    <div style={{ padding: '14px 16px' }}>
+                        <span style={{
+                            fontSize: '0.9rem', color: 'var(--muted-foreground)',
+                            display: 'block', marginBottom: '10px'
+                        }}>설명</span>
+                        <textarea
+                            value={description}
+                            onChange={(e) => setDescription(e.target.value)}
+                            placeholder="어떤 음식을 드셨나요?"
+                            required
+                            style={{
+                                width: '100%', padding: '12px', borderRadius: '12px',
+                                border: '1px solid var(--border)', background: 'var(--muted)',
+                                resize: 'none', height: '80px', fontSize: '0.9rem',
+                                fontFamily: 'inherit', outline: 'none',
+                            }}
+                        />
                     </div>
                 </div>
 
-                {/* Meal Type */}
-                <div className="flex gap-2 overflow-x-auto pb-2">
-                    {(['아침', '점심', '저녁', '간식'] as const).map((t) => (
-                        <button
-                            key={t}
-                            type="button"
-                            onClick={() => setType(t)}
-                            className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors
-                ${type === t ? 'bg-primary text-white' : 'bg-muted text-muted-foreground'}
-              `}
-                        >
-                            {t} {type === t && '✓'}
-                        </button>
-                    ))}
-                </div>
-
-                {/* Description */}
-                <div>
-                    <label className="block text-sm font-medium mb-2">설명</label>
-                    <textarea
-                        value={description}
-                        onChange={(e) => setDescription(e.target.value)}
-                        placeholder="어떤 음식을 드셨나요?"
-                        className="w-full p-3 rounded-lg border bg-card resize-none h-24 focus:outline-none focus:ring-2 focus:ring-primary/50"
-                        required
-                    />
-                </div>
-
                 {/* Submit */}
-                <button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="btn w-full gap-2 text-lg"
-                >
+                <button type="submit" disabled={isSubmitting}
+                    style={{
+                        width: '100%', padding: '16px', borderRadius: '14px',
+                        background: 'var(--primary)', color: 'white',
+                        border: 'none', cursor: 'pointer', fontSize: '1rem',
+                        fontWeight: 600, display: 'flex', alignItems: 'center',
+                        justifyContent: 'center', gap: '8px',
+                        opacity: isSubmitting ? 0.6 : 1,
+                        transition: 'all 0.2s ease'
+                    }}>
                     {isSubmitting ? '업로드 중...' : (
                         <>
-                            <Send size={20} /> 기록하기
+                            <Send size={18} /> 작성하기
                         </>
                     )}
                 </button>
