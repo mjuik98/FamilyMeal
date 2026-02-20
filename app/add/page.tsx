@@ -5,6 +5,7 @@ import { Meal, UserRole } from '@/lib/types';
 import { Camera, Send, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState, useRef, useEffect } from 'react';
+import { useToast } from '@/components/Toast';
 
 // Since we are using mock data in memory on server side (mostly), 
 // but here we are in a client component, we can't directly call server functions if we want persistence across pages 
@@ -29,6 +30,7 @@ export default function AddMealPage() {
     const [selectedUsers, setSelectedUsers] = useState<UserRole[]>([]);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const { showToast } = useToast();
 
     // Redirect if not logged in
     if (!userProfile?.role) {
@@ -96,7 +98,7 @@ export default function AddMealPage() {
             router.refresh();
         } catch (error) {
             console.error('Failed to add meal', error);
-            alert('식사 기록에 실패했습니다.');
+            showToast('식사 기록에 실패했습니다.', 'error');
         } finally {
             setIsSubmitting(false);
         }

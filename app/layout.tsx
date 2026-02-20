@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import Navbar from "@/components/Navbar";
 import { UserProvider } from "@/context/UserContext";
+import { ToastProvider } from "@/components/Toast";
 
 export const metadata: Metadata = {
   title: "가족 식사 기록",
@@ -30,12 +31,14 @@ export default function RootLayout({
     <html lang="ko">
       <body>
         <UserProvider>
-          <div className="app-container">
-            <main className="flex-1">
-              {children}
-            </main>
-            <Navbar />
-          </div>
+          <ToastProvider>
+            <div className="app-container">
+              <main className="flex-1">
+                {children}
+              </main>
+              <Navbar />
+            </div>
+          </ToastProvider>
         </UserProvider>
       </body>
     </html>

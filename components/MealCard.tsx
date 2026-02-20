@@ -3,6 +3,7 @@ import { Clock, Pencil, Trash2 } from 'lucide-react';
 import { useUser } from '@/context/UserContext';
 import { deleteMeal } from '@/lib/data';
 import { useRouter } from 'next/navigation';
+import { useToast } from './Toast';
 
 const userColors: Record<string, string> = {
     '아빠': 'bg-blue-100 text-blue-700',
@@ -14,6 +15,7 @@ const userColors: Record<string, string> = {
 export default function MealCard({ meal }: { meal: Meal }) {
     const { userProfile } = useUser();
     const router = useRouter();
+    const { showToast } = useToast();
     const date = new Date(meal.timestamp);
     const timeString = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
@@ -36,7 +38,7 @@ export default function MealCard({ meal }: { meal: Meal }) {
             router.refresh();
         } catch (error) {
             console.error('Failed to delete meal', error);
-            alert('삭제에 실패했습니다.');
+            showToast('삭제에 실패했습니다.', 'error');
         }
     };
 

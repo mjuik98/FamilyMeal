@@ -5,6 +5,7 @@ import { Meal, UserRole } from '@/lib/types';
 import { Camera, Save, X } from 'lucide-react';
 import { useRouter, useParams } from 'next/navigation';
 import { useState, useRef, useEffect } from 'react';
+import { useToast } from '@/components/Toast';
 
 export default function EditMealPage() {
     const { userProfile } = useUser();
@@ -19,6 +20,7 @@ export default function EditMealPage() {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [loading, setLoading] = useState(true);
+    const { showToast } = useToast();
 
     useEffect(() => {
         const loadMeal = async () => {
@@ -100,7 +102,7 @@ export default function EditMealPage() {
             router.refresh();
         } catch (error) {
             console.error('Failed to update meal', error);
-            alert('수정에 실패했습니다.');
+            showToast('수정에 실패했습니다.', 'error');
         } finally {
             setIsSubmitting(false);
         }
