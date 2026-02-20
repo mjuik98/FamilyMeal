@@ -45,7 +45,7 @@ export default function Navbar() {
           width: 100%;
           max-width: 480px;
           height: 72px;
-          background: blue; /* TEMPORARY FOR DEPLOYMENT TEST */
+          background: rgba(255, 255, 255, 0.95);
           backdrop-filter: blur(12px);
           -webkit-backdrop-filter: blur(12px);
           border-top: 1px solid var(--border);
