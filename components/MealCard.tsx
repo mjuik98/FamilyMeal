@@ -17,8 +17,16 @@ export default function MealCard({ meal }: { meal: Meal }) {
     const date = new Date(meal.timestamp);
     const timeString = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-    const uids = meal.userIds || (meal.userId ? [meal.userId] : []);
-    const isOwner = userProfile?.role && uids.length > 0 && uids[0] === userProfile.role;
+    const rawUids = meal.userIds || (meal.userId ? [meal.userId] : []);
+    const VALID_ROLES = ['아빠', '엄마', '딸', '아들'];
+    // If author is '나' or not a valid role, replace with current user's role
+    const uids = rawUids.map((uid, idx) => {
+        if (idx === 0 && !VALID_ROLES.includes(uid) && userProfile?.role) {
+            return userProfile.role;
+        }
+        return uid;
+    });
+    const isOwner = userProfile?.role && uids.length > 0 && (uids[0] === userProfile.role || (rawUids[0] as string) === '나');
 
     const handleDelete = async () => {
         if (!confirm('정말로 이 기록을 삭제하시겠습니까?')) return;
@@ -42,7 +50,6 @@ export default function MealCard({ meal }: { meal: Meal }) {
                 <div className="flex items-start gap-3">
                     <div className="flex flex-col gap-1.5 items-start">
                         {(() => {
-                            const uids = meal.userIds || (meal.userId ? [meal.userId] : []);
                             if (uids.length === 0) return null;
                             const ROLE_ORDER: Record<string, number> = { '아빠': 1, '엄마': 2, '딸': 3, '아들': 4 };
                             const author = uids[0];
