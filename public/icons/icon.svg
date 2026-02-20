@@ -1,29 +1,33 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
-  <rect width="512" height="512" rx="100" fill="#6B8E23"/>
-  <g transform="translate(256, 240)" fill="white">
-    <!-- Plate -->
-    <ellipse cx="0" cy="30" rx="140" ry="35" fill="rgba(255,255,255,0.3)"/>
-    <ellipse cx="0" cy="20" rx="130" ry="90" fill="rgba(255,255,255,0.15)" stroke="white" stroke-width="6"/>
-    <ellipse cx="0" cy="20" rx="90" ry="60" fill="rgba(255,255,255,0.1)" stroke="white" stroke-width="4"/>
-    <!-- Fork (left) -->
-    <g transform="translate(-170, -80) rotate(-20)">
-      <rect x="-4" y="0" width="8" height="140" rx="4" fill="white"/>
-      <rect x="-4" y="-60" width="3" height="60" rx="1.5" fill="white" transform="translate(-7,0)"/>
-      <rect x="-4" y="-60" width="3" height="60" rx="1.5" fill="white"/>
-      <rect x="-4" y="-60" width="3" height="60" rx="1.5" fill="white" transform="translate(7,0)"/>
-      <rect x="-4" y="-60" width="3" height="60" rx="1.5" fill="white" transform="translate(14,0)"/>
-    </g>
-    <!-- Knife (right) -->
-    <g transform="translate(170, -80) rotate(20)">
-      <rect x="-4" y="0" width="8" height="140" rx="4" fill="white"/>
-      <path d="M-4,-60 Q-4,-70 4,-70 L4,0 L-4,0 Z" fill="white"/>
-      <path d="M4,-70 Q12,-50 4,0" stroke="white" stroke-width="3" fill="none"/>
-    </g>
+  <!-- Background -->
+  <rect width="512" height="512" rx="112" fill="#6B8E23"/>
+
+  <!-- Steam lines -->
+  <g fill="none" stroke="white" stroke-width="10" stroke-linecap="round" opacity="0.7">
+    <path d="M200,155 C200,140 215,135 215,120 C215,105 200,100 200,85"/>
+    <path d="M256,145 C256,130 271,125 271,110 C271,95 256,90 256,75"/>
+    <path d="M312,155 C312,140 327,135 327,120 C327,105 312,100 312,85"/>
   </g>
-  <!-- Steam -->
-  <g fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="4" stroke-linecap="round">
-    <path d="M220,120 Q230,100 220,80 Q210,60 220,40"/>
-    <path d="M256,110 Q266,90 256,70 Q246,50 256,30"/>
-    <path d="M292,120 Q302,100 292,80 Q282,60 292,40"/>
+
+  <!-- Bowl body -->
+  <path d="M108,230 Q108,370 256,400 Q404,370 404,230 Z" fill="white"/>
+  
+  <!-- Bowl rim (wide ellipse on top) -->
+  <ellipse cx="256" cy="230" rx="160" ry="30" fill="white"/>
+  <ellipse cx="256" cy="230" rx="140" ry="22" fill="#6B8E23" opacity="0.15"/>
+
+  <!-- Rice bumps inside bowl -->
+  <g fill="#F0F0E0" opacity="0.6">
+    <circle cx="220" cy="250" r="22"/>
+    <circle cx="260" cy="245" r="24"/>
+    <circle cx="295" cy="252" r="20"/>
+    <circle cx="240" cy="268" r="18"/>
+    <circle cx="275" cy="270" r="19"/>
+  </g>
+
+  <!-- Chopsticks -->
+  <g stroke="#FFD700" stroke-width="9" stroke-linecap="round" fill="none">
+    <line x1="310" y1="160" x2="380" y2="90"/>
+    <line x1="325" y1="175" x2="395" y2="105"/>
   </g>
 </svg>
