@@ -36,7 +36,6 @@ export default function Navbar() {
         </div>
         <span className="nav-label">프로필</span>
       </Link>
-
       <style jsx>{`
         .navbar {
           position: fixed;
@@ -46,7 +45,7 @@ export default function Navbar() {
           width: 100%;
           max-width: 480px;
           height: 72px;
-          background: rgba(255, 255, 255, 0.95);
+          background: blue; /* TEMPORARY FOR DEPLOYMENT TEST */
           backdrop-filter: blur(12px);
           -webkit-backdrop-filter: blur(12px);
           border-top: 1px solid var(--border);
