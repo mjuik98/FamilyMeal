@@ -52,7 +52,7 @@ export default function LoginView() {
                     <p className="text-lg text-muted-foreground">가족 중 누구신가요?</p>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4 w-full max-w-md">
+                <div className="role-grid">
                     {ROLES.map(({ role, emoji, label }) => {
                         const roleClass =
                             role === '아빠' ? 'role-dad' :
@@ -74,6 +74,16 @@ export default function LoginView() {
                         );
                     })}
                 </div>
+                <style jsx>{`
+                    .role-grid {
+                        width: 100%;
+                        max-width: 420px;
+                        margin: 0 auto;
+                        display: grid;
+                        grid-template-columns: repeat(2, minmax(0, 1fr));
+                        gap: 12px;
+                    }
+                `}</style>
             </div>
         );
     }
