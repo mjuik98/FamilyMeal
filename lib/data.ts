@@ -111,3 +111,51 @@ export const deleteMeal = async (id: string) => {
     await deleteDoc(mealRef);
 };
 
+/**
+ * Get meal counts for each of the last 7 days.
+ * Returns array of { date, label, count } from oldest to newest.
+ */
+export const getWeeklyStats = async (): Promise<{ date: Date; label: string; count: number }[]> => {
+    const now = new Date();
+    const results: { date: Date; label: string; count: number }[] = [];
+
+    for (let i = 6; i >= 0; i--) {
+        const d = new Date(now);
+        d.setDate(d.getDate() - i);
+        const start = new Date(d); start.setHours(0, 0, 0, 0);
+        const end = new Date(d); end.setHours(23, 59, 59, 999);
+
+        const mealsRef = collection(db, 'meals');
+        const q = query(
+            mealsRef,
+            where('timestamp', '>=', Timestamp.fromDate(start)),
+            where('timestamp', '<=', Timestamp.fromDate(end))
+        );
+        const snapshot = await getDocs(q);
+
+        const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
+        results.push({
+            date: d,
+            label: dayNames[d.getDay()],
+            count: snapshot.size,
+        });
+    }
+    return results;
+};
+
+/**
+ * Search meals by description text.
+ * Firestore doesn't support full-text search, so we fetch recent meals and filter client-side.
+ */
+export const searchMeals = async (keyword: string): Promise<Meal[]> => {
+    const mealsRef = collection(db, 'meals');
+    const q = query(mealsRef, orderBy('timestamp', 'desc'));
+    const snapshot = await getDocs(q);
+    const all = snapshot.docs.map(convertMeal);
+    const lower = keyword.toLowerCase();
+    return all.filter(m =>
+        m.description.toLowerCase().includes(lower) ||
+        m.type.toLowerCase().includes(lower) ||
+        m.userIds?.some(u => u.toLowerCase().includes(lower))
+    );
+};
