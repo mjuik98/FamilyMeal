@@ -1,36 +1,38 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🍚 Family Meal Tracker (우리가족 식사 일기)
 
-## Getting Started
+멀리 떨어져 지내는 부모님, 누나와 함께 일상을 공유하고 소통하기 위해 만든 **우리가족 전용 식사 기록 앱**입니다. 
+서로 떨어져 있어도 오늘 하루 어떤 맛있는 음식을 먹었는지 사진과 함께 나누며 따뜻한 마음을 전할 수 있습니다.
 
-First, run the development server:
+## 🌟 주요 기능
+- 📸 **식사 기록**: 오늘 먹은 음식 사진, 메뉴 이름, 식사 종류(아침/점심/저녁/간식 등), 별점 기록
+- 👩‍👩‍👧‍👦 **가족 프로필**: 가족 구성원별(아빠, 엄마, 누나, 나) 프로필 기능 및 개인별 기록 모아보기
+- 📊 **주간/월간 통계**: 우리 가족의 식사 패턴을 한눈에 볼 수 있는 통계 차트
+- 🔍 **검색 기능**: 예전에 먹었던 맛있는 메뉴나 기록 쉽게 찾기
+- 💬 **소통**: 서로의 식사에 대해 이야기하고 안부를 묻는 공간
+
+---
+
+## 🚀 시작하기 (로컬 개발 환경)
+
+본 프로젝트는 [Next.js](https://nextjs.org/) 프레임워크를 기반으로 작성되었습니다.
+
+먼저, 개발 서버를 실행하려면 아래 명령어를 터미널에 입력하세요:
 
 ```bash
 npm run dev
-# or
+# 또는
 yarn dev
-# or
+# 또는
 pnpm dev
-# or
+# 또는
 bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+브라우저에서 [http://localhost:3000](http://localhost:3000)을 열어 결과를 확인할 수 있습니다.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+페이지 수정은 `app/page.tsx` 파일에서 시작할 수 있으며, 파일을 수정하면 페이지가 자동으로 새로고침됩니다.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 🌐 배포 (Deployment)
 
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+이 앱은 Next.js 제작사인 Vercel이 제공하는 [Vercel 플랫폼](https://vercel.com/)을 통해 가장 쉽게 배포할 수 있습니다.
+호스팅 및 배포 관련 자세한 사항은 [Next.js 배포 문서](https://nextjs.org/docs/app/building-your-application/deploying)를 참고하세요.
