@@ -46,23 +46,33 @@ export default function LoginView() {
     // 2. Signed in but no role selected
     if (!userProfile?.role) {
         return (
-            <div className="flex flex-col items-center justify-center min-h-[60vh] gap-8 p-4 text-center">
-                <div className="space-y-2">
-                    <h2 className="text-2xl font-bold">반가워요! 👋</h2>
-                    <p className="text-muted">가족 중 누구신가요?</p>
+            <div className="flex flex-col items-center justify-center min-h-[70vh] gap-12 p-6 text-center animate-in">
+                <div className="space-y-3">
+                    <h2 className="text-3xl font-extrabold tracking-tight">반가워요! 👋</h2>
+                    <p className="text-lg text-muted-foreground">가족 중 누구신가요?</p>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4 w-full max-w-sm">
-                    {ROLES.map(({ role, emoji, label }) => (
-                        <button
-                            key={role}
-                            onClick={() => selectRole(role)}
-                            className="flex flex-col items-center gap-2 p-6 bg-card rounded-xl border-2 border-transparent hover:border-primary transition-all shadow-sm"
-                        >
-                            <span className="text-4xl">{emoji}</span>
-                            <span className="font-medium">{label}</span>
-                        </button>
-                    ))}
+                <div className="grid grid-cols-2 gap-6 w-full max-w-md">
+                    {ROLES.map(({ role, emoji, label }) => {
+                        const roleClass =
+                            role === '아빠' ? 'role-dad' :
+                                role === '엄마' ? 'role-mom' :
+                                    role === '딸' ? 'role-daughter' :
+                                        'role-son';
+
+                        return (
+                            <button
+                                key={role}
+                                onClick={() => selectRole(role)}
+                                className={`role-btn ${roleClass}`}
+                            >
+                                <span className="emoji-wrapper">{emoji}</span>
+                                <span className="label-wrapper">{label}</span>
+                                <div className="absolute inset-0 opacity-0 hover:opacity-10 dark:hover:opacity-20 transition-opacity pointer-events-none"
+                                    style={{ backgroundColor: 'var(--role-color)' }} />
+                            </button>
+                        );
+                    })}
                 </div>
             </div>
         );
