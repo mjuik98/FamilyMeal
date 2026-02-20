@@ -3,6 +3,7 @@ import "./globals.css";
 import Navbar from "@/components/Navbar";
 import { UserProvider } from "@/context/UserContext";
 import { ToastProvider } from "@/components/Toast";
+import { ConfirmProvider } from "@/components/ConfirmDialog";
 
 export const metadata: Metadata = {
   title: "가족 식사 기록",
@@ -32,12 +33,14 @@ export default function RootLayout({
       <body>
         <UserProvider>
           <ToastProvider>
-            <div className="app-container">
-              <main className="flex-1">
-                {children}
-              </main>
-              <Navbar />
-            </div>
+            <ConfirmProvider>
+              <div className="app-container">
+                <main className="flex-1">
+                  {children}
+                </main>
+                <Navbar />
+              </div>
+            </ConfirmProvider>
           </ToastProvider>
         </UserProvider>
       </body>
