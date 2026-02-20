@@ -17,19 +17,19 @@ export default function Navbar() {
   return (
     <nav className="navbar">
       <Link href="/" className={`nav-item ${isActive('/') ? 'active' : ''}`}>
-        <Home size={22} strokeWidth={isActive('/') ? 2.5 : 1.8} />
+        <Home size={26} strokeWidth={isActive('/') ? 2.5 : 1.8} />
         <span>홈</span>
       </Link>
 
       <Link href="/add" className="nav-item-center">
         <div className={`nav-add-btn ${isActive('/add') ? 'active' : ''}`}>
-          <PlusCircle size={26} strokeWidth={2} />
+          <PlusCircle size={28} strokeWidth={2} />
         </div>
         <span className={isActive('/add') ? 'active-label' : ''}>작성</span>
       </Link>
 
       <Link href="/profile" className={`nav-item ${isActive('/profile') ? 'active' : ''}`}>
-        <User size={22} strokeWidth={isActive('/profile') ? 2.5 : 1.8} />
+        <User size={26} strokeWidth={isActive('/profile') ? 2.5 : 1.8} />
         <span>프로필</span>
       </Link>
 
