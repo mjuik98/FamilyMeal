@@ -18,7 +18,7 @@ export default function Navbar() {
     <nav className="navbar">
       <Link href="/" className={`nav-item ${isActive('/') ? 'active' : ''}`}>
         <div className={`nav-icon-wrap ${isActive('/') ? 'nav-icon-active' : ''}`}>
-          <Home size={22} strokeWidth={isActive('/') ? 2.2 : 1.8} fill={isActive('/') ? 'currentColor' : 'none'} />
+          <Home size={22} strokeWidth={isActive('/') ? 2.2 : 1.8} fill={isActive('/') ? 'currentColor' : 'none'} style={{ position: 'relative', bottom: '1px' }} />
         </div>
         <span>홈</span>
       </Link>
@@ -67,8 +67,13 @@ export default function Navbar() {
           gap: 2px;
           flex: 1;
           height: 100%;
-          transition: color 0.2s;
+          padding: 8px 0;
+          transition: color 0.2s, transform 0.15s cubic-bezier(0.4, 0, 0.2, 1);
           text-decoration: none;
+          -webkit-tap-highlight-color: transparent;
+        }
+        .nav-item:active {
+          transform: scale(0.92);
         }
         .nav-item.active {
           color: var(--foreground);
