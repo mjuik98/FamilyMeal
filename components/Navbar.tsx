@@ -18,23 +18,23 @@ export default function Navbar() {
     <nav className="navbar">
       <Link href="/" className={`nav-item ${isActive('/') ? 'active' : ''}`}>
         <div className={`nav-icon-wrap ${isActive('/') ? 'nav-icon-active' : ''}`}>
-          <Home size={22} strokeWidth={isActive('/') ? 2.2 : 1.8} fill={isActive('/') ? 'currentColor' : 'none'} style={{ position: 'relative', bottom: '1px' }} />
+          <Home size={22} strokeWidth={isActive('/') ? 2.2 : 1.8} fill={isActive('/') ? 'currentColor' : 'none'} />
         </div>
-        <span>홈</span>
+        <span className="nav-label">홈</span>
       </Link>
 
       <Link href="/add" className={`nav-item ${isActive('/add') ? 'active' : ''}`}>
         <div className={`nav-icon-wrap ${isActive('/add') ? 'nav-icon-active' : ''}`}>
           <PlusCircle size={22} strokeWidth={isActive('/add') ? 2.2 : 1.8} fill={isActive('/add') ? 'currentColor' : 'none'} />
         </div>
-        <span>작성</span>
+        <span className="nav-label">작성</span>
       </Link>
 
       <Link href="/profile" className={`nav-item ${isActive('/profile') ? 'active' : ''}`}>
         <div className={`nav-icon-wrap ${isActive('/profile') ? 'nav-icon-active' : ''}`}>
           <User size={22} strokeWidth={isActive('/profile') ? 2.2 : 1.8} fill={isActive('/profile') ? 'currentColor' : 'none'} />
         </div>
-        <span>프로필</span>
+        <span className="nav-label">프로필</span>
       </Link>
 
       <style jsx>{`
@@ -92,6 +92,11 @@ export default function Navbar() {
         .nav-icon-active {
           background: var(--primary);
           color: white;
+        }
+        .nav-label {
+          width: 40px;
+          text-align: center;
+          line-height: 1.1;
         }
       `}</style>
     </nav>
