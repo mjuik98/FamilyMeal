@@ -17,19 +17,23 @@ export default function Navbar() {
   return (
     <nav className="navbar">
       <Link href="/" className={`nav-item ${isActive('/') ? 'active' : ''}`}>
-        <Home size={26} strokeWidth={isActive('/') ? 2.5 : 1.8} />
+        <div className={`nav-icon-wrap ${isActive('/') ? 'nav-icon-active' : ''}`}>
+          <Home size={22} strokeWidth={isActive('/') ? 2.2 : 1.8} fill={isActive('/') ? 'currentColor' : 'none'} />
+        </div>
         <span>홈</span>
       </Link>
 
       <Link href="/add" className="nav-item-center">
         <div className={`nav-add-btn ${isActive('/add') ? 'active' : ''}`}>
-          <PlusCircle size={28} strokeWidth={2} />
+          <PlusCircle size={26} strokeWidth={2} />
         </div>
         <span className={isActive('/add') ? 'active-label' : ''}>작성</span>
       </Link>
 
       <Link href="/profile" className={`nav-item ${isActive('/profile') ? 'active' : ''}`}>
-        <User size={26} strokeWidth={isActive('/profile') ? 2.5 : 1.8} />
+        <div className={`nav-icon-wrap ${isActive('/profile') ? 'nav-icon-active' : ''}`}>
+          <User size={22} strokeWidth={isActive('/profile') ? 2.2 : 1.8} fill={isActive('/profile') ? 'currentColor' : 'none'} />
+        </div>
         <span>프로필</span>
       </Link>
 
@@ -66,8 +70,22 @@ export default function Navbar() {
           transition: color 0.2s;
         }
         .nav-item.active {
-          color: var(--primary);
-          font-weight: 600;
+          color: var(--foreground);
+          font-weight: 700;
+        }
+        .nav-icon-wrap {
+          width: 40px;
+          height: 32px;
+          border-radius: 10px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: all 0.2s ease;
+          color: var(--muted-foreground);
+        }
+        .nav-icon-active {
+          background: var(--primary);
+          color: white;
         }
         .nav-item-center {
           display: flex;
