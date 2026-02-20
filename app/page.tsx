@@ -63,69 +63,161 @@ export default function Home() {
 
   const isToday = new Date().toDateString() === selectedDate.toDateString();
 
+  const roleEmoji: Record<string, string> = {
+    '아빠': '👨', '엄마': '👩', '딸': '👧', '아들': '👦'
+  };
+
+  const getGreeting = () => {
+    const h = new Date().getHours();
+    if (h < 6) return '좋은 새벽이에요';
+    if (h < 12) return '좋은 아침이에요';
+    if (h < 18) return '좋은 오후예요';
+    return '좋은 저녁이에요';
+  };
+
   return (
-    <div className="p-4 pb-24">
-      <header className="flex justify-between items-center mb-6">
-        <button
-          onClick={() => setShowCalendar(!showCalendar)}
-          className="flex flex-col items-start hover:opacity-70 transition-opacity"
-        >
-          <h1 className="mb-0 text-xl font-bold flex items-center gap-2">
-            가족 식사 기록
-            {showCalendar ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
-          </h1>
-          <p className="text-sm text-muted">{dateStr}</p>
-        </button>
-        <div className="flex items-center gap-2">
-          <button onClick={() => setSelectedDate(new Date())} className={`p-2 ${isToday ? 'text-primary font-bold' : 'text-muted'}`} title="오늘">
-            오늘
-          </button>
-          <button onClick={signOut} className="p-2 text-muted hover:text-red-500">
-            <LogOut size={20} />
-          </button>
+    <div style={{ padding: '20px 16px', paddingBottom: '100px' }}>
+
+      {/* Greeting Header */}
+      <header style={{
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        marginBottom: '20px'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div style={{
+            width: '44px', height: '44px', borderRadius: '50%',
+            background: 'var(--muted)', display: 'flex', alignItems: 'center',
+            justifyContent: 'center', fontSize: '1.4rem'
+          }}>
+            {roleEmoji[userProfile.role] || '👤'}
+          </div>
+          <div>
+            <p style={{ fontSize: '0.8rem', color: 'var(--muted-foreground)' }}>
+              {getGreeting()}
+            </p>
+            <p style={{ fontSize: '1.1rem', fontWeight: 700 }}>
+              {userProfile.role}
+            </p>
+          </div>
         </div>
+        <button onClick={signOut}
+          style={{
+            background: 'none', border: 'none', cursor: 'pointer',
+            color: 'var(--muted-foreground)', padding: '8px'
+          }}>
+          <LogOut size={20} />
+        </button>
       </header>
 
+      {/* Date Summary Card */}
+      <div style={{
+        background: 'var(--primary)', borderRadius: '20px', padding: '20px 24px',
+        color: 'white', marginBottom: '24px', position: 'relative', overflow: 'hidden'
+      }}>
+        <div style={{
+          position: 'absolute', top: '-20px', right: '-10px',
+          width: '100px', height: '100px', borderRadius: '50%',
+          background: 'rgba(255,255,255,0.1)'
+        }} />
+        <div style={{
+          position: 'absolute', bottom: '-30px', right: '40px',
+          width: '70px', height: '70px', borderRadius: '50%',
+          background: 'rgba(255,255,255,0.07)'
+        }} />
+        <p style={{ fontSize: '0.85rem', opacity: 0.85, marginBottom: '4px' }}>
+          {dateStr}
+        </p>
+        <p style={{ fontSize: '1.6rem', fontWeight: 800, letterSpacing: '-0.02em' }}>
+          {loadingMeals ? '...' : `${meals.length}끼 기록됨`}
+        </p>
+        <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
+          <button onClick={() => setShowCalendar(!showCalendar)}
+            style={{
+              padding: '8px 16px', borderRadius: '12px',
+              background: 'rgba(255,255,255,0.2)', color: 'white',
+              border: 'none', cursor: 'pointer', fontSize: '0.8rem',
+              fontWeight: 500, display: 'flex', alignItems: 'center', gap: '6px',
+              backdropFilter: 'blur(4px)'
+            }}>
+            <CalendarIcon size={14} /> 날짜 선택
+          </button>
+          {!isToday && (
+            <button onClick={() => setSelectedDate(new Date())}
+              style={{
+                padding: '8px 16px', borderRadius: '12px',
+                background: 'rgba(255,255,255,0.2)', color: 'white',
+                border: 'none', cursor: 'pointer', fontSize: '0.8rem',
+                fontWeight: 500, backdropFilter: 'blur(4px)'
+              }}>
+              오늘로
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Calendar Dropdown */}
       {showCalendar && (
-        <div className="mb-6 p-4 bg-white rounded-lg shadow-sm border animate-in fade-in slide-in-from-top-4">
+        <div style={{
+          marginBottom: '20px', padding: '16px', background: 'var(--card)',
+          borderRadius: '16px', border: '1px solid var(--border)',
+        }}>
           <Calendar
             onChange={onDateChange}
             value={selectedDate}
             locale="ko-KR"
-            className="w-full border-none"
-            tileClassName={({ date, view }) => {
-              if (view === 'month' && date.toDateString() === new Date().toDateString()) {
-                return 'text-primary font-bold';
-              }
-              return '';
-            }}
           />
         </div>
       )}
 
+      {/* Meals Section */}
+      <div style={{
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        marginBottom: '16px'
+      }}>
+        <h2 style={{ fontSize: '1.1rem', fontWeight: 700, margin: 0 }}>
+          {isToday ? '오늘의 식사' : `${selectedDate.getMonth() + 1}/${selectedDate.getDate()} 식사`}
+        </h2>
+        {meals.length > 0 && (
+          <span style={{ fontSize: '0.8rem', color: 'var(--muted-foreground)' }}>
+            {meals.length}개
+          </span>
+        )}
+      </div>
+
       {loadingMeals ? (
-        <div className="flex justify-center py-10">
-          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-muted"></div>
+        <div style={{ display: 'flex', justifyContent: 'center', padding: '40px 0' }}>
+          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-muted" />
         </div>
       ) : meals.length === 0 ? (
-        <div className="text-center py-10 flex flex-col items-center gap-4">
-          <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center text-2xl">
-            🍽️
-          </div>
-          <div className="space-y-2">
-            <h3 className="font-semibold text-lg">기록이 없어요</h3>
-            <p className="text-muted max-w-[200px]">
-              {isToday ? "오늘 무엇을 드셨나요? 가장 먼저 공유해보세요!" : "이 날은 기록된 식사가 없습니다."}
-            </p>
-          </div>
+        <div style={{
+          textAlign: 'center', padding: '48px 20px',
+          background: 'var(--card)', borderRadius: '16px',
+          border: '1px solid var(--border)'
+        }}>
+          <div style={{
+            width: '56px', height: '56px', borderRadius: '50%',
+            background: 'var(--muted)', display: 'flex', alignItems: 'center',
+            justifyContent: 'center', fontSize: '1.5rem', margin: '0 auto 16px'
+          }}>🍽️</div>
+          <p style={{ fontWeight: 600, fontSize: '1rem', marginBottom: '4px' }}>
+            기록이 없어요
+          </p>
+          <p style={{ color: 'var(--muted-foreground)', fontSize: '0.85rem', marginBottom: '20px' }}>
+            {isToday ? '오늘 무엇을 드셨나요?' : '이 날은 기록이 없습니다'}
+          </p>
           {isToday && (
-            <Link href="/add" className="btn mt-4">
+            <Link href="/add" style={{
+              display: 'inline-flex', alignItems: 'center', gap: '6px',
+              padding: '10px 20px', borderRadius: '12px',
+              background: 'var(--primary)', color: 'white',
+              fontWeight: 600, fontSize: '0.9rem'
+            }}>
               식사 추가하기
             </Link>
           )}
         </div>
       ) : (
-        <div className="space-y-4">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           {meals.map((meal) => (
             <MealCard key={meal.id} meal={meal} />
           ))}
