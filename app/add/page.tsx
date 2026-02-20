@@ -124,7 +124,7 @@ export default function AddMealPage() {
                             <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
                             <button
                                 type="button"
-                                onClick={(e) => { e.stopPropagation(); setImagePreview(null); }}
+                                onClick={(e) => { e.stopPropagation(); setImagePreview(null); if (fileInputRef.current) fileInputRef.current.value = ''; }}
                                 className="absolute top-2 right-2 bg-black/50 text-white p-1 rounded-full"
                             >
                                 <X size={16} />
