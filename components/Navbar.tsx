@@ -23,11 +23,11 @@ export default function Navbar() {
         <span>홈</span>
       </Link>
 
-      <Link href="/add" className="nav-item-center">
-        <div className={`nav-add-btn ${isActive('/add') ? 'active' : ''}`}>
-          <PlusCircle size={26} strokeWidth={2} />
+      <Link href="/add" className={`nav-item ${isActive('/add') ? 'active' : ''}`}>
+        <div className={`nav-icon-wrap ${isActive('/add') ? 'nav-icon-active' : ''}`}>
+          <PlusCircle size={22} strokeWidth={isActive('/add') ? 2.2 : 1.8} fill={isActive('/add') ? 'currentColor' : 'none'} />
         </div>
-        <span className={isActive('/add') ? 'active-label' : ''}>작성</span>
+        <span>작성</span>
       </Link>
 
       <Link href="/profile" className={`nav-item ${isActive('/profile') ? 'active' : ''}`}>
@@ -64,10 +64,11 @@ export default function Navbar() {
           color: var(--muted-foreground);
           font-size: 0.7rem;
           font-weight: 500;
-          gap: 4px;
+          gap: 2px;
           flex: 1;
           height: 100%;
           transition: color 0.2s;
+          text-decoration: none;
         }
         .nav-item.active {
           color: var(--foreground);
@@ -81,47 +82,11 @@ export default function Navbar() {
           align-items: center;
           justify-content: center;
           transition: all 0.2s ease;
-          color: var(--muted-foreground);
+          color: inherit;
         }
         .nav-icon-active {
           background: var(--primary);
           color: white;
-        }
-        .nav-item-center {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          font-size: 0.7rem;
-          font-weight: 500;
-          gap: 4px;
-          flex: 1;
-          height: 100%;
-          color: var(--muted-foreground);
-        }
-        .nav-add-btn {
-          width: 48px;
-          height: 48px;
-          border-radius: 16px;
-          background: var(--primary);
-          color: white;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          margin-top: -20px;
-          box-shadow: 0 4px 12px rgba(107, 142, 35, 0.35);
-          transition: transform 0.2s, box-shadow 0.2s;
-        }
-        .nav-add-btn:hover {
-          transform: scale(1.05);
-          box-shadow: 0 6px 16px rgba(107, 142, 35, 0.45);
-        }
-        .nav-add-btn.active {
-          background: var(--primary-light);
-        }
-        .active-label {
-          color: var(--primary);
-          font-weight: 600;
         }
       `}</style>
     </nav>
