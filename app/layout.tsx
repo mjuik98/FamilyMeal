@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import Script from "next/script";
 import "./globals.css";
 import Navbar from "@/components/Navbar";
 import { UserProvider } from "@/context/UserContext";
@@ -34,6 +35,22 @@ export default function RootLayout({
   return (
     <html lang="ko">
       <body>
+        <Script id="cleanup-sw" strategy="beforeInteractive">
+          {`
+            if ('serviceWorker' in navigator) {
+              navigator.serviceWorker.getRegistrations().then((registrations) => {
+                registrations.forEach((registration) => {
+                  registration.unregister();
+                });
+              });
+            }
+            if ('caches' in window) {
+              caches.keys().then((keys) => {
+                keys.forEach((key) => caches.delete(key));
+              });
+            }
+          `}
+        </Script>
         <UserProvider>
           <ToastProvider>
             <ConfirmProvider>
