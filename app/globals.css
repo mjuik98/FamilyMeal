@@ -33,17 +33,17 @@
     --primary-light: #A3C44D;
     --primary-foreground: #ffffff;
 
-    --secondary: #1E1E1E;
+    --secondary: #222222;
     --secondary-foreground: #D4D4D4;
 
-    --muted: #1A1A1A;
-    --muted-foreground: #999999;
+    --muted: #2A2A2A;
+    --muted-foreground: #A1A1AA;
 
-    --card: #1E1E1E;
+    --card: #18181A;
     --card-foreground: #F5F5F0;
 
-    --border: #2A2A2A;
-    --input: #2A2A2A;
+    --border: #333333;
+    --input: #2D2D2D;
   }
 }
 
@@ -406,6 +406,17 @@ select:focus {
 .react-calendar__navigation button {
   font-weight: 600 !important;
   font-size: 1rem !important;
+  color: var(--foreground) !important;
+}
+
+.react-calendar__navigation button:disabled {
+  background-color: transparent !important;
+  color: var(--muted-foreground) !important;
+}
+
+.react-calendar__tile:disabled {
+  background-color: transparent !important;
+  color: var(--muted-foreground) !important;
 }
 
 /* Scrollbar styling */

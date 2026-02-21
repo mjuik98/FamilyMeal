@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from 'react';
 import { subscribeMealsForDate, getWeeklyStats, searchMeals } from '@/lib/data';
@@ -73,8 +73,8 @@ export default function Home() {
     const perm = await Notification.requestPermission();
     setNotifGranted(perm === 'granted');
     if (perm === 'granted') {
-      new Notification('가족 식사 기록 🍽️', {
-        body: '알림이 활성화되었습니다!',
+      new Notification('���� �Ļ� ��� ', {
+        body: '�˸��� Ȱ��ȭ�Ǿ����ϴ�!',
         icon: '/icons/icon.svg'
       });
     }
@@ -111,15 +111,15 @@ export default function Home() {
   const isToday = new Date().toDateString() === selectedDate.toDateString();
 
   const roleEmoji: Record<string, string> = {
-    '아빠': '👨', '엄마': '👩', '딸': '👧', '아들': '👦'
+    '�ƺ�': '', '����': '', '��': '', '�Ƶ�': ''
   };
 
   const getGreeting = () => {
     const h = new Date().getHours();
-    if (h < 6) return '좋은 새벽이에요';
-    if (h < 12) return '좋은 아침이에요';
-    if (h < 18) return '좋은 오후예요';
-    return '좋은 저녁이에요';
+    if (h < 6) return '���� �����̿���';
+    if (h < 12) return '���� ��ħ�̿���';
+    if (h < 18) return '���� ���Ŀ���';
+    return '���� �����̿���';
   };
 
   return (
@@ -136,7 +136,7 @@ export default function Home() {
             background: 'var(--muted)', display: 'flex', alignItems: 'center',
             justifyContent: 'center', fontSize: '1.4rem'
           }}>
-            {roleEmoji[userProfile.role] || '👤'}
+            {roleEmoji[userProfile.role] || ''}
           </div>
           <div>
             <p style={{ fontSize: '0.8rem', color: 'var(--muted-foreground)' }}>
@@ -149,7 +149,7 @@ export default function Home() {
         </div>
         <button onClick={signOut}
           style={{
-            background: 'none', border: 'none', cursor: 'pointer',
+            background: 'transparent', border: 'none', cursor: 'pointer',
             color: 'var(--muted-foreground)', padding: '8px'
           }}>
           <LogOut size={20} />
@@ -159,7 +159,8 @@ export default function Home() {
       {/* Date Summary Card */}
       <div style={{
         background: 'var(--primary)', borderRadius: '20px', padding: '20px 24px',
-        color: 'white', marginBottom: '24px', position: 'relative', overflow: 'hidden'
+        color: 'white', marginBottom: '24px', position: 'relative', overflow: 'hidden',
+        boxShadow: 'var(--shadow-md)'
       }}>
         <div style={{
           position: 'absolute', top: '-20px', right: '-10px',
@@ -175,7 +176,7 @@ export default function Home() {
           {dateStr}
         </p>
         <p style={{ fontSize: '1.6rem', fontWeight: 800, letterSpacing: '-0.02em' }}>
-          {loadingMeals ? '...' : `${meals.length}끼 기록됨`}
+          {loadingMeals ? '...' : `${meals.length}�� ��ϵ�`}
         </p>
         <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
           <button onClick={() => setShowCalendar(!showCalendar)}
@@ -186,7 +187,7 @@ export default function Home() {
               fontWeight: 500, display: 'flex', alignItems: 'center', gap: '6px',
               backdropFilter: 'blur(4px)'
             }}>
-            <CalendarIcon size={14} /> 날짜 선택
+            <CalendarIcon size={14} /> ��¥ ����
           </button>
           {!isToday && (
             <button onClick={() => setSelectedDate(new Date())}
@@ -196,7 +197,7 @@ export default function Home() {
                 border: 'none', cursor: 'pointer', fontSize: '0.8rem',
                 fontWeight: 500, backdropFilter: 'blur(4px)'
               }}>
-              오늘로
+              ���÷�
             </button>
           )}
         </div>
@@ -207,6 +208,7 @@ export default function Home() {
         <div style={{
           marginBottom: '20px', padding: '16px', background: 'var(--card)',
           borderRadius: '16px', border: '1px solid var(--border)',
+          boxShadow: 'var(--shadow)'
         }}>
           <Calendar
             onChange={onDateChange}
@@ -226,9 +228,9 @@ export default function Home() {
             padding: '14px 16px', borderBottom: '1px solid var(--border)',
             display: 'flex', justifyContent: 'space-between', alignItems: 'center'
           }}>
-            <span style={{ fontWeight: 600, fontSize: '0.95rem' }}>📊 주간 기록</span>
+            <span style={{ fontWeight: 600, fontSize: '0.95rem' }}> �ְ� ���</span>
             <span style={{ fontSize: '0.8rem', color: 'var(--muted-foreground)' }}>
-              최근 7일
+              �ֱ� 7��
             </span>
           </div>
           <div style={{
@@ -275,19 +277,20 @@ export default function Home() {
             width: '100%', padding: '12px 16px', borderRadius: '14px',
             background: 'var(--card)', border: '1px solid var(--border)',
             cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '12px',
-            marginBottom: '16px', textAlign: 'left'
+            marginBottom: '16px', textAlign: 'left',
+            boxShadow: 'var(--shadow-sm)'
           }}>
           <div style={{
             width: '36px', height: '36px', borderRadius: '10px',
-            background: 'var(--muted)', display: 'flex', alignItems: 'center',
-            justifyContent: 'center'
+            background: 'var(--primary)', display: 'flex', alignItems: 'center',
+            justifyContent: 'center', color: 'var(--primary-foreground)'
           }}>
             <Bell size={18} />
           </div>
           <div style={{ flex: 1 }}>
-            <p style={{ fontSize: '0.9rem', fontWeight: 600, margin: 0 }}>알림 켜기</p>
+            <p style={{ fontSize: '0.9rem', fontWeight: 600, margin: 0 }}>�˸� �ѱ�</p>
             <p style={{ fontSize: '0.78rem', color: 'var(--muted-foreground)', margin: 0 }}>
-              식사 기록 알림을 받아보세요
+              �Ļ� ��� �˸��� �޾ƺ�����
             </p>
           </div>
         </button>
@@ -305,15 +308,15 @@ export default function Home() {
           type="text" value={searchQuery}
           onChange={(e) => { setSearchQuery(e.target.value); if (!e.target.value) setSearchResults(null); }}
           onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-          placeholder="음식, 사람 검색..."
+          placeholder="����, ��� �˻�..."
           style={{
-            flex: 1, background: 'none', border: 'none', outline: 'none',
-            fontSize: '0.9rem', fontFamily: 'inherit'
+            flex: 1, background: 'transparent', border: 'none', outline: 'none',
+            fontSize: '0.9rem', fontFamily: 'inherit', color: 'var(--foreground)'
           }}
         />
         {searchQuery && (
           <button onClick={() => { setSearchQuery(''); setSearchResults(null); }}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', color: 'var(--muted-foreground)' }}>
+            style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: '4px', color: 'var(--muted-foreground)' }}>
             <X size={16} />
           </button>
         )}
@@ -327,10 +330,10 @@ export default function Home() {
             marginBottom: '16px'
           }}>
             <h2 style={{ fontSize: '1.1rem', fontWeight: 700, margin: 0 }}>
-              검색 결과
+              �˻� ���
             </h2>
             <span style={{ fontSize: '0.8rem', color: 'var(--muted-foreground)' }}>
-              {searchResults.length}개
+              {searchResults.length}��
             </span>
           </div>
           {searching ? (
@@ -344,7 +347,7 @@ export default function Home() {
               border: '1px solid var(--border)'
             }}>
               <p style={{ color: 'var(--muted-foreground)', fontSize: '0.9rem' }}>
-                &ldquo;{searchQuery}&rdquo;에 대한 결과가 없습니다
+                &ldquo;{searchQuery}&rdquo;�� ���� ����� �����ϴ�
               </p>
             </div>
           ) : (
@@ -363,11 +366,11 @@ export default function Home() {
             marginBottom: '16px'
           }}>
             <h2 style={{ fontSize: '1.1rem', fontWeight: 700, margin: 0 }}>
-              {isToday ? '오늘의 식사' : `${selectedDate.getMonth() + 1}/${selectedDate.getDate()} 식사`}
+              {isToday ? '������ �Ļ�' : `${selectedDate.getMonth() + 1}/${selectedDate.getDate()} �Ļ�`}
             </h2>
             {meals.length > 0 && (
               <span style={{ fontSize: '0.8rem', color: 'var(--muted-foreground)' }}>
-                {meals.length}개
+                {meals.length}��
               </span>
             )}
           </div>
@@ -386,12 +389,12 @@ export default function Home() {
                 width: '56px', height: '56px', borderRadius: '50%',
                 background: 'var(--muted)', display: 'flex', alignItems: 'center',
                 justifyContent: 'center', fontSize: '1.5rem', margin: '0 auto 16px'
-              }}>🍽️</div>
+              }}></div>
               <p style={{ fontWeight: 600, fontSize: '1rem', marginBottom: '4px' }}>
-                기록이 없어요
+                ����� �����
               </p>
               <p style={{ color: 'var(--muted-foreground)', fontSize: '0.85rem', marginBottom: '20px' }}>
-                {isToday ? '오늘 무엇을 드셨나요?' : '이 날은 기록이 없습니다'}
+                {isToday ? '���� ������ ��̳���?' : '�� ���� ����� �����ϴ�'}
               </p>
               {isToday && (
                 <Link href="/add" style={{
@@ -400,7 +403,7 @@ export default function Home() {
                   background: 'var(--primary)', color: 'white',
                   fontWeight: 600, fontSize: '0.9rem'
                 }}>
-                  식사 추가하기
+                  �Ļ� �߰��ϱ�
                 </Link>
               )}
             </div>
