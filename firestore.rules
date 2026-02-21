@@ -18,17 +18,17 @@ service cloud.firestore {
     }
 
     function validRole(role) {
-      return role in ['?꾨튌', '?꾨쭏', '??, '?꾨뱾'];
+      return role in ['아빠', '엄마', '딸', '아들'];
     }
 
     function validMealType(type) {
-      return type in ['?꾩묠', '?먯떖', '???, '媛꾩떇'];
+      return type in ['아침', '점심', '저녁', '간식'];
     }
 
     function hasValidParticipantList(mealData) {
       return mealData.userIds is list
         && mealData.userIds.size() > 0
-        && mealData.userIds.hasOnly(['?꾨튌', '?꾨쭏', '??, '?꾨뱾']);
+        && mealData.userIds.hasOnly(['아빠', '엄마', '딸', '아들']);
     }
 
     function isMealParticipant(mealData) {
