@@ -167,6 +167,13 @@ textarea,
 select {
   font-family: inherit;
   transition: border-color 0.2s, box-shadow 0.2s;
+  color: var(--foreground);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--muted-foreground);
+  opacity: 1;
 }
 
 input:focus,
