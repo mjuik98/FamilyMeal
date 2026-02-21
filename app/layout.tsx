@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import Script from "next/script";
 import "./globals.css";
 import Navbar from "@/components/Navbar";
+import AppUpdateBanner from "@/components/AppUpdateBanner";
 import { UserProvider } from "@/context/UserContext";
 import { ToastProvider } from "@/components/Toast";
 import { ConfirmProvider } from "@/components/ConfirmDialog";
@@ -120,6 +121,7 @@ export default function RootLayout({
                 <main className="flex-1">
                   {children}
                 </main>
+                <AppUpdateBanner />
                 <Navbar />
               </div>
             </ConfirmProvider>

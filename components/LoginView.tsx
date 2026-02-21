@@ -1,5 +1,6 @@
 "use client";
 
+import Image from 'next/image';
 import { useUser } from '@/context/UserContext';
 import { UserRole } from '@/lib/types';
 
@@ -30,7 +31,15 @@ export default function LoginView() {
                     {/* Top Logo Section */}
                     <div className="flex flex-col justify-center items-center gap-4 mb-10">
                         <div className="flex items-center justify-center w-[52px] h-[52px] sm:w-[60px] sm:h-[60px] bg-green-50 rounded-[14px] shadow-[0_2px_8px_rgba(0,0,0,0.05)] border border-green-100">
-                            <img src="/images/family_meal_logo.png" alt="가족 식사 로고" className="w-[42px] h-[42px] sm:w-[50px] sm:h-[50px] object-contain rounded-md" />
+                            <Image
+                                src="/images/family_meal_logo.png"
+                                alt="가족 식사 로고"
+                                width={50}
+                                height={50}
+                                priority
+                                sizes="(max-width: 640px) 42px, 50px"
+                                className="w-[42px] h-[42px] sm:w-[50px] sm:h-[50px] object-contain rounded-md"
+                            />
                         </div>
                         <div className="flex flex-col justify-center text-center">
                             <h1 className="text-[26px] sm:text-[28px] font-extrabold text-[#10b981] tracking-tight leading-none mb-0.5">가족식사</h1>

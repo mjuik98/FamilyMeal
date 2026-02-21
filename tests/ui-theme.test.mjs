@@ -24,7 +24,18 @@ test("comment and form inputs use shared input classes", () => {
   const addPage = read("app/add/page.tsx");
   const editPage = read("app/edit/[id]/page.tsx");
 
-  assert.match(mealCard, /className="input-base input-pill"/);
+  assert.match(mealCard, /className="input-base input-pill comment-input"/);
   assert.match(addPage, /className="input-base textarea-base"/);
   assert.match(editPage, /className="input-base textarea-base[^"]*"/);
+});
+
+test("update banner is wired into root layout", () => {
+  const layout = read("app/layout.tsx");
+  assert.match(layout, /import AppUpdateBanner from "@\/components\/AppUpdateBanner"/);
+  assert.match(layout, /<AppUpdateBanner \/>/);
+});
+
+test("unused app page module stylesheet is removed", () => {
+  const stylesheetPath = path.join(process.cwd(), "app", "page.module.css");
+  assert.equal(fs.existsSync(stylesheetPath), false);
 });

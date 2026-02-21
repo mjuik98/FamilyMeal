@@ -44,3 +44,9 @@ jobs:
 
       - name: Smoke Test
         run: npm run test:smoke
+
+      - name: Install Playwright Browser
+        run: npm run test:e2e:install
+
+      - name: E2E Test
+        run: npm run test:e2e

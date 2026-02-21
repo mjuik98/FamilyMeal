@@ -297,25 +297,16 @@ export default function MealCard({ meal }: { meal: Meal }) {
           ))}
         </div>
 
-        <div style={{ marginTop: '14px', borderTop: '1px solid var(--border)', paddingTop: '12px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        <div className="comments-section">
           <button
             type="button"
             onClick={() => setCommentsOpen((prev) => !prev)}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              border: 'none',
-              background: 'transparent',
-              padding: 0,
-              cursor: 'pointer',
-              width: '100%',
-            }}
+            className="comments-toggle"
           >
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.82rem', color: 'var(--muted-foreground)', fontWeight: 600 }}>
+            <span className="comments-toggle-label">
               <MessageSquare size={14} /> 댓글 {commentCount}
             </span>
-            <span style={{ color: 'var(--muted-foreground)', display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.78rem' }}>
+            <span className="comments-toggle-state">
               {commentsOpen ? '닫기' : '열기'}
               {commentsOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
             </span>
@@ -324,31 +315,31 @@ export default function MealCard({ meal }: { meal: Meal }) {
           {commentsOpen && (
             <>
               {comments.length > 0 && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <div className="comments-list">
                   {comments.map((comment) => {
                     const timeBase = comment.updatedAt || comment.createdAt || comment.timestamp || Date.now();
                     const canManage = Boolean(userProfile?.role && userProfile?.uid && comment.author === userProfile.role && comment.authorUid === userProfile.uid);
                     const isEditing = editingCommentId === comment.id;
 
                     return (
-                      <div key={comment.id} style={{ borderRadius: '10px', background: 'var(--muted)', padding: '8px 10px' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px', gap: '8px' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <span style={{ fontSize: '0.76rem', fontWeight: 700 }}>
+                      <div key={comment.id} className="comment-item">
+                        <div className="comment-header">
+                          <div className="comment-meta">
+                            <span className="comment-author">
                               {roleEmoji[comment.author] || '🙂'} {comment.author}
                             </span>
-                            <span style={{ fontSize: '0.7rem', color: 'var(--muted-foreground)' }}>
+                            <span className="comment-time">
                               {formatRelativeTime(timeBase)}
                             </span>
                           </div>
 
                           {canManage && (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <div className="comment-actions">
                               <button
                                 type="button"
                                 onClick={() => startEditingComment(comment.id, comment.text)}
                                 disabled={commentActionId === comment.id}
-                                style={{ border: 'none', background: 'transparent', padding: '4px', borderRadius: '8px', cursor: 'pointer', color: 'var(--muted-foreground)' }}
+                                className="comment-action-btn"
                               >
                                 <Pencil size={12} />
                               </button>
@@ -356,7 +347,7 @@ export default function MealCard({ meal }: { meal: Meal }) {
                                 type="button"
                                 onClick={() => void handleDeleteComment(comment.id)}
                                 disabled={commentActionId === comment.id}
-                                style={{ border: 'none', background: 'transparent', padding: '4px', borderRadius: '8px', cursor: 'pointer', color: 'var(--muted-foreground)' }}
+                                className="comment-action-btn"
                               >
                                 <Trash2 size={12} />
                               </button>
@@ -365,7 +356,7 @@ export default function MealCard({ meal }: { meal: Meal }) {
                         </div>
 
                         {isEditing ? (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <div className="comment-edit-row">
                             <input
                               type="text"
                               value={editingText}
@@ -378,7 +369,7 @@ export default function MealCard({ meal }: { meal: Meal }) {
                                   }
                                 }
                               }}
-                              className="input-base input-pill"
+                              className="input-base input-pill comment-input"
                               style={{
                                 flex: 1,
                                 padding: '6px 10px',
@@ -391,7 +382,7 @@ export default function MealCard({ meal }: { meal: Meal }) {
                               type="button"
                               onClick={() => void handleSaveComment(comment.id)}
                               disabled={commentActionId === comment.id || !editingText.trim()}
-                              style={{ border: 'none', background: 'var(--primary)', color: 'white', width: '28px', height: '28px', borderRadius: '999px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', opacity: commentActionId === comment.id || !editingText.trim() ? 0.5 : 1 }}
+                              className="comment-save-btn"
                             >
                               <Check size={12} />
                             </button>
@@ -400,13 +391,13 @@ export default function MealCard({ meal }: { meal: Meal }) {
                               type="button"
                               onClick={cancelEditingComment}
                               disabled={commentActionId === comment.id}
-                              style={{ border: '1px solid var(--border)', background: 'var(--background)', color: 'var(--muted-foreground)', width: '28px', height: '28px', borderRadius: '999px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+                              className="comment-cancel-btn"
                             >
                               <X size={12} />
                             </button>
                           </div>
                         ) : (
-                          <p style={{ margin: 0, fontSize: '0.82rem', lineHeight: 1.35 }}>
+                          <p className="comment-text">
                             {comment.text}
                           </p>
                         )}
@@ -416,7 +407,7 @@ export default function MealCard({ meal }: { meal: Meal }) {
                 </div>
               )}
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div className="comment-input-row">
                 <input
                   type="text"
                   value={commentText}
@@ -430,7 +421,7 @@ export default function MealCard({ meal }: { meal: Meal }) {
                     }
                   }}
                   placeholder="댓글을 입력하세요"
-                  className="input-base input-pill"
+                  className="input-base input-pill comment-input"
                   style={{
                     flex: 1,
                     padding: '8px 12px',
@@ -442,7 +433,7 @@ export default function MealCard({ meal }: { meal: Meal }) {
                   type="button"
                   onClick={() => void handleAddComment()}
                   disabled={isSubmittingComment || !commentText.trim() || !userProfile?.role}
-                  style={{ border: 'none', borderRadius: '999px', width: '34px', height: '34px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', background: 'var(--primary)', color: 'white', cursor: 'pointer', opacity: isSubmittingComment || !commentText.trim() ? 0.5 : 1 }}
+                  className="comment-send-btn"
                 >
                   <Send size={14} />
                 </button>
