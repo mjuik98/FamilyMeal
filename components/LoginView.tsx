@@ -38,7 +38,7 @@ export default function LoginView() {
                             <path d="M24 10L16 26H20V34H16V30L24 14V10Z" fill="#FF9800" />
                         </svg>
                     </div>
-                    <div className="flex flex-col justify-center">
+                    <div className="flex flex-col justify-center text-center">
                         <h1 className="text-[22px] font-extrabold text-[#10b981] dark:text-[#34d399] tracking-tight leading-none mb-0.5">가족식사</h1>
                         <p className="text-[11px] text-gray-500 font-medium dark:text-gray-400 leading-none">함께 쓰는 맛있는 기록</p>
                     </div>
@@ -46,9 +46,9 @@ export default function LoginView() {
 
                 {/* Welcome Text Section */}
                 <div className="mb-12 text-center">
-                    <h2 className="text-[32px] font-bold text-gray-900 mb-3 tracking-tight dark:text-white">환영합니다!</h2>
-                    <p className="text-gray-600 text-[16px] leading-relaxed dark:text-gray-400">
-                        더 나은 가족 식사 기록을 위해<br />구글 계정으로 시작해 보세요.
+                    <h2 className="text-[28px] font-bold text-gray-900 mb-2.5 tracking-tight dark:text-white">환영합니다!</h2>
+                    <p className="text-gray-500 text-[15px] leading-relaxed dark:text-gray-400">
+                        시작하려면 구글 계정으로<br />로그인해 주세요.
                     </p>
                 </div>
 
