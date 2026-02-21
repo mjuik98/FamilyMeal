@@ -29,7 +29,7 @@ export default function LoginView() {
                 {/* Top Logo Section */}
                 <div className="flex justify-center items-center gap-3 mt-[8vh] mb-12">
                     <div className="flex items-center justify-center w-[44px] h-[44px] bg-green-50 rounded-[12px] shadow-[0_2px_8px_rgba(0,0,0,0.05)] border border-green-100 dark:bg-green-900/20 dark:border-green-800/50">
-                        <img src="/images/nanobanana_logo.png" alt="나노바나나 로고" className="w-[32px] h-[32px] object-contain rounded-md" />
+                        <img src="/images/family_meal_logo.png" alt="가족 식사 로고" className="w-[36px] h-[36px] object-contain rounded-md" />
                     </div>
                     <div className="flex flex-col justify-center text-center">
                         <h1 className="text-[22px] font-extrabold text-[#10b981] dark:text-[#34d399] tracking-tight leading-none mb-0.5">가족식사</h1>
