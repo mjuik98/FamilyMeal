@@ -1,23 +1,81 @@
-import { Meal, UserRole } from './types';
+﻿import { Meal, MealComment, UserRole } from './types';
 import { db } from './firebase';
 import {
-    collection, addDoc, query, where, getDocs, orderBy, Timestamp,
-    getDoc, doc, updateDoc, deleteDoc, onSnapshot, limit, DocumentData, QueryDocumentSnapshot
+    collection,
+    addDoc,
+    query,
+    where,
+    getDocs,
+    orderBy,
+    Timestamp,
+    getDoc,
+    doc,
+    updateDoc,
+    deleteDoc,
+    onSnapshot,
+    limit,
+    DocumentData,
+    QueryDocumentSnapshot,
+    runTransaction,
 } from 'firebase/firestore';
 
-export const users: UserRole[] = ['아빠', '엄마', '딸', '아들'];
+export const users: UserRole[] = ['\uC544\uBE60', '\uC5C4\uB9C8', '\uB538', '\uC544\uB4E4'];
+
+const toMillis = (value: unknown, fallback: number): number => {
+    if (typeof value === 'number') return value;
+    if (value && typeof value === 'object' && 'toMillis' in value && typeof (value as { toMillis?: () => number }).toMillis === 'function') {
+        return (value as { toMillis: () => number }).toMillis();
+    }
+    return fallback;
+};
+
+const normalizeComment = (id: string, raw: Partial<MealComment> & { createdAt?: unknown; updatedAt?: unknown; timestamp?: unknown }): MealComment | null => {
+    if (!raw?.author || !raw?.text) return null;
+    const fallback = Date.now();
+    const createdAt = toMillis(raw.createdAt ?? raw.timestamp, fallback);
+    const updatedAt = toMillis(raw.updatedAt ?? raw.timestamp ?? raw.createdAt, createdAt);
+    const timestamp = toMillis(raw.timestamp, createdAt);
+
+    return {
+        id,
+        author: raw.author,
+        authorUid: typeof raw.authorUid === 'string' ? raw.authorUid : '',
+        text: String(raw.text),
+        createdAt,
+        updatedAt,
+        timestamp,
+    };
+};
+
+const normalizeComments = (rawComments: unknown): MealComment[] => {
+    if (!Array.isArray(rawComments)) return [];
+    return rawComments
+        .map((comment, index) => {
+            const raw = comment as Partial<MealComment> & { createdAt?: unknown; updatedAt?: unknown; timestamp?: unknown };
+            const id = typeof raw.id === 'string' && raw.id ? raw.id : `legacy-${index}`;
+            return normalizeComment(id, raw);
+        })
+        .filter((comment): comment is MealComment => Boolean(comment))
+        .sort((a, b) => a.createdAt - b.createdAt);
+};
+
+const convertCommentDoc = (docSnap: QueryDocumentSnapshot<DocumentData>): MealComment | null => {
+    const raw = docSnap.data() as Partial<MealComment> & { createdAt?: unknown; updatedAt?: unknown; timestamp?: unknown };
+    return normalizeComment(docSnap.id, raw);
+};
 
 // Helper to convert Firestore timestamp to number
 const convertMeal = (docSnap: QueryDocumentSnapshot<DocumentData>): Meal => {
     const data = docSnap.data();
-    // Backward compatibility: If userIds is missing, use userId wrapped in array
     const userIds = data.userIds || (data.userId ? [data.userId] : []);
+    const comments = normalizeComments(data.comments);
 
     return {
         id: docSnap.id,
         ...data,
         userIds,
-        timestamp: data.timestamp?.toMillis ? data.timestamp.toMillis() : Date.now()
+        comments,
+        timestamp: data.timestamp?.toMillis ? data.timestamp.toMillis() : Date.now(),
     } as Meal;
 };
 
@@ -57,10 +115,6 @@ export const getMealsForDate = async (date: Date): Promise<Meal[]> => {
     return snapshot.docs.map(convertMeal);
 };
 
-/**
- * Real-time subscription to meals for a given date.
- * Returns an unsubscribe function.
- */
 export const subscribeMealsForDate = (
     date: Date,
     onMeals: (meals: Meal[]) => void,
@@ -80,7 +134,8 @@ export const subscribeMealsForDate = (
         orderBy('timestamp', 'desc')
     );
 
-    return onSnapshot(q,
+    return onSnapshot(
+        q,
         (snapshot) => {
             const meals = snapshot.docs.map(convertMeal);
             onMeals(meals);
@@ -96,8 +151,9 @@ export const addMeal = async (meal: Omit<Meal, 'id'>) => {
     const mealsRef = collection(db, 'meals');
     await addDoc(mealsRef, {
         ...meal,
+        comments: meal.comments ?? [],
         keywords: buildMealKeywords(meal),
-        timestamp: Timestamp.fromMillis(meal.timestamp)
+        timestamp: Timestamp.fromMillis(meal.timestamp),
     });
 };
 
@@ -107,11 +163,13 @@ export const getMealById = async (id: string): Promise<Meal | null> => {
     if (!snapshot.exists()) return null;
     const data = snapshot.data();
     const userIds = data.userIds || (data.userId ? [data.userId] : []);
+    const comments = normalizeComments(data.comments);
     return {
         id: snapshot.id,
         ...data,
         userIds,
-        timestamp: data.timestamp?.toMillis ? data.timestamp.toMillis() : Date.now()
+        comments,
+        timestamp: data.timestamp?.toMillis ? data.timestamp.toMillis() : Date.now(),
     } as Meal;
 };
 
@@ -126,9 +184,9 @@ export const updateMeal = async (id: string, updates: Partial<Omit<Meal, 'id'>>)
         const prev = snapshot.exists() ? (snapshot.data() as Partial<Meal>) : {};
         dataToUpdate.keywords = buildMealKeywords({
             description: updates.description ?? prev.description ?? '',
-            type: updates.type ?? prev.type ?? '점심',
+            type: updates.type ?? prev.type ?? '\uC810\uC2EC',
             userIds: updates.userIds ?? prev.userIds,
-            userId: updates.userId ?? prev.userId
+            userId: updates.userId ?? prev.userId,
         });
     }
     await updateDoc(mealRef, dataToUpdate as DocumentData);
@@ -139,13 +197,140 @@ export const deleteMeal = async (id: string) => {
     await deleteDoc(mealRef);
 };
 
-/**
- * Get meal counts for each of the last 7 days.
- * Returns array of { date, label, count } from oldest to newest.
- */
+const mealCommentsRef = (mealId: string) => collection(db, 'meals', mealId, 'comments');
+
+export const getMealComments = async (mealId: string): Promise<MealComment[]> => {
+    const q = query(mealCommentsRef(mealId), orderBy('createdAt', 'asc'));
+    const snapshot = await getDocs(q);
+    return snapshot.docs
+        .map(convertCommentDoc)
+        .filter((comment): comment is MealComment => Boolean(comment));
+};
+
+export const subscribeMealComments = (
+    mealId: string,
+    onComments: (comments: MealComment[]) => void,
+    onError?: (error: Error) => void
+) => {
+    const q = query(mealCommentsRef(mealId), orderBy('createdAt', 'asc'));
+
+    return onSnapshot(
+        q,
+        (snapshot) => {
+            const comments = snapshot.docs
+                .map(convertCommentDoc)
+                .filter((comment): comment is MealComment => Boolean(comment));
+            onComments(comments);
+        },
+        (error) => {
+            console.error('Failed to subscribe to comments', error);
+            onError?.(error);
+        }
+    );
+};
+
+export const addMealComment = async (
+    mealId: string,
+    author: UserRole,
+    authorUid: string,
+    text: string
+): Promise<MealComment> => {
+    const trimmed = text.trim();
+    if (!trimmed) throw new Error('Comment text is empty');
+    if (!authorUid) throw new Error('Missing actor uid');
+
+    const mealRef = doc(db, 'meals', mealId);
+    const commentRef = doc(mealCommentsRef(mealId));
+    const now = Date.now();
+
+    const created = await runTransaction(db, async (tx) => {
+        const mealSnap = await tx.get(mealRef);
+        if (!mealSnap.exists()) throw new Error('Meal not found');
+
+        tx.set(commentRef, {
+            author,
+            authorUid,
+            text: trimmed,
+            createdAt: Timestamp.fromMillis(now),
+            updatedAt: Timestamp.fromMillis(now),
+        });
+
+        return {
+            id: commentRef.id,
+            author,
+            authorUid,
+            text: trimmed,
+            createdAt: now,
+            updatedAt: now,
+            timestamp: now,
+        } satisfies MealComment;
+    });
+
+    return created;
+};
+
+export const updateMealComment = async (
+    mealId: string,
+    commentId: string,
+    actorRole: UserRole,
+    actorUid: string,
+    text: string
+): Promise<MealComment> => {
+    const trimmed = text.trim();
+    if (!trimmed) throw new Error('Comment text is empty');
+    if (!actorUid) throw new Error('Missing actor uid');
+
+    const commentRef = doc(db, 'meals', mealId, 'comments', commentId);
+    const now = Date.now();
+
+    return runTransaction(db, async (tx) => {
+        const snap = await tx.get(commentRef);
+        if (!snap.exists()) throw new Error('Comment not found');
+
+        const raw = snap.data() as Partial<MealComment> & { createdAt?: unknown; updatedAt?: unknown; timestamp?: unknown };
+        const target = normalizeComment(snap.id, raw);
+        if (!target) throw new Error('Comment not found');
+        if (target.author !== actorRole || target.authorUid !== actorUid) throw new Error('Not allowed');
+
+        tx.update(commentRef, {
+            text: trimmed,
+            updatedAt: Timestamp.fromMillis(now),
+        });
+
+        return {
+            ...target,
+            text: trimmed,
+            updatedAt: now,
+        };
+    });
+};
+
+export const deleteMealComment = async (
+    mealId: string,
+    commentId: string,
+    actorRole: UserRole,
+    actorUid: string
+): Promise<void> => {
+    if (!actorUid) throw new Error('Missing actor uid');
+
+    const commentRef = doc(db, 'meals', mealId, 'comments', commentId);
+
+    await runTransaction(db, async (tx) => {
+        const snap = await tx.get(commentRef);
+        if (!snap.exists()) throw new Error('Comment not found');
+
+        const raw = snap.data() as Partial<MealComment> & { createdAt?: unknown; updatedAt?: unknown; timestamp?: unknown };
+        const target = normalizeComment(snap.id, raw);
+        if (!target) throw new Error('Comment not found');
+        if (target.author !== actorRole || target.authorUid !== actorUid) throw new Error('Not allowed');
+
+        tx.delete(commentRef);
+    });
+};
+
 export const getWeeklyStats = async (): Promise<{ date: Date; label: string; count: number }[]> => {
     const now = new Date();
-    const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
+    const dayNames = ['\uC77C', '\uC6D4', '\uD654', '\uC218', '\uBAA9', '\uAE08', '\uD1A0'];
     const dates = Array.from({ length: 7 }, (_, idx) => {
         const d = new Date(now);
         d.setDate(d.getDate() - (6 - idx));
@@ -176,10 +361,6 @@ export const getWeeklyStats = async (): Promise<{ date: Date; label: string; cou
     );
 };
 
-/**
- * Search meals by description text.
- * Firestore doesn't support full-text search, so we fetch recent meals and filter client-side.
- */
 export const searchMeals = async (keyword: string): Promise<Meal[]> => {
     const normalized = keyword.trim().toLowerCase();
     if (!normalized) return [];

@@ -1,0 +1,44 @@
+﻿rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function validRole(role) {
+      return role in ['아빠', '엄마', '딸', '아들'];
+    }
+
+    match /meals/{mealId} {
+      allow read: if signedIn();
+      allow create, update, delete: if signedIn();
+
+      match /comments/{commentId} {
+        allow read: if signedIn();
+
+        allow create: if signedIn()
+          && request.resource.data.keys().hasOnly(['author', 'authorUid', 'text', 'createdAt', 'updatedAt'])
+          && validRole(request.resource.data.author)
+          && request.resource.data.authorUid == request.auth.uid
+          && request.resource.data.text is string
+          && request.resource.data.text.size() > 0
+          && request.resource.data.createdAt is timestamp
+          && request.resource.data.updatedAt is timestamp
+          && request.resource.data.createdAt == request.resource.data.updatedAt;
+
+        allow update: if signedIn()
+          && resource.data.authorUid == request.auth.uid
+          && request.resource.data.keys().hasOnly(['author', 'authorUid', 'text', 'createdAt', 'updatedAt'])
+          && request.resource.data.author == resource.data.author
+          && request.resource.data.authorUid == resource.data.authorUid
+          && request.resource.data.createdAt == resource.data.createdAt
+          && request.resource.data.text is string
+          && request.resource.data.text.size() > 0
+          && request.resource.data.updatedAt is timestamp
+          && request.resource.data.updatedAt >= resource.data.updatedAt;
+
+        allow delete: if signedIn() && resource.data.authorUid == request.auth.uid;
+      }
+    }
+  }
+}

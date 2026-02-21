@@ -7,6 +7,16 @@ export interface UserProfile {
   role: UserRole | null;
 }
 
+export interface MealComment {
+  id: string;
+  author: UserRole;
+  authorUid: string;
+  text: string;
+  timestamp?: number; // legacy fallback
+  createdAt: number;
+  updatedAt: number;
+}
+
 export interface Meal {
   id: string; // Firestore Doc ID
   userId?: UserRole; // Deprecated, kept for legacy data
@@ -16,4 +26,5 @@ export interface Meal {
   description: string;
   type: '아침' | '점심' | '저녁' | '간식';
   timestamp: number;
+  comments?: MealComment[];
 }
