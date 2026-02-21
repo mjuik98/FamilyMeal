@@ -7,7 +7,10 @@
     "build": "next build --webpack",
     "start": "next start",
     "lint": "eslint .",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test:rules": "npx firebase-tools emulators:exec --only firestore \"node --test tests/firestore.rules.test.mjs\"",
+    "migrate:comments": "node scripts/migrate-comments-to-subcollection.mjs",
+    "migrate:comments:dry": "node scripts/migrate-comments-to-subcollection.mjs --dry-run"
   },
   "dependencies": {
     "@ducanh2912/next-pwa": "^10.2.9",
@@ -21,11 +24,14 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@firebase/rules-unit-testing": "^5.0.0",
+    "@opentelemetry/api": "^1.9.0",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9.39.2",
     "eslint-config-next": "^16.1.6",
+    "firebase-admin": "^13.6.1",
     "typescript": "^5"
   }
 }

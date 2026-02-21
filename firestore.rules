@@ -5,20 +5,122 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    function userDocPath(uid) {
+      return /databases/$(database)/documents/users/$(uid);
+    }
+
+    function hasUserProfile() {
+      return signedIn() && exists(userDocPath(request.auth.uid));
+    }
+
+    function currentUserRole() {
+      return hasUserProfile() ? get(userDocPath(request.auth.uid)).data.role : null;
+    }
+
     function validRole(role) {
-      return role in ['아빠', '엄마', '딸', '아들'];
+      return role in ['?꾨튌', '?꾨쭏', '??, '?꾨뱾'];
+    }
+
+    function validMealType(type) {
+      return type in ['?꾩묠', '?먯떖', '???, '媛꾩떇'];
+    }
+
+    function hasValidParticipantList(mealData) {
+      return mealData.userIds is list
+        && mealData.userIds.size() > 0
+        && mealData.userIds.hasOnly(['?꾨튌', '?꾨쭏', '??, '?꾨뱾']);
+    }
+
+    function isMealParticipant(mealData) {
+      return hasUserProfile()
+        && (
+          (mealData.userIds is list && mealData.userIds.hasAny([currentUserRole()]))
+          || (mealData.userId is string && mealData.userId == currentUserRole())
+        );
+    }
+
+    function isMealOwner(mealData) {
+      return signedIn() && mealData.ownerUid is string && mealData.ownerUid == request.auth.uid;
+    }
+
+    function isLegacyMeal(mealData) {
+      return !(mealData.ownerUid is string);
+    }
+
+    function canReadMeal(mealData) {
+      return hasUserProfile() && (isMealOwner(mealData) || isMealParticipant(mealData));
+    }
+
+    function validMealDocument(mealData) {
+      return mealData.keys().hasOnly([
+          'ownerUid', 'userId', 'userIds', 'keywords', 'imageUrl', 'description', 'type', 'timestamp', 'commentCount'
+        ])
+        && mealData.ownerUid is string
+        && mealData.ownerUid.size() > 0
+        && hasValidParticipantList(mealData)
+        && mealData.description is string
+        && mealData.description.size() > 0
+        && validMealType(mealData.type)
+        && mealData.timestamp is timestamp
+        && mealData.commentCount is int
+        && mealData.commentCount >= 0
+        && (!('userId' in mealData) || validRole(mealData.userId));
+    }
+
+    function canEditMealBody() {
+      return validMealDocument(request.resource.data)
+        && (
+          isMealOwner(resource.data)
+          || (isLegacyMeal(resource.data) && isMealParticipant(resource.data))
+        )
+        && (
+          request.resource.data.ownerUid == resource.data.ownerUid
+          || (isLegacyMeal(resource.data) && request.resource.data.ownerUid == request.auth.uid)
+        );
+    }
+
+    function canEditCommentCountOnly() {
+      return isMealParticipant(resource.data)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['commentCount'])
+        && request.resource.data.commentCount is int
+        && request.resource.data.commentCount >= 0;
     }
 
     match /meals/{mealId} {
-      allow read: if signedIn();
-      allow create, update, delete: if signedIn();
+      allow read: if canReadMeal(resource.data);
+
+      allow create: if hasUserProfile()
+        && validMealDocument(request.resource.data)
+        && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.userIds.hasAny([currentUserRole()]);
+
+      allow update: if hasUserProfile() && (canEditMealBody() || canEditCommentCountOnly());
+
+      allow delete: if hasUserProfile()
+        && (
+          isMealOwner(resource.data)
+          || (isLegacyMeal(resource.data) && isMealParticipant(resource.data))
+        );
 
       match /comments/{commentId} {
-        allow read: if signedIn();
+        function parentMealPath() {
+          return /databases/$(database)/documents/meals/$(mealId);
+        }
 
-        allow create: if signedIn()
+        function parentMealData() {
+          return get(parentMealPath()).data;
+        }
+
+        function canAccessParentMeal() {
+          return exists(parentMealPath()) && canReadMeal(parentMealData());
+        }
+
+        allow read: if canAccessParentMeal();
+
+        allow create: if canAccessParentMeal()
           && request.resource.data.keys().hasOnly(['author', 'authorUid', 'text', 'createdAt', 'updatedAt'])
           && validRole(request.resource.data.author)
+          && request.resource.data.author == currentUserRole()
           && request.resource.data.authorUid == request.auth.uid
           && request.resource.data.text is string
           && request.resource.data.text.size() > 0
@@ -26,7 +128,7 @@ service cloud.firestore {
           && request.resource.data.updatedAt is timestamp
           && request.resource.data.createdAt == request.resource.data.updatedAt;
 
-        allow update: if signedIn()
+        allow update: if canAccessParentMeal()
           && resource.data.authorUid == request.auth.uid
           && request.resource.data.keys().hasOnly(['author', 'authorUid', 'text', 'createdAt', 'updatedAt'])
           && request.resource.data.author == resource.data.author
@@ -37,7 +139,7 @@ service cloud.firestore {
           && request.resource.data.updatedAt is timestamp
           && request.resource.data.updatedAt >= resource.data.updatedAt;
 
-        allow delete: if signedIn() && resource.data.authorUid == request.auth.uid;
+        allow delete: if canAccessParentMeal() && resource.data.authorUid == request.auth.uid;
       }
     }
   }

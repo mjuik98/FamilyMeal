@@ -1,4 +1,4 @@
-﻿import { Meal, MealComment, UserRole } from './types';
+import { Meal, MealComment, UserRole } from './types';
 import { db } from './firebase';
 import {
     collection,
@@ -19,7 +19,9 @@ import {
     runTransaction,
 } from 'firebase/firestore';
 
-export const users: UserRole[] = ['\uC544\uBE60', '\uC5C4\uB9C8', '\uB538', '\uC544\uB4E4'];
+export const users: UserRole[] = ['아빠', '엄마', '딸', '아들'];
+
+const DEFAULT_MEAL_TYPE: Meal['type'] = '점심';
 
 const toMillis = (value: unknown, fallback: number): number => {
     if (typeof value === 'number') return value;
@@ -29,8 +31,12 @@ const toMillis = (value: unknown, fallback: number): number => {
     return fallback;
 };
 
-const normalizeComment = (id: string, raw: Partial<MealComment> & { createdAt?: unknown; updatedAt?: unknown; timestamp?: unknown }): MealComment | null => {
+const normalizeComment = (
+    id: string,
+    raw: Partial<MealComment> & { createdAt?: unknown; updatedAt?: unknown; timestamp?: unknown }
+): MealComment | null => {
     if (!raw?.author || !raw?.text) return null;
+
     const fallback = Date.now();
     const createdAt = toMillis(raw.createdAt ?? raw.timestamp, fallback);
     const updatedAt = toMillis(raw.updatedAt ?? raw.timestamp ?? raw.createdAt, createdAt);
@@ -64,19 +70,18 @@ const convertCommentDoc = (docSnap: QueryDocumentSnapshot<DocumentData>): MealCo
     return normalizeComment(docSnap.id, raw);
 };
 
-// Helper to convert Firestore timestamp to number
-const convertMeal = (docSnap: QueryDocumentSnapshot<DocumentData>): Meal => {
-    const data = docSnap.data();
-    const userIds = data.userIds || (data.userId ? [data.userId] : []);
-    const comments = normalizeComments(data.comments);
+const mealParticipants = (mealData: Partial<Meal> & { userIds?: unknown; userId?: unknown }): UserRole[] => {
+    if (Array.isArray(mealData.userIds)) {
+        return mealData.userIds.filter((role): role is UserRole => typeof role === 'string' && users.includes(role as UserRole));
+    }
+    if (typeof mealData.userId === 'string' && users.includes(mealData.userId as UserRole)) {
+        return [mealData.userId as UserRole];
+    }
+    return [];
+};
 
-    return {
-        id: docSnap.id,
-        ...data,
-        userIds,
-        comments,
-        timestamp: data.timestamp?.toMillis ? data.timestamp.toMillis() : Date.now(),
-    } as Meal;
+const isMealParticipant = (mealData: DocumentData, role: UserRole): boolean => {
+    return mealParticipants(mealData).includes(role);
 };
 
 const buildMealKeywords = (meal: Pick<Meal, 'description' | 'type' | 'userIds' | 'userId'>): string[] => {
@@ -94,6 +99,23 @@ const matchesKeyword = (meal: Meal, keyword: string): boolean => {
         meal.type.toLowerCase().includes(lower) ||
         Boolean(meal.userIds?.some((u) => u.toLowerCase().includes(lower))) ||
         Boolean(meal.keywords?.some((k) => k.includes(lower)));
+};
+
+const convertMeal = (docSnap: QueryDocumentSnapshot<DocumentData>): Meal => {
+    const data = docSnap.data();
+    const userIds = mealParticipants(data);
+    const comments = normalizeComments(data.comments);
+    const commentCount = typeof data.commentCount === 'number' ? data.commentCount : comments.length;
+
+    return {
+        id: docSnap.id,
+        ...data,
+        ownerUid: typeof data.ownerUid === 'string' ? data.ownerUid : undefined,
+        userIds,
+        comments,
+        commentCount,
+        timestamp: data.timestamp?.toMillis ? data.timestamp.toMillis() : Date.now(),
+    } as Meal;
 };
 
 export const getMealsForDate = async (date: Date): Promise<Meal[]> => {
@@ -148,11 +170,18 @@ export const subscribeMealsForDate = (
 };
 
 export const addMeal = async (meal: Omit<Meal, 'id'>) => {
+    if (!meal.ownerUid) {
+        throw new Error('ownerUid is required');
+    }
+
     const mealsRef = collection(db, 'meals');
+    const { comments, ...restMeal } = meal;
+    const commentCount = comments?.length ?? meal.commentCount ?? 0;
+
     await addDoc(mealsRef, {
-        ...meal,
-        comments: meal.comments ?? [],
-        keywords: buildMealKeywords(meal),
+        ...restMeal,
+        commentCount,
+        keywords: buildMealKeywords(restMeal),
         timestamp: Timestamp.fromMillis(meal.timestamp),
     });
 };
@@ -161,34 +190,48 @@ export const getMealById = async (id: string): Promise<Meal | null> => {
     const mealRef = doc(db, 'meals', id);
     const snapshot = await getDoc(mealRef);
     if (!snapshot.exists()) return null;
+
     const data = snapshot.data();
-    const userIds = data.userIds || (data.userId ? [data.userId] : []);
+    const userIds = mealParticipants(data);
     const comments = normalizeComments(data.comments);
+    const commentCount = typeof data.commentCount === 'number' ? data.commentCount : comments.length;
+
     return {
         id: snapshot.id,
         ...data,
+        ownerUid: typeof data.ownerUid === 'string' ? data.ownerUid : undefined,
         userIds,
         comments,
+        commentCount,
         timestamp: data.timestamp?.toMillis ? data.timestamp.toMillis() : Date.now(),
     } as Meal;
 };
 
 export const updateMeal = async (id: string, updates: Partial<Omit<Meal, 'id'>>) => {
     const mealRef = doc(db, 'meals', id);
-    const dataToUpdate: Record<string, unknown> = { ...updates };
-    if (typeof updates.timestamp === 'number') {
-        dataToUpdate.timestamp = Timestamp.fromMillis(updates.timestamp);
+    const nextUpdates = { ...updates };
+    delete (nextUpdates as { comments?: unknown }).comments;
+    const dataToUpdate: Record<string, unknown> = { ...nextUpdates };
+
+    if (typeof nextUpdates.timestamp === 'number') {
+        dataToUpdate.timestamp = Timestamp.fromMillis(nextUpdates.timestamp);
     }
-    if (updates.description || updates.type || updates.userIds || updates.userId) {
+
+    if (typeof nextUpdates.commentCount === 'number') {
+        dataToUpdate.commentCount = Math.max(0, Math.floor(nextUpdates.commentCount));
+    }
+
+    if (nextUpdates.description || nextUpdates.type || nextUpdates.userIds || nextUpdates.userId) {
         const snapshot = await getDoc(mealRef);
         const prev = snapshot.exists() ? (snapshot.data() as Partial<Meal>) : {};
         dataToUpdate.keywords = buildMealKeywords({
-            description: updates.description ?? prev.description ?? '',
-            type: updates.type ?? prev.type ?? '\uC810\uC2EC',
-            userIds: updates.userIds ?? prev.userIds,
-            userId: updates.userId ?? prev.userId,
+            description: nextUpdates.description ?? prev.description ?? '',
+            type: nextUpdates.type ?? prev.type ?? DEFAULT_MEAL_TYPE,
+            userIds: nextUpdates.userIds ?? prev.userIds,
+            userId: nextUpdates.userId ?? prev.userId,
         });
     }
+
     await updateDoc(mealRef, dataToUpdate as DocumentData);
 };
 
@@ -229,6 +272,13 @@ export const subscribeMealComments = (
     );
 };
 
+const getNextCommentCount = (mealData: DocumentData, delta: number): number => {
+    const baseCount = typeof mealData.commentCount === 'number'
+        ? mealData.commentCount
+        : normalizeComments(mealData.comments).length;
+    return Math.max(0, baseCount + delta);
+};
+
 export const addMealComment = async (
     mealId: string,
     author: UserRole,
@@ -247,12 +297,21 @@ export const addMealComment = async (
         const mealSnap = await tx.get(mealRef);
         if (!mealSnap.exists()) throw new Error('Meal not found');
 
+        const mealData = mealSnap.data() as DocumentData;
+        const ownerUid = typeof mealData.ownerUid === 'string' ? mealData.ownerUid : '';
+        const canComment = ownerUid === authorUid || isMealParticipant(mealData, author);
+        if (!canComment) throw new Error('Not allowed');
+
         tx.set(commentRef, {
             author,
             authorUid,
             text: trimmed,
             createdAt: Timestamp.fromMillis(now),
             updatedAt: Timestamp.fromMillis(now),
+        });
+
+        tx.update(mealRef, {
+            commentCount: getNextCommentCount(mealData, 1),
         });
 
         return {
@@ -313,24 +372,30 @@ export const deleteMealComment = async (
 ): Promise<void> => {
     if (!actorUid) throw new Error('Missing actor uid');
 
+    const mealRef = doc(db, 'meals', mealId);
     const commentRef = doc(db, 'meals', mealId, 'comments', commentId);
 
     await runTransaction(db, async (tx) => {
-        const snap = await tx.get(commentRef);
-        if (!snap.exists()) throw new Error('Comment not found');
+        const [mealSnap, commentSnap] = await Promise.all([tx.get(mealRef), tx.get(commentRef)]);
+        if (!mealSnap.exists()) throw new Error('Meal not found');
+        if (!commentSnap.exists()) throw new Error('Comment not found');
 
-        const raw = snap.data() as Partial<MealComment> & { createdAt?: unknown; updatedAt?: unknown; timestamp?: unknown };
-        const target = normalizeComment(snap.id, raw);
+        const mealData = mealSnap.data() as DocumentData;
+        const raw = commentSnap.data() as Partial<MealComment> & { createdAt?: unknown; updatedAt?: unknown; timestamp?: unknown };
+        const target = normalizeComment(commentSnap.id, raw);
         if (!target) throw new Error('Comment not found');
         if (target.author !== actorRole || target.authorUid !== actorUid) throw new Error('Not allowed');
 
         tx.delete(commentRef);
+        tx.update(mealRef, {
+            commentCount: getNextCommentCount(mealData, -1),
+        });
     });
 };
 
 export const getWeeklyStats = async (): Promise<{ date: Date; label: string; count: number }[]> => {
     const now = new Date();
-    const dayNames = ['\uC77C', '\uC6D4', '\uD654', '\uC218', '\uBAA9', '\uAE08', '\uD1A0'];
+    const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
     const dates = Array.from({ length: 7 }, (_, idx) => {
         const d = new Date(now);
         d.setDate(d.getDate() - (6 - idx));

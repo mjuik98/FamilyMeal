@@ -5,7 +5,9 @@ import { z } from 'zod';
 
 const mealTypeSchema = z.enum(['아침', '점심', '저녁', '간식']);
 const userRoleSchema = z.enum(['아빠', '엄마', '딸', '아들']);
+
 const createMealSchema = z.object({
+    ownerUid: z.string().trim().min(1),
     userId: userRoleSchema.optional(),
     userIds: z.array(userRoleSchema).optional(),
     imageUrl: z.string().url().optional(),
@@ -42,12 +44,14 @@ export async function POST(request: Request) {
         }
 
         const newMeal: Omit<Meal, 'id'> = {
+            ownerUid: parsed.data.ownerUid,
             userId: userIds[0],
             userIds,
             imageUrl: parsed.data.imageUrl,
             description: parsed.data.description,
             type: parsed.data.type,
             timestamp: parsed.data.timestamp || Date.now(),
+            commentCount: 0,
         };
 
         await addMeal(newMeal);

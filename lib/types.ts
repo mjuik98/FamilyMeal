@@ -19,6 +19,7 @@ export interface MealComment {
 
 export interface Meal {
   id: string; // Firestore Doc ID
+  ownerUid?: string;
   userId?: UserRole; // Deprecated, kept for legacy data
   userIds?: UserRole[]; // New field for multiple users
   keywords?: string[]; // Search index tokens
@@ -26,5 +27,6 @@ export interface Meal {
   description: string;
   type: '아침' | '점심' | '저녁' | '간식';
   timestamp: number;
+  commentCount?: number;
   comments?: MealComment[];
 }

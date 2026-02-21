@@ -1,38 +1,50 @@
-# 🍚 Family Meal Tracker (우리가족 식사 일기)
+# Family Meal Tracker
 
-멀리 떨어져 지내는 부모님, 누나와 함께 일상을 공유하고 소통하기 위해 만든 **우리가족 전용 식사 기록 앱**입니다. 
-서로 떨어져 있어도 오늘 하루 어떤 맛있는 음식을 먹었는지 사진과 함께 나누며 따뜻한 마음을 전할 수 있습니다.
+가족 식사를 기록하고 검색하는 Next.js + Firebase 앱입니다.
 
-## 🌟 주요 기능
-- 📸 **식사 기록**: 오늘 먹은 음식 사진, 메뉴 이름, 식사 종류(아침/점심/저녁/간식 등), 별점 기록
-- 👩‍👩‍👧‍👦 **가족 프로필**: 가족 구성원별(아빠, 엄마, 누나, 나) 프로필 기능 및 개인별 기록 모아보기
-- 📊 **주간/월간 통계**: 우리 가족의 식사 패턴을 한눈에 볼 수 있는 통계 차트
-- 🔍 **검색 기능**: 예전에 먹었던 맛있는 메뉴나 기록 쉽게 찾기
-- 💬 **소통**: 서로의 식사에 대해 이야기하고 안부를 묻는 공간
+## 주요 기능
+- 식사 기록 추가/수정/삭제
+- 식사 검색 및 주간 통계
+- 댓글 작성/수정/삭제
+- 댓글 실시간 구독(카드 펼침 시에만 구독)
 
----
-
-## 🚀 시작하기 (로컬 개발 환경)
-
-본 프로젝트는 [Next.js](https://nextjs.org/) 프레임워크를 기반으로 작성되었습니다.
-
-먼저, 개발 서버를 실행하려면 아래 명령어를 터미널에 입력하세요:
-
+## 개발 실행
 ```bash
+npm install
 npm run dev
-# 또는
-yarn dev
-# 또는
-pnpm dev
-# 또는
-bun dev
 ```
 
-브라우저에서 [http://localhost:3000](http://localhost:3000)을 열어 결과를 확인할 수 있습니다.
+## 품질 확인
+```bash
+npm run typecheck
+npm run lint
+```
 
-페이지 수정은 `app/page.tsx` 파일에서 시작할 수 있으며, 파일을 수정하면 페이지가 자동으로 새로고침됩니다.
+## Firestore Rules 테스트
+아래 명령은 Firestore Emulator를 자동 실행한 뒤 규칙 테스트를 수행합니다.
 
-## 🌐 배포 (Deployment)
+```bash
+npm run test:rules
+```
 
-이 앱은 Next.js 제작사인 Vercel이 제공하는 [Vercel 플랫폼](https://vercel.com/)을 통해 가장 쉽게 배포할 수 있습니다.
-호스팅 및 배포 관련 자세한 사항은 [Next.js 배포 문서](https://nextjs.org/docs/app/building-your-application/deploying)를 참고하세요.
+## 레거시 댓글 마이그레이션
+기존 `meals.comments` 배열을 `meals/{mealId}/comments` 서브컬렉션으로 이전합니다.
+
+사전 준비:
+- GCP/Firebase 인증(ADC 또는 서비스 계정)
+- 필요 시 `FIREBASE_PROJECT_ID` 환경변수 설정
+
+드라이런:
+```bash
+npm run migrate:comments:dry
+```
+
+실행:
+```bash
+npm run migrate:comments
+```
+
+## Firestore Rules 배포
+```bash
+npx firebase-tools deploy --only firestore:rules --project <PROJECT_ID>
+```
