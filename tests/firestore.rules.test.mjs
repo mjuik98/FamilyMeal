@@ -109,8 +109,9 @@ test('owner can create meal, mismatched ownerUid is denied', async () => {
   );
 });
 
-test('non-owner cannot edit meal body, participant can update commentCount only', async () => {
+test('non-owner cannot edit meal body, family member can update commentCount only', async () => {
   const momDb = testEnv.authenticatedContext(MOM_UID).firestore();
+  const outsiderDb = testEnv.authenticatedContext(OUTSIDER_UID).firestore();
 
   await assertFails(
     updateDoc(doc(momDb, 'meals', MEAL_ID), {
@@ -121,6 +122,12 @@ test('non-owner cannot edit meal body, participant can update commentCount only'
   await assertSucceeds(
     updateDoc(doc(momDb, 'meals', MEAL_ID), {
       commentCount: 2,
+    })
+  );
+
+  await assertSucceeds(
+    updateDoc(doc(outsiderDb, 'meals', MEAL_ID), {
+      commentCount: 3,
     })
   );
 });
@@ -160,13 +167,13 @@ test('comment author can update own comment, non-author cannot', async () => {
   );
 });
 
-test('participant can create comment with own role/uid only', async () => {
-  const momDb = testEnv.authenticatedContext(MOM_UID).firestore();
+test('family member can create comment with own role/uid only', async () => {
+  const outsiderDb = testEnv.authenticatedContext(OUTSIDER_UID).firestore();
 
   await assertSucceeds(
-    setDoc(doc(momDb, 'meals', MEAL_ID, 'comments', 'mom-comment-ok'), {
-      author: '엄마',
-      authorUid: MOM_UID,
+    setDoc(doc(outsiderDb, 'meals', MEAL_ID, 'comments', 'outsider-comment-ok'), {
+      author: '아들',
+      authorUid: OUTSIDER_UID,
       text: '좋았어요',
       createdAt: Timestamp.fromMillis(Date.now()),
       updatedAt: Timestamp.fromMillis(Date.now()),
@@ -174,7 +181,7 @@ test('participant can create comment with own role/uid only', async () => {
   );
 
   await assertFails(
-    setDoc(doc(momDb, 'meals', MEAL_ID, 'comments', 'mom-comment-bad'), {
+    setDoc(doc(outsiderDb, 'meals', MEAL_ID, 'comments', 'outsider-comment-bad'), {
       author: '아빠',
       authorUid: OWNER_UID,
       text: '사칭 댓글',

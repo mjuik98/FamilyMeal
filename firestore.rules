@@ -80,7 +80,7 @@ service cloud.firestore {
     }
 
     function canEditCommentCountOnly() {
-      return isMealParticipant(resource.data)
+      return hasUserProfile()
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['commentCount'])
         && request.resource.data.commentCount is int
         && request.resource.data.commentCount >= 0;

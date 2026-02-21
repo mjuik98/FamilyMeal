@@ -80,10 +80,6 @@ const mealParticipants = (mealData: Partial<Meal> & { userIds?: unknown; userId?
     return [];
 };
 
-const isMealParticipant = (mealData: DocumentData, role: UserRole): boolean => {
-    return mealParticipants(mealData).includes(role);
-};
-
 const buildMealKeywords = (meal: Pick<Meal, 'description' | 'type' | 'userIds' | 'userId'>): string[] => {
     const raw = `${meal.description} ${meal.type} ${(meal.userIds || (meal.userId ? [meal.userId] : [])).join(' ')}`.toLowerCase();
     const tokens = raw
@@ -304,9 +300,6 @@ export const addMealComment = async (
         if (!mealSnap.exists()) throw new Error('Meal not found');
 
         const mealData = mealSnap.data() as DocumentData;
-        const ownerUid = typeof mealData.ownerUid === 'string' ? mealData.ownerUid : '';
-        const canComment = ownerUid === authorUid || isMealParticipant(mealData, author);
-        if (!canComment) throw new Error('Not allowed');
 
         tx.set(commentRef, {
             author,
