@@ -106,54 +106,6 @@ p {
 }
 
 /* Utilities */
-.p-4 {
-  padding: 1rem;
-}
-
-.flex {
-  display: flex;
-}
-
-.flex-col {
-  flex-direction: column;
-}
-
-.items-center {
-  align-items: center;
-}
-
-.justify-between {
-  justify-content: space-between;
-}
-
-.justify-center {
-  justify-content: center;
-}
-
-.gap-2 {
-  gap: 0.5rem;
-}
-
-.gap-4 {
-  gap: 1rem;
-}
-
-.w-full {
-  width: 100%;
-}
-
-.rounded-lg {
-  border-radius: var(--radius);
-}
-
-.border {
-  border: 1px solid var(--border);
-}
-
-.bg-muted {
-  background: var(--muted);
-}
-
 .text-muted {
   color: var(--muted-foreground);
 }
@@ -162,61 +114,51 @@ p {
   color: var(--muted-foreground);
 }
 
-.font-bold {
-  font-weight: 700;
-}
-
-.text-sm {
-  font-size: 0.875rem;
-}
-
-.text-xs {
-  font-size: 0.75rem;
-}
-
 /* Components */
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 14px;
-  font-weight: 600;
-  padding: 0.875rem 1.25rem;
-  background: var(--primary);
-  color: var(--primary-foreground);
-  border: none;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  font-size: 0.95rem;
-  letter-spacing: -0.01em;
-}
+@layer components {
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 14px;
+    font-weight: 600;
+    padding: 0.875rem 1.25rem;
+    background: var(--primary);
+    color: var(--primary-foreground);
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 0.95rem;
+    letter-spacing: -0.01em;
+  }
 
-.btn:hover {
-  background: var(--primary-light);
-  transform: translateY(-1px);
-  box-shadow: var(--shadow);
-}
+  .btn:hover {
+    background: var(--primary-light);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow);
+  }
 
-.btn:active {
-  transform: translateY(0);
-}
+  .btn:active {
+    transform: translateY(0);
+  }
 
-.btn-secondary {
-  background: var(--secondary);
-  color: var(--secondary-foreground);
-}
+  .btn-secondary {
+    background: var(--secondary);
+    color: var(--secondary-foreground);
+  }
 
-.card {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  overflow: hidden;
-  box-shadow: var(--shadow-sm);
-  transition: box-shadow 0.2s ease;
-}
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+    transition: box-shadow 0.2s ease;
+  }
 
-.card:hover {
-  box-shadow: var(--shadow);
+  .card:hover {
+    box-shadow: var(--shadow);
+  }
 }
 
 /* Form elements */

@@ -3,16 +3,22 @@ import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 
-// TODO: Replace the following with your app's Firebase project configuration
-// You can find this in the Firebase Console -> Project Settings -> General -> Your apps
 const firebaseConfig = {
-    apiKey: "AIzaSyDedBOyDx-NaeXvLKqteWrDMt56UD3fcxQ",
-    authDomain: "family-meal-91736.firebaseapp.com",
-    projectId: "family-meal-91736",
-    storageBucket: "family-meal-91736.firebasestorage.app",
-    messagingSenderId: "682548789102",
-    appId: "1:682548789102:web:ac36870a20dd2d5ae80b7f"
+    apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+    authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+    projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+    storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+    messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+    appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
+
+const missingEnv = Object.entries(firebaseConfig)
+    .filter(([, value]) => !value || value.trim().length === 0)
+    .map(([key]) => key);
+
+if (missingEnv.length > 0) {
+    throw new Error(`[firebase] Missing required environment variable(s): ${missingEnv.join(", ")}`);
+}
 
 // Initialize Firebase
 // Avoid initializing twice in Next.js development (hot reload)

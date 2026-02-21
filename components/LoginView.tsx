@@ -4,11 +4,11 @@ import { useUser } from '@/context/UserContext';
 import { UserRole } from '@/lib/types';
 import { LogIn } from 'lucide-react';
 
-const ROLES: { role: UserRole; emoji: string; label: string }[] = [
-    { role: '아빠', emoji: '👨', label: '아빠' },
-    { role: '엄마', emoji: '👩', label: '엄마' },
-    { role: '딸', emoji: '👧', label: '딸' },
-    { role: '아들', emoji: '👦', label: '아들' },
+const ROLES: { role: UserRole; emoji: string; label: string; roleClass: string }[] = [
+    { role: '아빠', emoji: '👨', label: '아빠', roleClass: 'role-dad' },
+    { role: '엄마', emoji: '👩', label: '엄마', roleClass: 'role-mom' },
+    { role: '딸', emoji: '👧', label: '딸', roleClass: 'role-daughter' },
+    { role: '아들', emoji: '👦', label: '아들', roleClass: 'role-son' },
 ];
 
 export default function LoginView() {
@@ -58,38 +58,20 @@ export default function LoginView() {
                     <p className="text-lg text-muted-foreground">가족 중 누구신가요?</p>
                 </div>
 
-                <div className="role-grid">
-                    {ROLES.map(({ role, emoji, label }) => {
-                        const roleClass =
-                            role === '아빠' ? 'role-dad' :
-                                role === '엄마' ? 'role-mom' :
-                                    role === '딸' ? 'role-daughter' :
-                                        'role-son';
-
-                        return (
-                            <button
-                                key={role}
-                                onClick={() => selectRole(role)}
-                                className={`role-btn ${roleClass}`}
-                            >
-                                <span className="emoji-wrapper">{emoji}</span>
-                                <span className="label-wrapper">{label}</span>
-                                <div className="absolute inset-0 opacity-0 hover:opacity-10 dark:hover:opacity-20 transition-opacity pointer-events-none"
-                                    style={{ backgroundColor: 'var(--role-color)' }} />
-                            </button>
-                        );
-                    })}
+                <div className="grid grid-cols-2 gap-3 w-full max-w-[420px] mx-auto">
+                    {ROLES.map(({ role, emoji, label, roleClass }) => (
+                        <button
+                            key={role}
+                            onClick={() => selectRole(role)}
+                            className={`role-btn ${roleClass}`}
+                        >
+                            <span className="emoji-wrapper">{emoji}</span>
+                            <span className="label-wrapper">{label}</span>
+                            <div className="absolute inset-0 opacity-0 hover:opacity-10 dark:hover:opacity-20 transition-opacity pointer-events-none"
+                                style={{ backgroundColor: 'var(--role-color)' }} />
+                        </button>
+                    ))}
                 </div>
-                <style jsx>{`
-                    .role-grid {
-                        width: 100%;
-                        max-width: 420px;
-                        margin: 0 auto;
-                        display: grid;
-                        grid-template-columns: repeat(2, minmax(0, 1fr));
-                        gap: 12px;
-                    }
-                `}</style>
             </div>
         );
     }
