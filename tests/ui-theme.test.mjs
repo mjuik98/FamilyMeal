@@ -25,6 +25,8 @@ test("comment and form inputs use shared input classes", () => {
   const editPage = read("app/edit/[id]/page.tsx");
 
   assert.match(mealCard, /className="input-base input-pill comment-input"/);
+  assert.match(mealCard, /data-testid="meal-card-comment-toggle"/);
+  assert.match(mealCard, /data-testid="meal-card-comment-input"/);
   assert.match(addPage, /className="input-base textarea-base"/);
   assert.match(editPage, /className="input-base textarea-base[^"]*"/);
 });
@@ -38,4 +40,9 @@ test("update banner is wired into root layout", () => {
 test("unused app page module stylesheet is removed", () => {
   const stylesheetPath = path.join(process.cwd(), "app", "page.module.css");
   assert.equal(fs.existsSync(stylesheetPath), false);
+});
+
+test("qa route for meal card e2e exists", () => {
+  const qaPagePath = path.join(process.cwd(), "app", "qa", "meal-card", "page.tsx");
+  assert.equal(fs.existsSync(qaPagePath), true);
 });

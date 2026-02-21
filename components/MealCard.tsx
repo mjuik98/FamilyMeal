@@ -1,3 +1,5 @@
+"use client";
+
 import { Meal, MealComment } from '@/lib/types';
 import { Check, ChevronDown, ChevronUp, Clock, MessageSquare, Pencil, Send, Trash2, X } from 'lucide-react';
 import { useUser } from '@/context/UserContext';
@@ -302,6 +304,7 @@ export default function MealCard({ meal }: { meal: Meal }) {
             type="button"
             onClick={() => setCommentsOpen((prev) => !prev)}
             className="comments-toggle"
+            data-testid="meal-card-comment-toggle"
           >
             <span className="comments-toggle-label">
               <MessageSquare size={14} /> 댓글 {commentCount}
@@ -422,6 +425,7 @@ export default function MealCard({ meal }: { meal: Meal }) {
                   }}
                   placeholder="댓글을 입력하세요"
                   className="input-base input-pill comment-input"
+                  data-testid="meal-card-comment-input"
                   style={{
                     flex: 1,
                     padding: '8px 12px',

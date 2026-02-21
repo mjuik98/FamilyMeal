@@ -4,6 +4,8 @@ import { RefreshCw } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 const POLL_INTERVAL_MS = 60_000;
+const APP_CACHE_PREFIXES = ["familymeal-", "family-meal-", "next-pwa-", "workbox-"];
+const isPwaEnabled = process.env.NEXT_PUBLIC_ENABLE_PWA === "true";
 
 type VersionResponse = {
   version?: string;
@@ -16,6 +18,7 @@ export default function AppUpdateBanner() {
   const waitingWorkerRef = useRef<ServiceWorker | null>(null);
 
   useEffect(() => {
+    if (!isPwaEnabled) return;
     if (typeof window === "undefined") return;
 
     let intervalId: number | null = null;
@@ -31,6 +34,8 @@ export default function AppUpdateBanner() {
     };
 
     const checkDeployedVersion = async () => {
+      if (document.visibilityState !== "visible") return;
+
       try {
         const response = await fetch(`/api/version?t=${Date.now()}`, {
           cache: "no-store",
@@ -88,15 +93,25 @@ export default function AppUpdateBanner() {
       navigator.serviceWorker.addEventListener("controllerchange", handleControllerChange);
     };
 
-    void checkDeployedVersion();
-    void setupServiceWorker();
-
-    intervalId = window.setInterval(() => {
+    const checkForUpdate = async () => {
       if (!active) return;
-      void checkDeployedVersion();
+      await checkDeployedVersion();
       registration?.update().catch(() => {
         // Ignore update polling errors.
       });
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState !== "visible") return;
+      void checkForUpdate();
+    };
+
+    void checkDeployedVersion();
+    void setupServiceWorker();
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    intervalId = window.setInterval(() => {
+      void checkForUpdate();
     }, POLL_INTERVAL_MS);
 
     return () => {
@@ -113,6 +128,7 @@ export default function AppUpdateBanner() {
       if ("serviceWorker" in navigator) {
         navigator.serviceWorker.removeEventListener("controllerchange", handleControllerChange);
       }
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, []);
 
@@ -126,7 +142,11 @@ export default function AppUpdateBanner() {
 
     if ("caches" in window) {
       const keys = await caches.keys();
-      await Promise.all(keys.map((key) => caches.delete(key)));
+      await Promise.all(
+        keys
+          .filter((key) => APP_CACHE_PREFIXES.some((prefix) => key.startsWith(prefix)))
+          .map((key) => caches.delete(key))
+      );
     }
 
     window.setTimeout(() => {
@@ -134,6 +154,7 @@ export default function AppUpdateBanner() {
     }, 400);
   };
 
+  if (!isPwaEnabled) return null;
   if (!updateAvailable) return null;
 
   return (

@@ -1,24 +1,13 @@
 import { expect, test } from "@playwright/test";
 
 test("comment input stays readable on mobile even when system theme is dark", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/qa/meal-card");
 
-  await page.evaluate(() => {
-    const sandbox = document.createElement("div");
-    sandbox.id = "comment-input-sandbox";
-    sandbox.innerHTML = `
-      <input
-        data-testid="qa-comment-input"
-        type="text"
-        placeholder="댓글을 입력하세요"
-        class="input-base input-pill comment-input"
-        style="padding:8px 12px; font-size:0.84rem; outline:none; width:280px;"
-      />
-    `;
-    document.body.appendChild(sandbox);
-  });
+  const toggleButton = page.getByTestId("meal-card-comment-toggle");
+  await expect(toggleButton).toBeVisible();
+  await toggleButton.click();
 
-  const commentInput = page.getByTestId("qa-comment-input");
+  const commentInput = page.getByTestId("meal-card-comment-input");
   await expect(commentInput).toBeVisible();
 
   await commentInput.fill("가독성 확인");

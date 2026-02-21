@@ -1,4 +1,4 @@
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 
 const port = Number(process.env.SMOKE_PORT || 3210);
 const host = process.env.SMOKE_HOST || "127.0.0.1";
@@ -41,15 +41,23 @@ async function assertPage(pathname) {
   );
 }
 
-const startCommand = `npm run start -- -p ${port} -H ${host}`;
-const server = spawn(startCommand, {
-  stdio: "inherit",
-  shell: true,
-  env: process.env,
-});
+const server =
+  process.platform === "win32"
+    ? spawn("cmd.exe", ["/d", "/s", "/c", `npm run start -- -p ${port} -H ${host}`], {
+        stdio: "inherit",
+        env: process.env,
+      })
+    : spawn("npm", ["run", "start", "--", "-p", String(port), "-H", host], {
+        stdio: "inherit",
+        env: process.env,
+      });
 
 const cleanup = () => {
-  if (!server.killed) {
+  if (server.exitCode === null && !server.killed) {
+    if (process.platform === "win32" && server.pid) {
+      spawnSync("taskkill", ["/pid", String(server.pid), "/T", "/F"], { stdio: "ignore" });
+      return;
+    }
     server.kill("SIGTERM");
   }
 };
@@ -68,6 +76,7 @@ try {
   await waitForServer(`${baseUrl}/`);
   await assertPage("/");
   await assertPage("/add");
+  await assertPage("/qa/meal-card");
   console.log("Smoke test passed");
 } finally {
   cleanup();
