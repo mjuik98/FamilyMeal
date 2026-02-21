@@ -10,7 +10,7 @@
 ## Policy
 1. Run `npm run audit:report` after dependency updates.
 2. Run `npm run audit:prod:check` to enforce non-allowlisted high/critical findings in production deps.
-3. Keep temporary exceptions in `security/audit-allowlist.json` with a concrete reason.
+3. Keep temporary exceptions in `security/audit-allowlist.json` with advisory/package scope and `expiresOn`.
 4. Apply non-breaking fixes with `npm audit fix`.
 5. Avoid `npm audit fix --force` unless a dedicated upgrade task is planned.
 6. Re-evaluate unresolved high items monthly or when upstream releases fixes.

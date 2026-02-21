@@ -27,11 +27,18 @@ export default defineConfig({
         colorScheme: "dark",
       },
     },
+    {
+      name: "mobile-chromium-light",
+      use: {
+        ...devices["Pixel 7"],
+        colorScheme: "light",
+      },
+    },
   ],
   webServer: {
     command: `npm run dev -- --port ${port} --hostname ${host}`,
     url: baseURL,
     timeout: 120_000,
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer: false,
   },
 });

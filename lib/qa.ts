@@ -5,10 +5,14 @@ export const QA_MOCK_MODE_KEY = "familymeal:qa-mock-mode";
 export const isQaEnabled =
   process.env.NEXT_PUBLIC_ENABLE_QA === "true" || process.env.NODE_ENV !== "production";
 
+export const isQaMockEnabledByEnv = (
+  env: Partial<Pick<NodeJS.ProcessEnv, "NODE_ENV">> = process.env
+) => env.NODE_ENV !== "production";
+
 export const getQaDefaultRole = (): UserRole => "\uC544\uBE60" as UserRole;
 
 export const isQaMockMode = () =>
-  isQaEnabled &&
+  isQaMockEnabledByEnv() &&
   typeof window !== "undefined" &&
   window.localStorage.getItem(QA_MOCK_MODE_KEY) === "true";
 

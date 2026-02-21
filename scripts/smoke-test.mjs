@@ -3,6 +3,7 @@ import net from "node:net";
 
 const host = process.env.SMOKE_HOST || "127.0.0.1";
 const includeQaRoutes = process.env.SMOKE_INCLUDE_QA === "true";
+const assertQaBlocked = process.env.SMOKE_ASSERT_QA_BLOCKED === "true";
 const explicitPort = process.env.SMOKE_PORT ? Number(process.env.SMOKE_PORT) : null;
 
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -59,12 +60,15 @@ const run = async () => {
   const port = await resolvePort();
   const baseUrl = `http://${host}:${port}`;
 
-  const assertPage = async (pathname) => {
+  const assertPage = async (pathname, expectedStatus = 200) => {
     const url = `${baseUrl}${pathname}`;
     const res = await fetch(url, { redirect: "manual" });
     const body = await res.text();
 
-    must(res.status === 200, `Smoke failed: ${pathname} returned ${res.status}`);
+    must(
+      res.status === expectedStatus,
+      `Smoke failed: ${pathname} returned ${res.status} (expected ${expectedStatus})`
+    );
     must(!body.includes("Application error"), `Smoke failed: ${pathname} contains Application error`);
     must(
       !body.includes("Missing required environment variable"),
@@ -109,6 +113,9 @@ const run = async () => {
     await assertPage("/add");
     if (includeQaRoutes) {
       await assertPage("/qa/meal-card");
+    }
+    if (assertQaBlocked) {
+      await assertPage("/qa/meal-card", 404);
     }
     console.log("Smoke test passed");
   } finally {

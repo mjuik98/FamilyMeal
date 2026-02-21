@@ -38,21 +38,21 @@ const createQaProfile = (role: UserRole = getQaDefaultRole()): UserProfile => ({
 });
 
 export function UserProvider({ children }: { children: React.ReactNode }) {
-  const qaMockInitialMode = isQaMockMode();
-
-  const [user, setUser] = useState<User | null>(() => (qaMockInitialMode ? createQaUser() : null));
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(() =>
-    qaMockInitialMode ? createQaProfile() : null
-  );
-  const [loading, setLoading] = useState(!qaMockInitialMode);
+  const [user, setUser] = useState<User | null>(null);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [loading, setLoading] = useState(true);
   const [authError, setAuthError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (isQaMockMode()) {
-      return () => {};
-    }
-
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (isQaMockMode()) {
+        setUser(createQaUser());
+        setUserProfile(createQaProfile());
+        setAuthError(null);
+        setLoading(false);
+        return;
+      }
+
       if (firebaseUser) {
         const allowedEmails = publicEnv.allowedEmails;
 

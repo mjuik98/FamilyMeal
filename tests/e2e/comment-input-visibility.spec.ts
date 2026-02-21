@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 
 const parseRgb = (value: string): [number, number, number] => {
   const matches = value.match(/\d+(\.\d+)?/g);
@@ -23,10 +23,14 @@ const getContrastRatio = (foreground: string, background: string): number => {
   return (light + 0.05) / (dark + 0.05);
 };
 
-test("comment input stays readable on mobile even when system theme is dark", async ({ page }) => {
+const enableQaMockMode = async (page: Page) => {
   await page.addInitScript(() => {
     window.localStorage.setItem("familymeal:qa-mock-mode", "true");
   });
+};
+
+test("comment input stays readable on mobile even when system theme is dark", async ({ page }) => {
+  await enableQaMockMode(page);
   await page.goto("/");
 
   const toggleButton = page.getByTestId("meal-card-comment-toggle");
@@ -63,4 +67,19 @@ test("comment input stays readable on mobile even when system theme is dark", as
 
   expect(textContrast).toBeGreaterThanOrEqual(4.5);
   expect(placeholderContrast).toBeGreaterThanOrEqual(3);
+});
+
+test("home requires login when qa mock mode is not enabled", async ({ page }) => {
+  await page.goto("/");
+  await expect(page.getByTestId("meal-card-comment-toggle")).toHaveCount(0);
+});
+
+test("logout clears qa mock session", async ({ page }) => {
+  await enableQaMockMode(page);
+  await page.goto("/");
+
+  await expect(page.getByTestId("meal-card-comment-toggle")).toBeVisible();
+
+  await page.getByTestId("home-logout-button").click();
+  await expect(page.getByTestId("meal-card-comment-toggle")).toHaveCount(0);
 });

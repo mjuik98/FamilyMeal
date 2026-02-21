@@ -27,6 +27,7 @@ test("comment and form inputs use shared input classes", () => {
   assert.match(mealCard, /className="input-base input-pill comment-input"/);
   assert.match(mealCard, /data-testid="meal-card-comment-toggle"/);
   assert.match(mealCard, /data-testid="meal-card-comment-input"/);
+  assert.match(read("app/page.tsx"), /data-testid="home-logout-button"/);
   assert.match(addPage, /className="input-base textarea-base"/);
   assert.match(editPage, /className="input-base textarea-base[^"]*"/);
 });
@@ -54,10 +55,29 @@ test("qa route is gated in production", () => {
   assert.match(qaPage, /notFound\(\)/);
 });
 
-test("qa middleware supports token-based protection", () => {
-  const middleware = read("middleware.ts");
-  assert.match(middleware, /QA_ROUTE_TOKEN/);
-  assert.match(middleware, /qa_token/);
-  assert.match(middleware, /x-qa-token/);
-  assert.match(middleware, /matcher:\s*\["\/qa\/:path\*"\]/);
+test("qa proxy supports token-based protection", () => {
+  const proxy = read("proxy.ts");
+  assert.match(proxy, /QA_ROUTE_TOKEN/);
+  assert.match(proxy, /qa_token/);
+  assert.match(proxy, /x-qa-token/);
+  assert.match(proxy, /matcher:\s*\["\/qa\/:path\*"\]/);
+  assert.match(proxy, /canAccessQaRoute/);
+});
+
+test("qa mock mode is disabled in production by env guard", () => {
+  const qaLib = read("lib/qa.ts");
+  assert.match(qaLib, /NODE_ENV !== "production"/);
+});
+
+test("critical UI files are UTF-8 clean", () => {
+  const criticalFiles = [
+    "app/page.tsx",
+    "components/LoginView.tsx",
+    "components/MealCard.tsx",
+    "context/UserContext.tsx",
+  ];
+
+  for (const file of criticalFiles) {
+    assert.doesNotMatch(read(file), /\uFFFD/);
+  }
 });

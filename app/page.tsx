@@ -173,6 +173,7 @@ export default function Home() {
           </div>
         </div>
         <button onClick={signOut}
+          data-testid="home-logout-button"
           style={{
             background: 'none', border: 'none', cursor: 'pointer',
             color: 'var(--muted-foreground)', padding: '8px'

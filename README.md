@@ -69,9 +69,17 @@ npm run migrate:meals
 
 ## QA Mock Mode (E2E)
 - E2E uses a local mock mode key: `familymeal:qa-mock-mode`.
-- This key is read only when QA is enabled (or in development), and allows testing the home comment flow without Google auth.
+- Mock mode is disabled in production by code and can run only in non-production.
+- This mode allows testing the home comment flow without Google auth.
+
+## QA Operations Policy
+- Keep `NEXT_PUBLIC_ENABLE_QA=false` in production by default.
+- When QA must be exposed in production, set `NEXT_PUBLIC_ENABLE_QA=true` temporarily and require `QA_ROUTE_TOKEN`.
+- Rotate `QA_ROUTE_TOKEN` after each QA window and remove public links containing `qa_token`.
+- Use `x-qa-token` header in scripted checks to avoid leaking token via URL logs.
 
 ## Dependency Security
 - See `SECURITY_DEPENDENCIES.md` for dependency audit policy and unresolved upstream issues.
 - Production dependency gate: `npm run audit:prod:check`
 - Allowlist file: `security/audit-allowlist.json`
+- Allowlist entries are advisory/package-scoped and should include `expiresOn` for periodic review.
