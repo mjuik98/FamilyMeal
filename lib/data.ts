@@ -118,13 +118,49 @@ const convertMeal = (docSnap: QueryDocumentSnapshot<DocumentData>): Meal => {
     } as Meal;
 };
 
-export const getMealsForDate = async (date: Date): Promise<Meal[]> => {
+const getDayRange = (date: Date) => {
     const startOfDay = new Date(date);
     startOfDay.setHours(0, 0, 0, 0);
 
     const endOfDay = new Date(date);
     endOfDay.setHours(23, 59, 59, 999);
 
+    return { startOfDay, endOfDay };
+};
+
+const dedupeAndSortMeals = (meals: Meal[]): Meal[] => {
+    const byId = new Map<string, Meal>();
+    meals.forEach((meal) => byId.set(meal.id, meal));
+    return Array.from(byId.values()).sort((a, b) => b.timestamp - a.timestamp);
+};
+
+const filterMealsByDate = (meals: Meal[], date: Date): Meal[] => {
+    const { startOfDay, endOfDay } = getDayRange(date);
+    const start = startOfDay.getTime();
+    const end = endOfDay.getTime();
+    return meals.filter((meal) => meal.timestamp >= start && meal.timestamp <= end);
+};
+
+const getRoleScopedMeals = async (role: UserRole): Promise<Meal[]> => {
+    const mealsRef = collection(db, 'meals');
+    const [multiUserSnapshot, legacySnapshot] = await Promise.all([
+        getDocs(query(mealsRef, where('userIds', 'array-contains', role))),
+        getDocs(query(mealsRef, where('userId', '==', role))),
+    ]);
+
+    return dedupeAndSortMeals([
+        ...multiUserSnapshot.docs.map(convertMeal),
+        ...legacySnapshot.docs.map(convertMeal),
+    ]);
+};
+
+export const getMealsForDate = async (date: Date, role?: UserRole): Promise<Meal[]> => {
+    if (role) {
+        const meals = await getRoleScopedMeals(role);
+        return filterMealsByDate(meals, date);
+    }
+
+    const { startOfDay, endOfDay } = getDayRange(date);
     const mealsRef = collection(db, 'meals');
     const q = query(
         mealsRef,
@@ -134,20 +170,56 @@ export const getMealsForDate = async (date: Date): Promise<Meal[]> => {
     );
 
     const snapshot = await getDocs(q);
-    return snapshot.docs.map(convertMeal);
+    return dedupeAndSortMeals(snapshot.docs.map(convertMeal));
 };
 
 export const subscribeMealsForDate = (
     date: Date,
     onMeals: (meals: Meal[]) => void,
-    onError?: (error: Error) => void
+    onError?: (error: Error) => void,
+    role?: UserRole
 ) => {
-    const startOfDay = new Date(date);
-    startOfDay.setHours(0, 0, 0, 0);
+    if (role) {
+        const mealsRef = collection(db, 'meals');
+        let multiUserMeals: Meal[] = [];
+        let legacyMeals: Meal[] = [];
 
-    const endOfDay = new Date(date);
-    endOfDay.setHours(23, 59, 59, 999);
+        const emitMeals = () => {
+            const merged = dedupeAndSortMeals([...multiUserMeals, ...legacyMeals]);
+            onMeals(filterMealsByDate(merged, date));
+        };
 
+        const unsubscribeMultiUser = onSnapshot(
+            query(mealsRef, where('userIds', 'array-contains', role)),
+            (snapshot) => {
+                multiUserMeals = snapshot.docs.map(convertMeal);
+                emitMeals();
+            },
+            (error) => {
+                console.error('Failed to subscribe to meals (multi-user)', error);
+                onError?.(error);
+            }
+        );
+
+        const unsubscribeLegacy = onSnapshot(
+            query(mealsRef, where('userId', '==', role)),
+            (snapshot) => {
+                legacyMeals = snapshot.docs.map(convertMeal);
+                emitMeals();
+            },
+            (error) => {
+                console.error('Failed to subscribe to meals (legacy)', error);
+                onError?.(error);
+            }
+        );
+
+        return () => {
+            unsubscribeMultiUser();
+            unsubscribeLegacy();
+        };
+    }
+
+    const { startOfDay, endOfDay } = getDayRange(date);
     const mealsRef = collection(db, 'meals');
     const q = query(
         mealsRef,
@@ -159,7 +231,7 @@ export const subscribeMealsForDate = (
     return onSnapshot(
         q,
         (snapshot) => {
-            const meals = snapshot.docs.map(convertMeal);
+            const meals = dedupeAndSortMeals(snapshot.docs.map(convertMeal));
             onMeals(meals);
         },
         (error) => {
@@ -393,7 +465,7 @@ export const deleteMealComment = async (
     });
 };
 
-export const getWeeklyStats = async (): Promise<{ date: Date; label: string; count: number }[]> => {
+export const getWeeklyStats = async (role?: UserRole): Promise<{ date: Date; label: string; count: number }[]> => {
     const now = new Date();
     const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
     const dates = Array.from({ length: 7 }, (_, idx) => {
@@ -402,12 +474,21 @@ export const getWeeklyStats = async (): Promise<{ date: Date; label: string; cou
         return d;
     });
 
+    if (role) {
+        const roleMeals = await getRoleScopedMeals(role);
+        return dates.map((date) => {
+            const count = filterMealsByDate(roleMeals, date).length;
+            return {
+                date,
+                label: dayNames[date.getDay()],
+                count,
+            };
+        });
+    }
+
     return Promise.all(
         dates.map(async (date) => {
-            const start = new Date(date);
-            start.setHours(0, 0, 0, 0);
-            const end = new Date(date);
-            end.setHours(23, 59, 59, 999);
+            const { startOfDay: start, endOfDay: end } = getDayRange(date);
 
             const mealsRef = collection(db, 'meals');
             const q = query(
@@ -426,9 +507,16 @@ export const getWeeklyStats = async (): Promise<{ date: Date; label: string; cou
     );
 };
 
-export const searchMeals = async (keyword: string): Promise<Meal[]> => {
+export const searchMeals = async (keyword: string, role?: UserRole): Promise<Meal[]> => {
     const normalized = keyword.trim().toLowerCase();
     if (!normalized) return [];
+
+    if (role) {
+        const roleMeals = await getRoleScopedMeals(role);
+        return roleMeals
+            .filter((meal) => matchesKeyword(meal, normalized))
+            .sort((a, b) => b.timestamp - a.timestamp);
+    }
 
     const mealsRef = collection(db, 'meals');
     const firstToken = normalized.split(/\s+/)[0];

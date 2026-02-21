@@ -44,21 +44,33 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
                 // Fetch user profile from Firestore
                 const userDocRef = doc(db, 'users', firebaseUser.uid);
-                const userDoc = await getDoc(userDocRef);
-
-                if (userDoc.exists()) {
-                    setUserProfile(userDoc.data() as UserProfile);
-                } else {
-                    // Profile doesn't exist yet (needs to select role)
+                try {
+                    const userDoc = await getDoc(userDocRef);
+                    if (userDoc.exists()) {
+                        setUserProfile(userDoc.data() as UserProfile);
+                    } else {
+                        // Profile doesn't exist yet (needs to select role)
+                        setUserProfile({
+                            uid: firebaseUser.uid,
+                            email: firebaseUser.email,
+                            displayName: firebaseUser.displayName,
+                            role: null
+                        });
+                    }
+                } catch (error) {
+                    console.error("Error fetching user profile", error);
                     setUserProfile({
                         uid: firebaseUser.uid,
                         email: firebaseUser.email,
                         displayName: firebaseUser.displayName,
                         role: null
                     });
+                    setAuthError("로그인 정보를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.");
                 }
             } else {
+                setUser(null);
                 setUserProfile(null);
+                setAuthError(null);
             }
             setLoading(false);
         });
