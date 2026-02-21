@@ -168,7 +168,7 @@ export default function MealCard({ meal }: { meal: Meal }) {
 
     setCommentActionId(commentId);
     try {
-      const updated = await updateMealComment(meal.id, commentId, userProfile.role, userProfile.uid, trimmed);
+      const updated = await updateMealComment(meal.id, commentId, userProfile.uid, trimmed);
       setComments((prev) => prev.map((comment) => (comment.id === commentId ? updated : comment)));
       cancelEditingComment();
       showToast('댓글이 수정되었습니다.', 'success');
@@ -202,7 +202,7 @@ export default function MealCard({ meal }: { meal: Meal }) {
 
     setCommentActionId(commentId);
     try {
-      await deleteMealComment(meal.id, commentId, userProfile.role, userProfile.uid);
+      await deleteMealComment(meal.id, commentId, userProfile.uid);
       if (editingCommentId === commentId) {
         cancelEditingComment();
       }

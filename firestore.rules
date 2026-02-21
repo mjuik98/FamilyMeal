@@ -73,17 +73,11 @@ service cloud.firestore {
           isMealOwner(resource.data)
           || (isLegacyMeal(resource.data) && isMealParticipant(resource.data))
         )
+        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['commentCount'])
         && (
           request.resource.data.ownerUid == resource.data.ownerUid
           || (isLegacyMeal(resource.data) && request.resource.data.ownerUid == request.auth.uid)
         );
-    }
-
-    function canEditCommentCountOnly() {
-      return hasUserProfile()
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['commentCount'])
-        && request.resource.data.commentCount is int
-        && request.resource.data.commentCount >= 0;
     }
 
     function validUserProfile(profileData) {
@@ -121,7 +115,7 @@ service cloud.firestore {
         && request.resource.data.ownerUid == request.auth.uid
         && request.resource.data.userIds.hasAny([currentUserRole()]);
 
-      allow update: if hasUserProfile() && (canEditMealBody() || canEditCommentCountOnly());
+      allow update: if hasUserProfile() && canEditMealBody();
 
       allow delete: if hasUserProfile()
         && (
@@ -166,7 +160,12 @@ service cloud.firestore {
           && request.resource.data.updatedAt is timestamp
           && request.resource.data.updatedAt >= resource.data.updatedAt;
 
-        allow delete: if canAccessParentMeal() && resource.data.authorUid == request.auth.uid;
+        allow delete: if canAccessParentMeal()
+          && (
+            resource.data.authorUid == request.auth.uid
+            || isMealOwner(parentMealData())
+            || (isLegacyMeal(parentMealData()) && isMealParticipant(parentMealData()))
+          );
       }
     }
   }

@@ -57,11 +57,13 @@ test("qa route is gated in production", () => {
 
 test("qa proxy supports token-based protection", () => {
   const proxy = read("proxy.ts");
+  const qaAccess = read("lib/qa-access.ts");
   assert.match(proxy, /QA_ROUTE_TOKEN/);
   assert.match(proxy, /qa_token/);
   assert.match(proxy, /x-qa-token/);
   assert.match(proxy, /matcher:\s*\["\/qa\/:path\*"\]/);
   assert.match(proxy, /canAccessQaRoute/);
+  assert.match(qaAccess, /if \(!qaRouteToken\)\s*{\s*return false;\s*}/);
 });
 
 test("qa mock mode is disabled in production by env guard", () => {

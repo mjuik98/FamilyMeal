@@ -65,7 +65,7 @@ npm run migrate:meals
 ## QA Route Control
 - QA routes are enabled in development by default.
 - In production, set `NEXT_PUBLIC_ENABLE_QA=true` only when QA pages are intentionally exposed.
-- For production hardening, set `QA_ROUTE_TOKEN` and access QA routes with `?qa_token=<token>` or `x-qa-token` header.
+- In production, `QA_ROUTE_TOKEN` is required when QA routes are enabled. Access QA routes with `?qa_token=<token>` or `x-qa-token` header.
 
 ## QA Mock Mode (E2E)
 - E2E uses a local mock mode key: `familymeal:qa-mock-mode`.

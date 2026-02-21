@@ -7,14 +7,18 @@ import {
     where,
     getDocs,
     orderBy,
+    documentId,
+    startAfter,
     Timestamp,
     getDoc,
     doc,
     updateDoc,
     deleteDoc,
+    writeBatch,
     onSnapshot,
     limit,
     DocumentData,
+    Query,
     QueryDocumentSnapshot,
     runTransaction,
 } from 'firebase/firestore';
@@ -213,14 +217,11 @@ export const updateMeal = async (id: string, updates: Partial<Omit<Meal, 'id'>>)
     const mealRef = doc(db, 'meals', id);
     const nextUpdates = { ...updates };
     delete (nextUpdates as { comments?: unknown }).comments;
+    delete (nextUpdates as { commentCount?: unknown }).commentCount;
     const dataToUpdate: Record<string, unknown> = { ...nextUpdates };
 
     if (typeof nextUpdates.timestamp === 'number') {
         dataToUpdate.timestamp = Timestamp.fromMillis(nextUpdates.timestamp);
-    }
-
-    if (typeof nextUpdates.commentCount === 'number') {
-        dataToUpdate.commentCount = Math.max(0, Math.floor(nextUpdates.commentCount));
     }
 
     if (nextUpdates.description || nextUpdates.type || nextUpdates.userIds || nextUpdates.userId) {
@@ -237,7 +238,41 @@ export const updateMeal = async (id: string, updates: Partial<Omit<Meal, 'id'>>)
     await updateDoc(mealRef, dataToUpdate as DocumentData);
 };
 
+const COMMENT_DELETE_BATCH_LIMIT = 450;
+
+const deleteMealComments = async (mealId: string): Promise<void> => {
+    let cursor: QueryDocumentSnapshot<DocumentData> | null = null;
+
+    while (true) {
+        let q: Query<DocumentData> = query(
+            mealCommentsRef(mealId),
+            orderBy(documentId()),
+            limit(COMMENT_DELETE_BATCH_LIMIT)
+        );
+
+        if (cursor) {
+            q = query(
+                mealCommentsRef(mealId),
+                orderBy(documentId()),
+                startAfter(cursor),
+                limit(COMMENT_DELETE_BATCH_LIMIT)
+            );
+        }
+
+        const snapshot = await getDocs(q);
+        if (snapshot.empty) return;
+
+        const batch = writeBatch(db);
+        snapshot.docs.forEach((commentDoc) => batch.delete(commentDoc.ref));
+        await batch.commit();
+
+        if (snapshot.size < COMMENT_DELETE_BATCH_LIMIT) return;
+        cursor = snapshot.docs[snapshot.docs.length - 1];
+    }
+};
+
 export const deleteMeal = async (id: string) => {
+    await deleteMealComments(id);
     const mealRef = doc(db, 'meals', id);
     await deleteDoc(mealRef);
 };
@@ -274,13 +309,6 @@ export const subscribeMealComments = (
     );
 };
 
-const getNextCommentCount = (mealData: DocumentData, delta: number): number => {
-    const baseCount = typeof mealData.commentCount === 'number'
-        ? mealData.commentCount
-        : normalizeComments(mealData.comments).length;
-    return Math.max(0, baseCount + delta);
-};
-
 export const addMealComment = async (
     mealId: string,
     author: UserRole,
@@ -299,18 +327,12 @@ export const addMealComment = async (
         const mealSnap = await tx.get(mealRef);
         if (!mealSnap.exists()) throw new Error('Meal not found');
 
-        const mealData = mealSnap.data() as DocumentData;
-
         tx.set(commentRef, {
             author,
             authorUid,
             text: trimmed,
             createdAt: Timestamp.fromMillis(now),
             updatedAt: Timestamp.fromMillis(now),
-        });
-
-        tx.update(mealRef, {
-            commentCount: getNextCommentCount(mealData, 1),
         });
 
         return {
@@ -330,7 +352,6 @@ export const addMealComment = async (
 export const updateMealComment = async (
     mealId: string,
     commentId: string,
-    actorRole: UserRole,
     actorUid: string,
     text: string
 ): Promise<MealComment> => {
@@ -348,7 +369,7 @@ export const updateMealComment = async (
         const raw = snap.data() as Partial<MealComment> & { createdAt?: unknown; updatedAt?: unknown; timestamp?: unknown };
         const target = normalizeComment(snap.id, raw);
         if (!target) throw new Error('Comment not found');
-        if (target.author !== actorRole || target.authorUid !== actorUid) throw new Error('Not allowed');
+        if (target.authorUid !== actorUid) throw new Error('Not allowed');
 
         tx.update(commentRef, {
             text: trimmed,
@@ -366,7 +387,6 @@ export const updateMealComment = async (
 export const deleteMealComment = async (
     mealId: string,
     commentId: string,
-    actorRole: UserRole,
     actorUid: string
 ): Promise<void> => {
     if (!actorUid) throw new Error('Missing actor uid');
@@ -379,16 +399,12 @@ export const deleteMealComment = async (
         if (!mealSnap.exists()) throw new Error('Meal not found');
         if (!commentSnap.exists()) throw new Error('Comment not found');
 
-        const mealData = mealSnap.data() as DocumentData;
         const raw = commentSnap.data() as Partial<MealComment> & { createdAt?: unknown; updatedAt?: unknown; timestamp?: unknown };
         const target = normalizeComment(commentSnap.id, raw);
         if (!target) throw new Error('Comment not found');
-        if (target.author !== actorRole || target.authorUid !== actorUid) throw new Error('Not allowed');
+        if (target.authorUid !== actorUid) throw new Error('Not allowed');
 
         tx.delete(commentRef);
-        tx.update(mealRef, {
-            commentCount: getNextCommentCount(mealData, -1),
-        });
     });
 };
 

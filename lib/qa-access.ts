@@ -22,7 +22,7 @@ export const canAccessQaRoute = ({
   }
 
   if (!qaRouteToken) {
-    return true;
+    return false;
   }
 
   return queryToken === qaRouteToken || headerToken === qaRouteToken;
