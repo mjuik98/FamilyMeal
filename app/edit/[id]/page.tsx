@@ -19,6 +19,7 @@ export default function EditMealPage() {
     const [selectedUsers, setSelectedUsers] = useState<UserRole[]>([]);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [loading, setLoading] = useState(true);
+    const [needsOwnerAdoption, setNeedsOwnerAdoption] = useState(false);
 
     const fileInputRef = useRef<HTMLInputElement>(null);
     const { showToast } = useToast();
@@ -49,6 +50,7 @@ export default function EditMealPage() {
                 setType(meal.type);
                 setImagePreview(meal.imageUrl || null);
                 setSelectedUsers(meal.userIds?.length ? meal.userIds : userProfile.role ? [userProfile.role] : []);
+                setNeedsOwnerAdoption(!meal.ownerUid);
             } catch (error) {
                 console.error('Failed to load meal', error);
                 showToast('기록을 불러오지 못했습니다.', 'error');
@@ -100,6 +102,7 @@ export default function EditMealPage() {
             }
 
             await updateMeal(mealId, {
+                ...(needsOwnerAdoption ? { ownerUid: userProfile.uid } : {}),
                 userIds: selectedUsers,
                 description,
                 type,

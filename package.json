@@ -10,7 +10,9 @@
     "typecheck": "tsc --noEmit",
     "test:rules": "npx firebase-tools emulators:exec --only firestore \"node --test tests/firestore.rules.test.mjs\"",
     "migrate:comments": "node scripts/migrate-comments-to-subcollection.mjs",
-    "migrate:comments:dry": "node scripts/migrate-comments-to-subcollection.mjs --dry-run"
+    "migrate:comments:dry": "node scripts/migrate-comments-to-subcollection.mjs --dry-run",
+    "migrate:meals": "node scripts/migrate-meals-schema.mjs",
+    "migrate:meals:dry": "node scripts/migrate-meals-schema.mjs --dry-run"
   },
   "dependencies": {
     "@ducanh2912/next-pwa": "^10.2.9",

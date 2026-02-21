@@ -125,9 +125,14 @@ test('non-owner cannot edit meal body, participant can update commentCount only'
   );
 });
 
-test('outsider cannot read meal', async () => {
+test('family member with profile can read non-participant meal', async () => {
   const outsiderDb = testEnv.authenticatedContext(OUTSIDER_UID).firestore();
-  await assertFails(getDoc(doc(outsiderDb, 'meals', MEAL_ID)));
+  await assertSucceeds(getDoc(doc(outsiderDb, 'meals', MEAL_ID)));
+});
+
+test('authenticated user without profile cannot read meal', async () => {
+  const unknownDb = testEnv.authenticatedContext('unknown-uid').firestore();
+  await assertFails(getDoc(doc(unknownDb, 'meals', MEAL_ID)));
 });
 
 test('comment author can update own comment, non-author cannot', async () => {

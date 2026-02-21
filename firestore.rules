@@ -48,7 +48,7 @@ service cloud.firestore {
     }
 
     function canReadMeal(mealData) {
-      return hasUserProfile() && (isMealOwner(mealData) || isMealParticipant(mealData));
+      return hasUserProfile();
     }
 
     function validMealDocument(mealData) {

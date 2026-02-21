@@ -48,3 +48,16 @@ npm run migrate:comments
 ```bash
 npx firebase-tools deploy --only firestore:rules --project <PROJECT_ID>
 ```
+
+## Meals 스키마 보정 마이그레이션
+기존 `meals` 문서의 누락 필드(`userIds`, `userId`, `keywords`, `commentCount`, `timestamp`)를 보정합니다.
+
+드라이런:
+```bash
+npm run migrate:meals:dry
+```
+
+실행:
+```bash
+npm run migrate:meals
+```

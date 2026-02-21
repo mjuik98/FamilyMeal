@@ -36,8 +36,7 @@ export default function Home() {
       (error) => {
         console.error("Failed to load meals", error);
         setLoadingMeals(false);
-      },
-      userProfile.role
+      }
     );
 
     return () => unsubscribe();
@@ -46,7 +45,7 @@ export default function Home() {
   // Load weekly stats
   useEffect(() => {
     if (!userProfile?.role) return;
-    getWeeklyStats(userProfile.role).then(setWeeklyStats).catch(console.error);
+    getWeeklyStats().then(setWeeklyStats).catch(console.error);
   }, [userProfile?.role]);
 
   // Check notification permission
@@ -60,7 +59,7 @@ export default function Home() {
     if (!searchQuery.trim()) { setSearchResults(null); return; }
     setSearching(true);
     try {
-      const results = await searchMeals(searchQuery.trim(), userProfile?.role ?? undefined);
+      const results = await searchMeals(searchQuery.trim());
       setSearchResults(results);
     } catch (e) {
       console.error('Search failed', e);
