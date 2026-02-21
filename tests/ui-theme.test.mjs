@@ -1,0 +1,30 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
+
+const read = (relativePath) =>
+  fs.readFileSync(path.join(process.cwd(), relativePath), "utf8");
+
+test("global styles are locked to light color scheme", () => {
+  const globals = read("app/globals.css");
+  assert.match(globals, /color-scheme:\s*light;/);
+  assert.doesNotMatch(globals, /prefers-color-scheme:\s*dark/);
+});
+
+test("viewport metadata uses fixed light theme color", () => {
+  const layout = read("app/layout.tsx");
+  assert.match(layout, /colorScheme:\s*"light"/);
+  assert.match(layout, /themeColor:\s*"#FAFAF5"/);
+  assert.doesNotMatch(layout, /prefers-color-scheme/);
+});
+
+test("comment and form inputs use shared input classes", () => {
+  const mealCard = read("components/MealCard.tsx");
+  const addPage = read("app/add/page.tsx");
+  const editPage = read("app/edit/[id]/page.tsx");
+
+  assert.match(mealCard, /className="input-base input-pill"/);
+  assert.match(addPage, /className="input-base textarea-base"/);
+  assert.match(editPage, /className="input-base textarea-base[^"]*"/);
+});

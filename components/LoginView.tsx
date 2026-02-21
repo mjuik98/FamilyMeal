@@ -25,29 +25,29 @@ export default function LoginView() {
     // 1. Not signed in
     if (!user) {
         return (
-            <div className="flex flex-col min-h-[100dvh] bg-white px-6 py-8 font-sans dark:bg-[#121212] justify-center items-center">
+            <div className="flex flex-col min-h-[100dvh] bg-white px-6 py-8 font-sans justify-center items-center">
                 <div className="w-full max-w-sm flex flex-col justify-center animate-in fade-in duration-500">
                     {/* Top Logo Section */}
                     <div className="flex flex-col justify-center items-center gap-4 mb-10">
-                        <div className="flex items-center justify-center w-[52px] h-[52px] sm:w-[60px] sm:h-[60px] bg-green-50 rounded-[14px] shadow-[0_2px_8px_rgba(0,0,0,0.05)] border border-green-100 dark:bg-green-900/20 dark:border-green-800/50">
+                        <div className="flex items-center justify-center w-[52px] h-[52px] sm:w-[60px] sm:h-[60px] bg-green-50 rounded-[14px] shadow-[0_2px_8px_rgba(0,0,0,0.05)] border border-green-100">
                             <img src="/images/family_meal_logo.png" alt="가족 식사 로고" className="w-[42px] h-[42px] sm:w-[50px] sm:h-[50px] object-contain rounded-md" />
                         </div>
                         <div className="flex flex-col justify-center text-center">
-                            <h1 className="text-[26px] sm:text-[28px] font-extrabold text-[#10b981] dark:text-[#34d399] tracking-tight leading-none mb-0.5">가족식사</h1>
-                            <p className="text-[12px] sm:text-[13px] text-gray-500 font-medium dark:text-gray-400 leading-none">함께 쓰는 맛있는 기록</p>
+                            <h1 className="text-[26px] sm:text-[28px] font-extrabold text-[#10b981] tracking-tight leading-none mb-0.5">가족식사</h1>
+                            <p className="text-[12px] sm:text-[13px] text-gray-500 font-medium leading-none">함께 쓰는 맛있는 기록</p>
                         </div>
                     </div>
 
                     {/* Welcome Text Section */}
                     <div className="mb-10 text-center">
-                        <h2 className="text-[26px] sm:text-[28px] font-bold text-gray-900 mb-2.5 tracking-tight dark:text-white">환영합니다!</h2>
-                        <p className="text-gray-500 text-[15px] sm:text-[16px] leading-relaxed dark:text-gray-400">
+                        <h2 className="text-[26px] sm:text-[28px] font-bold text-gray-900 mb-2.5 tracking-tight">환영합니다!</h2>
+                        <p className="text-gray-500 text-[15px] sm:text-[16px] leading-relaxed">
                             시작하려면 구글 계정으로<br />로그인해 주세요.
                         </p>
                     </div>
 
                     {authError && (
-                        <div className="p-4 bg-red-50 text-red-600 rounded-xl text-sm border border-red-100 mb-6 dark:bg-red-900/20 dark:border-red-800/50 dark:text-red-400 font-medium">
+                        <div className="p-4 bg-red-50 text-red-600 rounded-xl text-sm border border-red-100 mb-6 font-medium">
                             {authError}
                         </div>
                     )}
@@ -56,7 +56,7 @@ export default function LoginView() {
                         {/* Google Button */}
                         <button
                             onClick={signInWithGoogle}
-                            className="w-full flex justify-center items-center gap-3 bg-[#f8fafc] dark:bg-zinc-800/50 text-gray-900 dark:text-white border border-gray-200 dark:border-zinc-700 rounded-full py-4 text-[16px] font-bold hover:bg-gray-100 dark:hover:bg-zinc-800 active:scale-[0.98] transition-all shadow-sm"
+                            className="w-full flex justify-center items-center gap-3 bg-[#f8fafc] text-gray-900 border border-gray-200 rounded-full py-4 text-[16px] font-bold hover:bg-gray-100 active:scale-[0.98] transition-all shadow-sm"
                         >
                             <svg className="w-[22px] h-[22px]" viewBox="0 0 24 24">
                                 <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
@@ -67,7 +67,7 @@ export default function LoginView() {
                             Google 계정으로 시작하기
                         </button>
 
-                        <p className="mt-6 text-[13px] text-gray-400 font-medium dark:text-gray-500">
+                        <p className="mt-6 text-[13px] text-gray-400 font-medium">
                             안전하게 로그인 정보가 보호됩니다.
                         </p>
                     </div>
@@ -94,7 +94,7 @@ export default function LoginView() {
                         >
                             <span className="emoji-wrapper">{emoji}</span>
                             <span className="label-wrapper">{label}</span>
-                            <div className="absolute inset-0 opacity-0 hover:opacity-10 dark:hover:opacity-20 transition-opacity pointer-events-none"
+                            <div className="absolute inset-0 opacity-0 hover:opacity-10 transition-opacity pointer-events-none"
                                 style={{ backgroundColor: 'var(--role-color)' }} />
                         </button>
                     ))}

@@ -306,6 +306,7 @@ export default function Home() {
           onChange={(e) => { setSearchQuery(e.target.value); if (!e.target.value) setSearchResults(null); }}
           onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
           placeholder="음식, 사람 검색..."
+          className="input-base"
           style={{
             flex: 1, background: 'none', border: 'none', outline: 'none',
             fontSize: '0.9rem', fontFamily: 'inherit'

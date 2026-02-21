@@ -1,4 +1,5 @@
 :root {
+  color-scheme: light;
   --background: #FAFAF5;
   --foreground: #1A1A1A;
 
@@ -22,29 +23,6 @@
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.04);
   --shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
   --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.08);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #111111;
-    --foreground: #F5F5F0;
-
-    --primary: #8FB339;
-    --primary-light: #A3C44D;
-    --primary-foreground: #ffffff;
-
-    --secondary: #222222;
-    --secondary-foreground: #D4D4D4;
-
-    --muted: #2A2A2A;
-    --muted-foreground: #A1A1AA;
-
-    --card: #18181A;
-    --card-foreground: #F5F5F0;
-
-    --border: #333333;
-    --input: #2D2D2D;
-  }
 }
 
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
@@ -176,6 +154,22 @@ textarea::placeholder {
   opacity: 1;
 }
 
+.input-base {
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--foreground);
+  caret-color: var(--foreground);
+  -webkit-text-fill-color: var(--foreground);
+}
+
+.input-pill {
+  border-radius: 999px;
+}
+
+.textarea-base {
+  border-radius: 12px;
+}
+
 input:focus,
 textarea:focus,
 select:focus {
@@ -280,24 +274,6 @@ select:focus {
 
 .role-son {
   --role-color: #D97706;
-}
-
-@media (prefers-color-scheme: dark) {
-  .role-dad {
-    --role-color: #60A5FA;
-  }
-
-  .role-mom {
-    --role-color: #F472B6;
-  }
-
-  .role-daughter {
-    --role-color: #A78BFA;
-  }
-
-  .role-son {
-    --role-color: #FBBF24;
-  }
 }
 
 /* Primary button styles */

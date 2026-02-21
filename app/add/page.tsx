@@ -203,7 +203,8 @@ export default function AddMealPage() {
                             onChange={(e) => setDescription(e.target.value)}
                             placeholder="어떤 식사를 했는지 적어주세요"
                             required
-                            style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '1px solid var(--border)', background: 'var(--muted)', resize: 'none', height: '80px', fontSize: '0.9rem', fontFamily: 'inherit', outline: 'none' }}
+                            className="input-base textarea-base"
+                            style={{ width: '100%', padding: '12px', resize: 'none', height: '80px', fontSize: '0.9rem', fontFamily: 'inherit', outline: 'none' }}
                         />
                     </div>
                 </div>

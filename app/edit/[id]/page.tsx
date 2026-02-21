@@ -212,7 +212,7 @@ export default function EditMealPage() {
                         value={description}
                         onChange={(e) => setDescription(e.target.value)}
                         placeholder="어떤 식사를 했는지 적어주세요"
-                        className="w-full p-3 rounded-lg border bg-card resize-none h-24 focus:outline-none focus:ring-2 focus:ring-primary/50"
+                        className="input-base textarea-base w-full p-3 resize-none h-24 focus:outline-none focus:ring-2 focus:ring-primary/50"
                         required
                     />
                 </div>

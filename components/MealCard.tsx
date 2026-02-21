@@ -378,16 +378,11 @@ export default function MealCard({ meal }: { meal: Meal }) {
                                   }
                                 }
                               }}
+                              className="input-base input-pill"
                               style={{
                                 flex: 1,
-                                border: '1px solid var(--border)',
-                                borderRadius: '999px',
                                 padding: '6px 10px',
                                 fontSize: '0.8rem',
-                                background: 'var(--card)',
-                                color: 'var(--foreground)',
-                                caretColor: 'var(--foreground)',
-                                WebkitTextFillColor: 'var(--foreground)',
                                 outline: 'none'
                               }}
                             />
@@ -435,16 +430,11 @@ export default function MealCard({ meal }: { meal: Meal }) {
                     }
                   }}
                   placeholder="댓글을 입력하세요"
+                  className="input-base input-pill"
                   style={{
                     flex: 1,
-                    border: '1px solid var(--border)',
-                    borderRadius: '999px',
                     padding: '8px 12px',
                     fontSize: '0.84rem',
-                    background: 'var(--card)',
-                    color: 'var(--foreground)',
-                    caretColor: 'var(--foreground)',
-                    WebkitTextFillColor: 'var(--foreground)',
                     outline: 'none'
                   }}
                 />
