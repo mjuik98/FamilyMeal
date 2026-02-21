@@ -55,6 +55,9 @@ jobs:
       - name: Dependency Audit Report
         run: npm audit --json > audit-report.json || true
 
+      - name: Dependency Audit Production Gate
+        run: npm run audit:prod:check
+
       - name: Upload Audit Report
         if: always()
         uses: actions/upload-artifact@v4

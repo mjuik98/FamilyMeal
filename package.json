@@ -11,6 +11,7 @@
     "test:e2e": "playwright test",
     "test:e2e:install": "playwright install --with-deps chromium",
     "audit:report": "npm audit --json",
+    "audit:prod:check": "node scripts/audit-prod-check.mjs",
     "ci:verify": "npm run lint && npm run typecheck && npm run build && npm run test:smoke && npm run test:ui",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",

@@ -53,3 +53,11 @@ test("qa route is gated in production", () => {
   assert.match(qaPage, /NEXT_PUBLIC_ENABLE_QA === "true"/);
   assert.match(qaPage, /notFound\(\)/);
 });
+
+test("qa middleware supports token-based protection", () => {
+  const middleware = read("middleware.ts");
+  assert.match(middleware, /QA_ROUTE_TOKEN/);
+  assert.match(middleware, /qa_token/);
+  assert.match(middleware, /x-qa-token/);
+  assert.match(middleware, /matcher:\s*\["\/qa\/:path\*"\]/);
+});

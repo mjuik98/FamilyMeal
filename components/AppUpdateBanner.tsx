@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 const POLL_INTERVAL_MS = 60_000;
 const POLL_LOCK_TTL_MS = POLL_INTERVAL_MS + 15_000;
 const UPDATE_LOCK_KEY = "familymeal:update-poll-lock";
+const UPDATE_LOCK_NAME = "familymeal:update-poll";
 const UPDATE_CHANNEL_NAME = "familymeal:update-channel";
 const isPwaEnabled = process.env.NEXT_PUBLIC_ENABLE_PWA === "true";
 
@@ -24,6 +25,16 @@ type PollLock = {
 
 type VersionResponse = {
   version?: string;
+};
+
+type NavigatorWithLocks = Navigator & {
+  locks?: {
+    request: (
+      name: string,
+      options: { mode?: "shared" | "exclusive"; ifAvailable?: boolean },
+      callback: (lock: { name: string; mode: "shared" | "exclusive" } | null) => Promise<void> | void
+    ) => Promise<void>;
+  };
 };
 
 const parsePollLock = (raw: string | null): PollLock | null => {
@@ -51,6 +62,7 @@ export default function AppUpdateBanner() {
   useEffect(() => {
     if (!isPwaEnabled) return;
     if (typeof window === "undefined") return;
+
     if (!tabIdRef.current) {
       tabIdRef.current =
         window.crypto?.randomUUID?.() ??
@@ -104,6 +116,33 @@ export default function AppUpdateBanner() {
       }
     };
 
+    const runWithPollingLock = async (task: () => Promise<void>) => {
+      const nav = navigator as NavigatorWithLocks;
+      if (typeof nav.locks?.request === "function") {
+        let completed = false;
+        try {
+          await nav.locks.request(
+            UPDATE_LOCK_NAME,
+            { mode: "exclusive", ifAvailable: true },
+            async (lock) => {
+              if (!lock) return;
+              if (!tryAcquireLock()) return;
+              completed = true;
+              await task();
+            }
+          );
+          if (completed) {
+            return;
+          }
+        } catch {
+          // Fallback to localStorage lock below.
+        }
+      }
+
+      if (!tryAcquireLock()) return;
+      await task();
+    };
+
     const broadcastUpdateReady = () => {
       channelRef.current?.postMessage({ type: "update-available" });
     };
@@ -144,11 +183,12 @@ export default function AppUpdateBanner() {
     const checkForUpdate = async () => {
       if (!active) return;
       if (document.visibilityState !== "visible") return;
-      if (!tryAcquireLock()) return;
 
-      await checkDeployedVersion();
-      registration?.update().catch(() => {
-        // Ignore service worker update polling failures.
+      await runWithPollingLock(async () => {
+        await checkDeployedVersion();
+        registration?.update().catch(() => {
+          // Ignore service worker update polling failures.
+        });
       });
     };
 
@@ -258,10 +298,12 @@ export default function AppUpdateBanner() {
 
   return (
     <div className="update-banner" role="status" aria-live="polite">
-      <p className="update-banner-text">새 버전이 배포되었습니다. 새로고침해서 최신 화면을 적용하세요.</p>
+      <p className="update-banner-text">
+        {"\uC0C8 \uBC84\uC804\uC774 \uBC30\uD3EC\uB418\uC5C8\uC2B5\uB2C8\uB2E4. \uC0C8\uB85C\uACE0\uCE68\uD574 \uCD5C\uC2E0 \uD654\uBA74\uC744 \uC801\uC6A9\uD558\uC138\uC694."}
+      </p>
       <button type="button" onClick={() => void handleRefresh()} className="update-banner-btn" disabled={isRefreshing}>
         <RefreshCw size={13} />
-        {isRefreshing ? "적용 중..." : "새로고침"}
+        {isRefreshing ? "\uC801\uC6A9 \uC911..." : "\uC0C8\uB85C\uACE0\uCE68"}
       </button>
     </div>
   );

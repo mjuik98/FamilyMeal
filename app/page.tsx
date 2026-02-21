@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { useUser } from '@/context/UserContext';
 import LoginView from '@/components/LoginView';
 import { Meal } from '@/lib/types';
+import { createQaMockMeals, isQaMockMode, qaMockWeeklyStats } from '@/lib/qa';
 import { LogOut, Calendar as CalendarIcon, Search, Bell, X } from 'lucide-react';
 import Calendar from 'react-calendar';
 import 'react-calendar/dist/Calendar.css';
@@ -25,6 +26,12 @@ export default function Home() {
 
   useEffect(() => {
     if (!userProfile?.role) return;
+
+    if (isQaMockMode()) {
+      setMeals(createQaMockMeals(userProfile.role, selectedDate));
+      setLoadingMeals(false);
+      return;
+    }
 
     setLoadingMeals(true);
     const unsubscribe = subscribeMealsForDate(
@@ -45,6 +52,10 @@ export default function Home() {
   // Load weekly stats
   useEffect(() => {
     if (!userProfile?.role) return;
+    if (isQaMockMode()) {
+      setWeeklyStats([...qaMockWeeklyStats]);
+      return;
+    }
     getWeeklyStats().then(setWeeklyStats).catch(console.error);
   }, [userProfile?.role]);
 
@@ -58,6 +69,20 @@ export default function Home() {
   const handleSearch = async () => {
     if (!searchQuery.trim()) { setSearchResults(null); return; }
     setSearching(true);
+
+    if (isQaMockMode()) {
+      const query = searchQuery.trim().toLowerCase();
+      const results = meals.filter((meal) => {
+        const textMatched = meal.description.toLowerCase().includes(query);
+        const typeMatched = meal.type.toLowerCase().includes(query);
+        const userMatched = meal.userIds?.some((uid) => uid.toLowerCase().includes(query)) ?? false;
+        return textMatched || typeMatched || userMatched;
+      });
+      setSearchResults(results);
+      setSearching(false);
+      return;
+    }
+
     try {
       const results = await searchMeals(searchQuery.trim());
       setSearchResults(results);

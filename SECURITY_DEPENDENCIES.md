@@ -9,7 +9,9 @@
 
 ## Policy
 1. Run `npm run audit:report` after dependency updates.
-2. Apply non-breaking fixes with `npm audit fix`.
-3. Avoid `npm audit fix --force` unless a dedicated upgrade task is planned.
-4. Re-evaluate unresolved high items monthly or when upstream releases fixes.
-5. If a vulnerability becomes exploitable in production paths, prioritize replacing or removing the affected package.
+2. Run `npm run audit:prod:check` to enforce non-allowlisted high/critical findings in production deps.
+3. Keep temporary exceptions in `security/audit-allowlist.json` with a concrete reason.
+4. Apply non-breaking fixes with `npm audit fix`.
+5. Avoid `npm audit fix --force` unless a dedicated upgrade task is planned.
+6. Re-evaluate unresolved high items monthly or when upstream releases fixes.
+7. If a vulnerability becomes exploitable in production paths, prioritize replacing or removing the affected package.

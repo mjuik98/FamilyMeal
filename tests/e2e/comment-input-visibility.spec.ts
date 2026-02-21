@@ -24,7 +24,10 @@ const getContrastRatio = (foreground: string, background: string): number => {
 };
 
 test("comment input stays readable on mobile even when system theme is dark", async ({ page }) => {
-  await page.goto("/qa/meal-card");
+  await page.addInitScript(() => {
+    window.localStorage.setItem("familymeal:qa-mock-mode", "true");
+  });
+  await page.goto("/");
 
   const toggleButton = page.getByTestId("meal-card-comment-toggle");
   await expect(toggleButton).toBeVisible();
@@ -33,7 +36,7 @@ test("comment input stays readable on mobile even when system theme is dark", as
   const commentInput = page.getByTestId("meal-card-comment-input");
   await expect(commentInput).toBeVisible();
 
-  await commentInput.fill("가독성 확인");
+  await commentInput.fill("readability check");
 
   const bodyBackground = await page.evaluate(() => window.getComputedStyle(document.body).backgroundColor);
   expect(bodyBackground).toBe("rgb(250, 250, 245)");
