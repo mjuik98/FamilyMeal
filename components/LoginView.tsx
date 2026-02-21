@@ -29,14 +29,7 @@ export default function LoginView() {
                 {/* Top Logo Section */}
                 <div className="flex justify-center items-center gap-3 mt-[8vh] mb-12">
                     <div className="flex items-center justify-center w-[44px] h-[44px] bg-green-50 rounded-[12px] shadow-[0_2px_8px_rgba(0,0,0,0.05)] border border-green-100 dark:bg-green-900/20 dark:border-green-800/50">
-                        <svg width="28" height="28" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M24 4C12.96 4 4 12.96 4 24C4 35.04 12.96 44 24 44C35.04 44 44 35.04 44 24C44 12.96 35.04 4 24 4Z" fill="#F4F4F4" />
-                            <path d="M44 24C44 19.34 42.4 15.08 39.7 11.66L11.66 39.7C15.08 42.4 19.34 44 24 44C35.04 44 44 35.04 44 24Z" fill="#E0E0E0" />
-                            <path d="M24 10C24 10 22 14 24 16C26 18 32 18 32 18V24H16V34L24 38C24 38 28 36 30 32C32 28 32 24 32 24L24 10Z" fill="#FFC107" />
-                            <path d="M12 28H14V20C14 18.9 14.9 18 16 18V32H18V18C19.1 18 20 18.9 20 20V28H22C23.1 28 24 28.9 24 30C24 35.52 19.52 40 14 40H12V28Z" fill="#757575" />
-                            <path d="M30 14C31.1 14 32 13.1 32 12C32 10.9 31.1 10 30 10C28.9 10 28 10.9 28 12C28 13.1 28.9 14 30 14Z" fill="#808080" />
-                            <path d="M24 10L16 26H20V34H16V30L24 14V10Z" fill="#FF9800" />
-                        </svg>
+                        <img src="/images/nanobanana_logo.png" alt="나노바나나 로고" className="w-[32px] h-[32px] object-contain rounded-md" />
                     </div>
                     <div className="flex flex-col justify-center text-center">
                         <h1 className="text-[22px] font-extrabold text-[#10b981] dark:text-[#34d399] tracking-tight leading-none mb-0.5">가족식사</h1>
