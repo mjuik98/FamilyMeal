@@ -3,6 +3,7 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import { UserRole, UserProfile } from '@/lib/types';
 import { auth, db } from '@/lib/firebase';
+import { publicEnv } from '@/lib/env';
 import {
     onAuthStateChanged,
     GoogleAuthProvider,
@@ -34,8 +35,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
             if (firebaseUser) {
-                const allowedEmailsEnv = process.env.NEXT_PUBLIC_ALLOWED_EMAILS || "";
-                const allowedEmails = allowedEmailsEnv.split(',').map(e => e.trim().toLowerCase()).filter(Boolean);
+                const allowedEmails = publicEnv.allowedEmails;
 
                 if (allowedEmails.length > 0 && firebaseUser.email && !allowedEmails.includes(firebaseUser.email.toLowerCase())) {
                     await firebaseSignOut(auth);

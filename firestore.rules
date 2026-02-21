@@ -86,8 +86,31 @@ service cloud.firestore {
         && request.resource.data.commentCount >= 0;
     }
 
+    function validUserProfile(profileData) {
+      return profileData.keys().hasOnly(['uid', 'email', 'displayName', 'role'])
+        && profileData.uid is string
+        && profileData.uid == request.auth.uid
+        && profileData.email is string
+        && request.auth.token.email is string
+        && profileData.email == request.auth.token.email
+        && (!('displayName' in profileData) || profileData.displayName == null || profileData.displayName is string)
+        && (profileData.role == null || validRole(profileData.role));
+    }
+
     match /users/{uid} {
-      allow read, write: if signedIn() && request.auth.uid == uid;
+      allow read: if signedIn() && request.auth.uid == uid;
+
+      allow create: if signedIn()
+        && request.auth.uid == uid
+        && validUserProfile(request.resource.data);
+
+      allow update: if signedIn()
+        && request.auth.uid == uid
+        && validUserProfile(request.resource.data)
+        && request.resource.data.uid == resource.data.uid
+        && request.resource.data.email == resource.data.email;
+
+      allow delete: if signedIn() && request.auth.uid == uid;
     }
 
     match /meals/{mealId} {

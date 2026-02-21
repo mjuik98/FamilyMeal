@@ -6,6 +6,8 @@
     "dev": "next dev --webpack",
     "build": "next build --webpack",
     "start": "next start",
+    "test:smoke": "node scripts/smoke-test.mjs",
+    "ci:verify": "npm run lint && npm run typecheck && npm run build && npm run test:smoke",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test:rules": "npx firebase-tools emulators:exec --only firestore \"node --test tests/firestore.rules.test.mjs\"",

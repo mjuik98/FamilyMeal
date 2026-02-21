@@ -190,3 +190,42 @@ test('family member can create comment with own role/uid only', async () => {
     })
   );
 });
+
+test('user profile create requires auth email match', async () => {
+  const uid = 'new-user-uid';
+  const userDb = testEnv.authenticatedContext(uid, { email: 'new@test.com' }).firestore();
+
+  await assertSucceeds(
+    setDoc(doc(userDb, 'users', uid), {
+      uid,
+      email: 'new@test.com',
+      displayName: 'New User',
+      role: null,
+    })
+  );
+
+  await assertFails(
+    setDoc(doc(userDb, 'users', `${uid}-bad`), {
+      uid: `${uid}-bad`,
+      email: 'other@test.com',
+      displayName: 'Bad User',
+      role: null,
+    })
+  );
+});
+
+test('user profile cannot change persisted email', async () => {
+  const ownerDb = testEnv.authenticatedContext(OWNER_UID, { email: 'owner@test.com' }).firestore();
+
+  await assertSucceeds(
+    updateDoc(doc(ownerDb, 'users', OWNER_UID), {
+      displayName: 'Owner Updated',
+    })
+  );
+
+  await assertFails(
+    updateDoc(doc(ownerDb, 'users', OWNER_UID), {
+      email: 'attacker@test.com',
+    })
+  );
+});
