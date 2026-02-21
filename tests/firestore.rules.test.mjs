@@ -150,6 +150,22 @@ test("non-owner cannot edit meal body or commentCount", async () => {
   );
 });
 
+test("meal description longer than 300 chars is rejected", async () => {
+  const ownerDb = testEnv.authenticatedContext(OWNER_UID).firestore();
+  const tooLongDescription = "a".repeat(301);
+
+  await assertFails(
+    setDoc(doc(ownerDb, "meals", "meal-too-long-description"), {
+      ownerUid: OWNER_UID,
+      userIds: [ROLE_DAD],
+      description: tooLongDescription,
+      type: TYPE_DINNER,
+      timestamp: Timestamp.fromMillis(Date.now()),
+      commentCount: 0,
+    })
+  );
+});
+
 test("family member with profile can read non-participant meal", async () => {
   const outsiderDb = testEnv.authenticatedContext(OUTSIDER_UID).firestore();
   await assertSucceeds(getDoc(doc(outsiderDb, "meals", MEAL_ID)));
@@ -160,11 +176,11 @@ test("authenticated user without profile cannot read meal", async () => {
   await assertFails(getDoc(doc(unknownDb, "meals", MEAL_ID)));
 });
 
-test("comment author can update own comment, non-author cannot", async () => {
+test("client comment updates are denied", async () => {
   const ownerDb = testEnv.authenticatedContext(OWNER_UID).firestore();
   const momDb = testEnv.authenticatedContext(MOM_UID).firestore();
 
-  await assertSucceeds(
+  await assertFails(
     updateDoc(doc(ownerDb, "meals", MEAL_ID, "comments", COMMENT_ID), {
       text: "\uC218\uC815\uB41C \uB313\uAE00",
       updatedAt: Timestamp.fromMillis(Date.now() + 1000),
@@ -185,12 +201,23 @@ test("comment author can update own comment, non-author cannot", async () => {
   );
 });
 
-test("meal owner can delete comments from other users for cleanup", async () => {
+test("client comment deletion is denied for both owner and non-owner", async () => {
   const ownerDb = testEnv.authenticatedContext(OWNER_UID).firestore();
   const momDb = testEnv.authenticatedContext(MOM_UID).firestore();
   const outsiderDb = testEnv.authenticatedContext(OUTSIDER_UID).firestore();
 
-  await assertSucceeds(
+  await testEnv.withSecurityRulesDisabled(async (context) => {
+    const db = context.firestore();
+    await setDoc(doc(db, "meals", MEAL_ID, "comments", "comment-by-mom"), {
+      author: ROLE_MOM,
+      authorUid: MOM_UID,
+      text: "\uC5C4\uB9C8 \uB313\uAE00",
+      createdAt: Timestamp.fromMillis(Date.now()),
+      updatedAt: Timestamp.fromMillis(Date.now()),
+    });
+  });
+
+  await assertFails(
     setDoc(doc(momDb, "meals", MEAL_ID, "comments", "comment-by-mom"), {
       author: ROLE_MOM,
       authorUid: MOM_UID,
@@ -204,15 +231,15 @@ test("meal owner can delete comments from other users for cleanup", async () => 
     deleteDoc(doc(outsiderDb, "meals", MEAL_ID, "comments", "comment-by-mom"))
   );
 
-  await assertSucceeds(
+  await assertFails(
     deleteDoc(doc(ownerDb, "meals", MEAL_ID, "comments", "comment-by-mom"))
   );
 });
 
-test("family member can create comment with own role/uid only", async () => {
+test("client comment creation is denied", async () => {
   const outsiderDb = testEnv.authenticatedContext(OUTSIDER_UID).firestore();
 
-  await assertSucceeds(
+  await assertFails(
     setDoc(doc(outsiderDb, "meals", MEAL_ID, "comments", "outsider-comment-ok"), {
       author: ROLE_SON,
       authorUid: OUTSIDER_UID,
@@ -227,6 +254,21 @@ test("family member can create comment with own role/uid only", async () => {
       author: ROLE_DAD,
       authorUid: OWNER_UID,
       text: "\uC0AC\uCE6D \uB313\uAE00",
+      createdAt: Timestamp.fromMillis(Date.now()),
+      updatedAt: Timestamp.fromMillis(Date.now()),
+    })
+  );
+});
+
+test("comment text longer than 500 chars is rejected", async () => {
+  const ownerDb = testEnv.authenticatedContext(OWNER_UID).firestore();
+  const tooLongComment = "x".repeat(501);
+
+  await assertFails(
+    setDoc(doc(ownerDb, "meals", MEAL_ID, "comments", "comment-too-long"), {
+      author: ROLE_DAD,
+      authorUid: OWNER_UID,
+      text: tooLongComment,
       createdAt: Timestamp.fromMillis(Date.now()),
       updatedAt: Timestamp.fromMillis(Date.now()),
     })
@@ -272,13 +314,10 @@ test("user profile cannot change persisted email", async () => {
   );
 });
 
-test("meal owner can delete meal", async () => {
+test("client meal deletion is denied", async () => {
   const ownerDb = testEnv.authenticatedContext(OWNER_UID).firestore();
-  await assertSucceeds(deleteDoc(doc(ownerDb, "meals", MEAL_ID)));
-});
-
-test("non-owner cannot delete modern meal", async () => {
   const momDb = testEnv.authenticatedContext(MOM_UID).firestore();
+  await assertFails(deleteDoc(doc(ownerDb, "meals", MEAL_ID)));
   await assertFails(deleteDoc(doc(momDb, "meals", MEAL_ID)));
 });
 

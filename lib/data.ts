@@ -1,5 +1,5 @@
 import { Meal, MealComment, UserRole } from './types';
-import { db } from './firebase';
+import { auth, db } from './firebase';
 import {
     collection,
     addDoc,
@@ -7,25 +7,61 @@ import {
     where,
     getDocs,
     orderBy,
-    documentId,
-    startAfter,
     Timestamp,
     getDoc,
     doc,
     updateDoc,
-    deleteDoc,
-    writeBatch,
     onSnapshot,
     limit,
     DocumentData,
-    Query,
     QueryDocumentSnapshot,
-    runTransaction,
 } from 'firebase/firestore';
 
 export const users: UserRole[] = ['아빠', '엄마', '딸', '아들'];
 
 const DEFAULT_MEAL_TYPE: Meal['type'] = '점심';
+
+const getAccessToken = async (): Promise<string> => {
+    const user = auth.currentUser;
+    if (!user) {
+        throw new Error('Not authenticated');
+    }
+    return user.getIdToken();
+};
+
+const getErrorMessageFromResponse = async (response: Response, fallback: string): Promise<string> => {
+    try {
+        const payload = (await response.json()) as { error?: unknown };
+        if (typeof payload?.error === 'string' && payload.error.trim().length > 0) {
+            return payload.error;
+        }
+    } catch {
+        // Ignore JSON parse errors and use fallback.
+    }
+    return fallback;
+};
+
+const fetchAuthedJson = async <T>(input: string, init?: RequestInit): Promise<T> => {
+    const token = await getAccessToken();
+    const headers = new Headers(init?.headers);
+    headers.set('Authorization', `Bearer ${token}`);
+    if (!headers.has('Content-Type') && init?.body) {
+        headers.set('Content-Type', 'application/json');
+    }
+
+    const response = await fetch(input, {
+        ...init,
+        headers,
+        cache: 'no-store',
+    });
+
+    if (!response.ok) {
+        const message = await getErrorMessageFromResponse(response, `Request failed (${response.status})`);
+        throw new Error(message);
+    }
+
+    return (await response.json()) as T;
+};
 
 const toMillis = (value: unknown, fallback: number): number => {
     if (typeof value === 'number') return value;
@@ -238,43 +274,11 @@ export const updateMeal = async (id: string, updates: Partial<Omit<Meal, 'id'>>)
     await updateDoc(mealRef, dataToUpdate as DocumentData);
 };
 
-const COMMENT_DELETE_BATCH_LIMIT = 450;
-
-const deleteMealComments = async (mealId: string): Promise<void> => {
-    let cursor: QueryDocumentSnapshot<DocumentData> | null = null;
-
-    while (true) {
-        let q: Query<DocumentData> = query(
-            mealCommentsRef(mealId),
-            orderBy(documentId()),
-            limit(COMMENT_DELETE_BATCH_LIMIT)
-        );
-
-        if (cursor) {
-            q = query(
-                mealCommentsRef(mealId),
-                orderBy(documentId()),
-                startAfter(cursor),
-                limit(COMMENT_DELETE_BATCH_LIMIT)
-            );
-        }
-
-        const snapshot = await getDocs(q);
-        if (snapshot.empty) return;
-
-        const batch = writeBatch(db);
-        snapshot.docs.forEach((commentDoc) => batch.delete(commentDoc.ref));
-        await batch.commit();
-
-        if (snapshot.size < COMMENT_DELETE_BATCH_LIMIT) return;
-        cursor = snapshot.docs[snapshot.docs.length - 1];
-    }
-};
-
 export const deleteMeal = async (id: string) => {
-    await deleteMealComments(id);
-    const mealRef = doc(db, 'meals', id);
-    await deleteDoc(mealRef);
+    const mealId = encodeURIComponent(id);
+    await fetchAuthedJson<{ ok: true; deleted: boolean; status: string }>(`/api/meals/${mealId}`, {
+        method: 'DELETE',
+    });
 };
 
 const mealCommentsRef = (mealId: string) => collection(db, 'meals', mealId, 'comments');
@@ -311,42 +315,22 @@ export const subscribeMealComments = (
 
 export const addMealComment = async (
     mealId: string,
-    author: UserRole,
-    authorUid: string,
+    _author: UserRole,
+    _authorUid: string,
     text: string
 ): Promise<MealComment> => {
     const trimmed = text.trim();
     if (!trimmed) throw new Error('Comment text is empty');
-    if (!authorUid) throw new Error('Missing actor uid');
 
-    const mealRef = doc(db, 'meals', mealId);
-    const commentRef = doc(mealCommentsRef(mealId));
-    const now = Date.now();
-
-    const created = await runTransaction(db, async (tx) => {
-        const mealSnap = await tx.get(mealRef);
-        if (!mealSnap.exists()) throw new Error('Meal not found');
-
-        tx.set(commentRef, {
-            author,
-            authorUid,
-            text: trimmed,
-            createdAt: Timestamp.fromMillis(now),
-            updatedAt: Timestamp.fromMillis(now),
-        });
-
-        return {
-            id: commentRef.id,
-            author,
-            authorUid,
-            text: trimmed,
-            createdAt: now,
-            updatedAt: now,
-            timestamp: now,
-        } satisfies MealComment;
-    });
-
-    return created;
+    const encodedMealId = encodeURIComponent(mealId);
+    const response = await fetchAuthedJson<{ ok: true; comment: MealComment }>(
+        `/api/meals/${encodedMealId}/comments`,
+        {
+            method: 'POST',
+            body: JSON.stringify({ text: trimmed }),
+        }
+    );
+    return response.comment;
 };
 
 export const updateMealComment = async (
@@ -359,29 +343,16 @@ export const updateMealComment = async (
     if (!trimmed) throw new Error('Comment text is empty');
     if (!actorUid) throw new Error('Missing actor uid');
 
-    const commentRef = doc(db, 'meals', mealId, 'comments', commentId);
-    const now = Date.now();
-
-    return runTransaction(db, async (tx) => {
-        const snap = await tx.get(commentRef);
-        if (!snap.exists()) throw new Error('Comment not found');
-
-        const raw = snap.data() as Partial<MealComment> & { createdAt?: unknown; updatedAt?: unknown; timestamp?: unknown };
-        const target = normalizeComment(snap.id, raw);
-        if (!target) throw new Error('Comment not found');
-        if (target.authorUid !== actorUid) throw new Error('Not allowed');
-
-        tx.update(commentRef, {
-            text: trimmed,
-            updatedAt: Timestamp.fromMillis(now),
-        });
-
-        return {
-            ...target,
-            text: trimmed,
-            updatedAt: now,
-        };
-    });
+    const encodedMealId = encodeURIComponent(mealId);
+    const encodedCommentId = encodeURIComponent(commentId);
+    const response = await fetchAuthedJson<{ ok: true; comment: MealComment }>(
+        `/api/meals/${encodedMealId}/comments/${encodedCommentId}`,
+        {
+            method: 'PATCH',
+            body: JSON.stringify({ text: trimmed }),
+        }
+    );
+    return response.comment;
 };
 
 export const deleteMealComment = async (
@@ -391,21 +362,14 @@ export const deleteMealComment = async (
 ): Promise<void> => {
     if (!actorUid) throw new Error('Missing actor uid');
 
-    const mealRef = doc(db, 'meals', mealId);
-    const commentRef = doc(db, 'meals', mealId, 'comments', commentId);
-
-    await runTransaction(db, async (tx) => {
-        const [mealSnap, commentSnap] = await Promise.all([tx.get(mealRef), tx.get(commentRef)]);
-        if (!mealSnap.exists()) throw new Error('Meal not found');
-        if (!commentSnap.exists()) throw new Error('Comment not found');
-
-        const raw = commentSnap.data() as Partial<MealComment> & { createdAt?: unknown; updatedAt?: unknown; timestamp?: unknown };
-        const target = normalizeComment(commentSnap.id, raw);
-        if (!target) throw new Error('Comment not found');
-        if (target.authorUid !== actorUid) throw new Error('Not allowed');
-
-        tx.delete(commentRef);
-    });
+    const encodedMealId = encodeURIComponent(mealId);
+    const encodedCommentId = encodeURIComponent(commentId);
+    await fetchAuthedJson<{ ok: true }>(
+        `/api/meals/${encodedMealId}/comments/${encodedCommentId}`,
+        {
+            method: 'DELETE',
+        }
+    );
 };
 
 export const getWeeklyStats = async (): Promise<{ date: Date; label: string; count: number }[]> => {

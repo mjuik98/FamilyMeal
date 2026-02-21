@@ -25,6 +25,18 @@ service cloud.firestore {
       return type in ['아침', '점심', '저녁', '간식'];
     }
 
+    function validMealDescription(value) {
+      return value is string
+        && value.size() > 0
+        && value.size() <= 300;
+    }
+
+    function validCommentText(value) {
+      return value is string
+        && value.size() > 0
+        && value.size() <= 500;
+    }
+
     function hasValidParticipantList(mealData) {
       return mealData.userIds is list
         && mealData.userIds.size() > 0
@@ -58,8 +70,7 @@ service cloud.firestore {
         && mealData.ownerUid is string
         && mealData.ownerUid.size() > 0
         && hasValidParticipantList(mealData)
-        && mealData.description is string
-        && mealData.description.size() > 0
+        && validMealDescription(mealData.description)
         && validMealType(mealData.type)
         && mealData.timestamp is timestamp
         && mealData.commentCount is int
@@ -117,11 +128,7 @@ service cloud.firestore {
 
       allow update: if hasUserProfile() && canEditMealBody();
 
-      allow delete: if hasUserProfile()
-        && (
-          isMealOwner(resource.data)
-          || (isLegacyMeal(resource.data) && isMealParticipant(resource.data))
-        );
+      allow delete: if false;
 
       match /comments/{commentId} {
         function parentMealPath() {
@@ -138,34 +145,9 @@ service cloud.firestore {
 
         allow read: if canAccessParentMeal();
 
-        allow create: if canAccessParentMeal()
-          && request.resource.data.keys().hasOnly(['author', 'authorUid', 'text', 'createdAt', 'updatedAt'])
-          && validRole(request.resource.data.author)
-          && request.resource.data.author == currentUserRole()
-          && request.resource.data.authorUid == request.auth.uid
-          && request.resource.data.text is string
-          && request.resource.data.text.size() > 0
-          && request.resource.data.createdAt is timestamp
-          && request.resource.data.updatedAt is timestamp
-          && request.resource.data.createdAt == request.resource.data.updatedAt;
-
-        allow update: if canAccessParentMeal()
-          && resource.data.authorUid == request.auth.uid
-          && request.resource.data.keys().hasOnly(['author', 'authorUid', 'text', 'createdAt', 'updatedAt'])
-          && request.resource.data.author == resource.data.author
-          && request.resource.data.authorUid == resource.data.authorUid
-          && request.resource.data.createdAt == resource.data.createdAt
-          && request.resource.data.text is string
-          && request.resource.data.text.size() > 0
-          && request.resource.data.updatedAt is timestamp
-          && request.resource.data.updatedAt >= resource.data.updatedAt;
-
-        allow delete: if canAccessParentMeal()
-          && (
-            resource.data.authorUid == request.auth.uid
-            || isMealOwner(parentMealData())
-            || (isLegacyMeal(parentMealData()) && isMealParticipant(parentMealData()))
-          );
+        allow create: if false;
+        allow update: if false;
+        allow delete: if false;
       }
     }
   }

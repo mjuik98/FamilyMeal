@@ -321,7 +321,7 @@ export default function MealCard({ meal }: { meal: Meal }) {
                 <div className="comments-list">
                   {comments.map((comment) => {
                     const timeBase = comment.updatedAt || comment.createdAt || comment.timestamp || Date.now();
-                    const canManage = Boolean(userProfile?.role && userProfile?.uid && comment.author === userProfile.role && comment.authorUid === userProfile.uid);
+                    const canManage = Boolean(userProfile?.uid && comment.authorUid === userProfile.uid);
                     const isEditing = editingCommentId === comment.id;
 
                     return (

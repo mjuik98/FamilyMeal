@@ -1,16 +1,35 @@
+import { Ratelimit } from "@upstash/ratelimit";
+import { Redis } from "@upstash/redis";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
 const MAX_REQUEST_BYTES = 16 * 1024;
 const RATE_LIMIT_WINDOW_MS = 60_000;
 const RATE_LIMIT_MAX_REQUESTS = 30;
+const RATE_LIMIT_KEY_PREFIX = "client-error";
 
 type RateBucket = {
   count: number;
   windowStart: number;
 };
 
-const rateBuckets = new Map<string, RateBucket>();
+const inMemoryBuckets = new Map<string, RateBucket>();
+
+const upstashUrl = process.env.UPSTASH_REDIS_REST_URL?.trim();
+const upstashToken = process.env.UPSTASH_REDIS_REST_TOKEN?.trim();
+const hasUpstash = Boolean(upstashUrl && upstashToken);
+
+const upstashLimiter = hasUpstash
+  ? new Ratelimit({
+      redis: new Redis({
+        url: upstashUrl as string,
+        token: upstashToken as string,
+      }),
+      limiter: Ratelimit.slidingWindow(RATE_LIMIT_MAX_REQUESTS, "1 m"),
+      analytics: true,
+      prefix: RATE_LIMIT_KEY_PREFIX,
+    })
+  : null;
 
 const ClientErrorSchema = z.object({
   type: z.string().trim().min(1).max(64),
@@ -24,66 +43,83 @@ const ClientErrorSchema = z.object({
   timestamp: z.string().trim().max(100).optional(),
 });
 
-const getClientKey = (request: Request): string => {
-  const forwardedFor = request.headers.get("x-forwarded-for");
-  if (forwardedFor) {
-    const [first] = forwardedFor.split(",");
-    const candidate = first?.trim();
-    if (candidate) return candidate;
-  }
-
-  const realIp = request.headers.get("x-real-ip")?.trim();
-  return realIp || "unknown";
+const parseForwardedIp = (value: string | null): string | null => {
+  if (!value) return null;
+  const [first] = value.split(",");
+  const candidate = first?.trim();
+  return candidate || null;
 };
 
-const isRateLimited = (clientKey: string): boolean => {
+const getClientKey = (request: Request): string => {
+  const vercelForwarded = parseForwardedIp(request.headers.get("x-vercel-forwarded-for"));
+  if (vercelForwarded) return vercelForwarded;
+
+  const realIp = request.headers.get("x-real-ip")?.trim();
+  if (realIp) return realIp;
+
+  const forwardedFor = parseForwardedIp(request.headers.get("x-forwarded-for"));
+  return forwardedFor || "unknown";
+};
+
+const trimMemoryBuckets = () => {
+  if (inMemoryBuckets.size < 2000) return;
+
   const now = Date.now();
-  const bucket = rateBuckets.get(clientKey);
+  for (const [key, bucket] of inMemoryBuckets.entries()) {
+    if (now - bucket.windowStart >= RATE_LIMIT_WINDOW_MS) {
+      inMemoryBuckets.delete(key);
+    }
+  }
+};
+
+const isMemoryRateLimited = (clientKey: string): boolean => {
+  const now = Date.now();
+  const bucket = inMemoryBuckets.get(clientKey);
 
   if (!bucket || now - bucket.windowStart >= RATE_LIMIT_WINDOW_MS) {
-    rateBuckets.set(clientKey, { count: 1, windowStart: now });
+    inMemoryBuckets.set(clientKey, { count: 1, windowStart: now });
     return false;
   }
 
   bucket.count += 1;
-  if (bucket.count > RATE_LIMIT_MAX_REQUESTS) {
-    return true;
-  }
-
-  return false;
+  return bucket.count > RATE_LIMIT_MAX_REQUESTS;
 };
 
-const trimBuckets = () => {
-  if (rateBuckets.size < 2000) return;
-
-  const now = Date.now();
-  for (const [key, bucket] of rateBuckets.entries()) {
-    if (now - bucket.windowStart >= RATE_LIMIT_WINDOW_MS) {
-      rateBuckets.delete(key);
-    }
+const isRateLimited = async (clientKey: string): Promise<boolean> => {
+  if (upstashLimiter) {
+    const result = await upstashLimiter.limit(clientKey);
+    return !result.success;
   }
+
+  trimMemoryBuckets();
+  return isMemoryRateLimited(clientKey);
+};
+
+const validateBodySize = (request: Request, body: string): NextResponse | null => {
+  const contentLengthHeader = request.headers.get("content-length");
+  const contentLength = contentLengthHeader ? Number(contentLengthHeader) : 0;
+  if (Number.isFinite(contentLength) && contentLength > MAX_REQUEST_BYTES) {
+    return NextResponse.json({ ok: false, error: "payload too large" }, { status: 413 });
+  }
+
+  const bodyBytes = new TextEncoder().encode(body).length;
+  if (bodyBytes > MAX_REQUEST_BYTES) {
+    return NextResponse.json({ ok: false, error: "payload too large" }, { status: 413 });
+  }
+
+  return null;
 };
 
 export async function POST(request: Request) {
   try {
-    trimBuckets();
-
     const clientKey = getClientKey(request);
-    if (isRateLimited(clientKey)) {
+    if (await isRateLimited(clientKey)) {
       return NextResponse.json({ ok: false, error: "rate limit exceeded" }, { status: 429 });
     }
 
-    const contentLengthHeader = request.headers.get("content-length");
-    const contentLength = contentLengthHeader ? Number(contentLengthHeader) : 0;
-    if (Number.isFinite(contentLength) && contentLength > MAX_REQUEST_BYTES) {
-      return NextResponse.json({ ok: false, error: "payload too large" }, { status: 413 });
-    }
-
     const raw = await request.text();
-    const bodyBytes = new TextEncoder().encode(raw).length;
-    if (bodyBytes > MAX_REQUEST_BYTES) {
-      return NextResponse.json({ ok: false, error: "payload too large" }, { status: 413 });
-    }
+    const tooLargeResponse = validateBodySize(request, raw);
+    if (tooLargeResponse) return tooLargeResponse;
 
     let json: unknown;
     try {

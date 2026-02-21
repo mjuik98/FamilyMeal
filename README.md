@@ -83,3 +83,24 @@ npm run migrate:meals
 - Production dependency gate: `npm run audit:prod:check`
 - Allowlist file: `security/audit-allowlist.json`
 - Allowlist entries are advisory/package-scoped and should include `expiresOn` for periodic review.
+
+## Server API Env
+- The app now uses server routes for comment mutations and meal deletion cleanup.
+- Configure Firebase Admin credentials:
+  - `FIREBASE_ADMIN_PROJECT_ID`
+  - `FIREBASE_ADMIN_CLIENT_EMAIL`
+  - `FIREBASE_ADMIN_PRIVATE_KEY`
+- If explicit service-account env vars are not set, the server falls back to Application Default Credentials.
+
+## Error Rate Limiting
+- `/api/client-errors` supports distributed rate limiting with Upstash Redis.
+- Optional env vars:
+  - `UPSTASH_REDIS_REST_URL`
+  - `UPSTASH_REDIS_REST_TOKEN`
+- If Upstash is not configured, the route falls back to in-memory rate limiting.
+
+## QA Gate Smoke Check
+- Verify production fail-closed QA route behavior (QA enabled + missing token must return 404):
+```bash
+npm run test:smoke:qa-token-required
+```

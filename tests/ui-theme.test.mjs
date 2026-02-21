@@ -66,6 +66,27 @@ test("qa proxy supports token-based protection", () => {
   assert.match(qaAccess, /if \(!qaRouteToken\)\s*{\s*return false;\s*}/);
 });
 
+test("comment mutations are handled by server APIs and update parent commentCount", () => {
+  const clientData = read("lib/data.ts");
+  const createRoute = read("app/api/meals/[id]/comments/route.ts");
+  const deleteRoute = read("app/api/meals/[id]/comments/[commentId]/route.ts");
+
+  assert.match(clientData, /\/api\/meals\/\$\{encodedMealId\}\/comments/);
+  assert.match(clientData, /\/api\/meals\/\$\{encodedMealId\}\/comments\/\$\{encodedCommentId\}/);
+  assert.doesNotMatch(clientData, /runTransaction\(/);
+  assert.match(createRoute, /commentCount:\s*baseCount \+ 1/);
+  assert.match(deleteRoute, /commentCount:\s*Math\.max\(0,\s*baseCount - 1\)/);
+});
+
+test("meal delete route uses idempotent server cleanup flow", () => {
+  const deleteRoute = read("app/api/meals/[id]/route.ts");
+  assert.match(deleteRoute, /_maintenanceDeleteJobs/);
+  assert.match(deleteRoute, /status:\s*"processing"/);
+  assert.match(deleteRoute, /status:\s*"completed"/);
+  assert.match(deleteRoute, /status:\s*"failed"/);
+  assert.match(deleteRoute, /deleteMealComments/);
+});
+
 test("qa mock mode is disabled in production by env guard", () => {
   const qaLib = read("lib/qa.ts");
   assert.match(qaLib, /NODE_ENV !== "production"/);
