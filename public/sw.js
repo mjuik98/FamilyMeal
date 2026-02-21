@@ -1,4 +1,10 @@
-self.APP_CACHE_PREFIXES = ["familymeal-", "family-meal-", "next-pwa-", "workbox-"];
+self.APP_CACHE_WHITELIST_PATTERNS = [
+  /^familymeal-(precache|runtime)-/,
+  /^family-meal-(precache|runtime)-/,
+  /^next-pwa-(precache|runtime)-/,
+  /^workbox-precache-v2-/,
+  /^workbox-runtime-/,
+];
 
 self.addEventListener("install", () => {
   self.skipWaiting();
@@ -8,7 +14,9 @@ self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches
       .keys()
-      .then((keys) => keys.filter((key) => self.APP_CACHE_PREFIXES.some((prefix) => key.startsWith(prefix))))
+      .then((keys) =>
+        keys.filter((key) => self.APP_CACHE_WHITELIST_PATTERNS.some((pattern) => pattern.test(key)))
+      )
       .then((keysToDelete) => Promise.all(keysToDelete.map((key) => caches.delete(key))))
       .then(() => self.clients.claim())
   );

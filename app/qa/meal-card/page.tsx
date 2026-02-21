@@ -1,5 +1,6 @@
 import MealCard from "@/components/MealCard";
 import { Meal } from "@/lib/types";
+import { notFound } from "next/navigation";
 
 const now = Date.now();
 
@@ -25,6 +26,13 @@ const sampleMeal: Meal = {
 };
 
 export default function QaMealCardPage() {
+  const qaEnabled =
+    process.env.NODE_ENV !== "production" || process.env.NEXT_PUBLIC_ENABLE_QA === "true";
+
+  if (!qaEnabled) {
+    notFound();
+  }
+
   return (
     <div style={{ padding: "20px 16px", paddingBottom: "100px" }}>
       <h1 style={{ marginBottom: "6px" }}>MealCard QA</h1>

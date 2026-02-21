@@ -4,38 +4,119 @@ import { RefreshCw } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 const POLL_INTERVAL_MS = 60_000;
-const APP_CACHE_PREFIXES = ["familymeal-", "family-meal-", "next-pwa-", "workbox-"];
+const POLL_LOCK_TTL_MS = POLL_INTERVAL_MS + 15_000;
+const UPDATE_LOCK_KEY = "familymeal:update-poll-lock";
+const UPDATE_CHANNEL_NAME = "familymeal:update-channel";
 const isPwaEnabled = process.env.NEXT_PUBLIC_ENABLE_PWA === "true";
+
+const APP_CACHE_PATTERNS = [
+  /^familymeal-(precache|runtime)-/,
+  /^family-meal-(precache|runtime)-/,
+  /^next-pwa-(precache|runtime)-/,
+  /^workbox-precache-v2-/,
+  /^workbox-runtime-/,
+];
+
+type PollLock = {
+  owner: string;
+  expiresAt: number;
+};
 
 type VersionResponse = {
   version?: string;
 };
+
+const parsePollLock = (raw: string | null): PollLock | null => {
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as Partial<PollLock>;
+    if (!parsed.owner || typeof parsed.expiresAt !== "number") return null;
+    return { owner: parsed.owner, expiresAt: parsed.expiresAt };
+  } catch {
+    return null;
+  }
+};
+
+const shouldDeleteCache = (key: string): boolean =>
+  APP_CACHE_PATTERNS.some((pattern) => pattern.test(key));
 
 export default function AppUpdateBanner() {
   const [updateAvailable, setUpdateAvailable] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const currentVersionRef = useRef<string | null>(null);
   const waitingWorkerRef = useRef<ServiceWorker | null>(null);
+  const channelRef = useRef<BroadcastChannel | null>(null);
+  const tabIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!isPwaEnabled) return;
     if (typeof window === "undefined") return;
+    if (!tabIdRef.current) {
+      tabIdRef.current =
+        window.crypto?.randomUUID?.() ??
+        `tab-${Date.now().toString(36)}-${Math.floor(Math.random() * 1_000_000_000).toString(36)}`;
+    }
 
     let intervalId: number | null = null;
     let active = true;
     let registration: ServiceWorkerRegistration | null = null;
     let installingWorker: ServiceWorker | null = null;
 
+    const readLock = (): PollLock | null => {
+      try {
+        return parsePollLock(window.localStorage.getItem(UPDATE_LOCK_KEY));
+      } catch {
+        return null;
+      }
+    };
+
+    const writeLock = (value: PollLock | null) => {
+      try {
+        if (!value) {
+          window.localStorage.removeItem(UPDATE_LOCK_KEY);
+          return;
+        }
+        window.localStorage.setItem(UPDATE_LOCK_KEY, JSON.stringify(value));
+      } catch {
+        // Ignore storage write issues.
+      }
+    };
+
+    const tryAcquireLock = (): boolean => {
+      const tabId = tabIdRef.current;
+      if (!tabId) return false;
+      const now = Date.now();
+      const lock = readLock();
+
+      if (!lock || lock.expiresAt <= now || lock.owner === tabId) {
+        writeLock({ owner: tabId, expiresAt: now + POLL_LOCK_TTL_MS });
+        return true;
+      }
+      return false;
+    };
+
+    const releaseLock = () => {
+      const tabId = tabIdRef.current;
+      if (!tabId) return;
+      const lock = readLock();
+      if (lock?.owner === tabId) {
+        writeLock(null);
+      }
+    };
+
+    const broadcastUpdateReady = () => {
+      channelRef.current?.postMessage({ type: "update-available" });
+    };
+
     const setUpdateReady = (worker?: ServiceWorker | null) => {
       if (worker) {
         waitingWorkerRef.current = worker;
       }
       setUpdateAvailable(true);
+      broadcastUpdateReady();
     };
 
     const checkDeployedVersion = async () => {
-      if (document.visibilityState !== "visible") return;
-
       try {
         const response = await fetch(`/api/version?t=${Date.now()}`, {
           cache: "no-store",
@@ -56,8 +137,19 @@ export default function AppUpdateBanner() {
           setUpdateReady();
         }
       } catch {
-        // Ignore network errors during background polling.
+        // Ignore transient network errors.
       }
+    };
+
+    const checkForUpdate = async () => {
+      if (!active) return;
+      if (document.visibilityState !== "visible") return;
+      if (!tryAcquireLock()) return;
+
+      await checkDeployedVersion();
+      registration?.update().catch(() => {
+        // Ignore service worker update polling failures.
+      });
     };
 
     const handleControllerChange = () => {
@@ -78,6 +170,20 @@ export default function AppUpdateBanner() {
       installingWorker.addEventListener("statechange", handleWorkerStateChange);
     };
 
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "hidden") {
+        releaseLock();
+        return;
+      }
+      void checkForUpdate();
+    };
+
+    const handleChannelMessage = (event: MessageEvent<{ type?: string }>) => {
+      if (event.data?.type === "update-available") {
+        setUpdateAvailable(true);
+      }
+    };
+
     const setupServiceWorker = async () => {
       if (!("serviceWorker" in navigator)) return;
 
@@ -93,22 +199,14 @@ export default function AppUpdateBanner() {
       navigator.serviceWorker.addEventListener("controllerchange", handleControllerChange);
     };
 
-    const checkForUpdate = async () => {
-      if (!active) return;
-      await checkDeployedVersion();
-      registration?.update().catch(() => {
-        // Ignore update polling errors.
-      });
-    };
+    if ("BroadcastChannel" in window) {
+      channelRef.current = new BroadcastChannel(UPDATE_CHANNEL_NAME);
+      channelRef.current.addEventListener("message", handleChannelMessage);
+    }
 
-    const handleVisibilityChange = () => {
-      if (document.visibilityState !== "visible") return;
-      void checkForUpdate();
-    };
-
-    void checkDeployedVersion();
-    void setupServiceWorker();
     document.addEventListener("visibilitychange", handleVisibilityChange);
+    void setupServiceWorker();
+    void checkForUpdate();
 
     intervalId = window.setInterval(() => {
       void checkForUpdate();
@@ -129,6 +227,11 @@ export default function AppUpdateBanner() {
         navigator.serviceWorker.removeEventListener("controllerchange", handleControllerChange);
       }
       document.removeEventListener("visibilitychange", handleVisibilityChange);
+      if (channelRef.current) {
+        channelRef.current.removeEventListener("message", handleChannelMessage);
+        channelRef.current.close();
+      }
+      releaseLock();
     };
   }, []);
 
@@ -142,11 +245,7 @@ export default function AppUpdateBanner() {
 
     if ("caches" in window) {
       const keys = await caches.keys();
-      await Promise.all(
-        keys
-          .filter((key) => APP_CACHE_PREFIXES.some((prefix) => key.startsWith(prefix)))
-          .map((key) => caches.delete(key))
-      );
+      await Promise.all(keys.filter(shouldDeleteCache).map((key) => caches.delete(key)));
     }
 
     window.setTimeout(() => {

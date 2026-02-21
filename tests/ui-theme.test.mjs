@@ -46,3 +46,10 @@ test("qa route for meal card e2e exists", () => {
   const qaPagePath = path.join(process.cwd(), "app", "qa", "meal-card", "page.tsx");
   assert.equal(fs.existsSync(qaPagePath), true);
 });
+
+test("qa route is gated in production", () => {
+  const qaPage = read("app/qa/meal-card/page.tsx");
+  assert.match(qaPage, /process\.env\.NODE_ENV !== "production"/);
+  assert.match(qaPage, /NEXT_PUBLIC_ENABLE_QA === "true"/);
+  assert.match(qaPage, /notFound\(\)/);
+});

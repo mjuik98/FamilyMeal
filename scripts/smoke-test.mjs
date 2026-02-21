@@ -3,6 +3,7 @@ import { spawn, spawnSync } from "node:child_process";
 const port = Number(process.env.SMOKE_PORT || 3210);
 const host = process.env.SMOKE_HOST || "127.0.0.1";
 const baseUrl = `http://${host}:${port}`;
+const includeQaRoutes = process.env.SMOKE_INCLUDE_QA === "true";
 
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -76,7 +77,9 @@ try {
   await waitForServer(`${baseUrl}/`);
   await assertPage("/");
   await assertPage("/add");
-  await assertPage("/qa/meal-card");
+  if (includeQaRoutes) {
+    await assertPage("/qa/meal-card");
+  }
   console.log("Smoke test passed");
 } finally {
   cleanup();

@@ -61,3 +61,10 @@ npm run migrate:meals:dry
 ```bash
 npm run migrate:meals
 ```
+
+## QA Route Control
+- QA routes are enabled in development by default.
+- In production, set `NEXT_PUBLIC_ENABLE_QA=true` only when QA pages are intentionally exposed.
+
+## Dependency Security
+- See `SECURITY_DEPENDENCIES.md` for dependency audit policy and unresolved upstream issues.

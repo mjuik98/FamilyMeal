@@ -1,5 +1,28 @@
 import { expect, test } from "@playwright/test";
 
+const parseRgb = (value: string): [number, number, number] => {
+  const matches = value.match(/\d+(\.\d+)?/g);
+  if (!matches || matches.length < 3) {
+    throw new Error(`Failed to parse RGB value: ${value}`);
+  }
+  return [Number(matches[0]), Number(matches[1]), Number(matches[2])];
+};
+
+const getLuminance = ([r, g, b]: [number, number, number]): number => {
+  const normalize = (channel: number) => {
+    const c = channel / 255;
+    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  };
+  return 0.2126 * normalize(r) + 0.7152 * normalize(g) + 0.0722 * normalize(b);
+};
+
+const getContrastRatio = (foreground: string, background: string): number => {
+  const fg = getLuminance(parseRgb(foreground));
+  const bg = getLuminance(parseRgb(background));
+  const [light, dark] = fg > bg ? [fg, bg] : [bg, fg];
+  return (light + 0.05) / (dark + 0.05);
+};
+
 test("comment input stays readable on mobile even when system theme is dark", async ({ page }) => {
   await page.goto("/qa/meal-card");
 
@@ -31,4 +54,10 @@ test("comment input stays readable on mobile even when system theme is dark", as
   expect(styles.placeholderColor).not.toBe(styles.backgroundColor);
   expect(styles.caretColor).toBe(styles.color);
   expect(styles.borderColor).not.toBe(styles.backgroundColor);
+
+  const textContrast = getContrastRatio(styles.color, styles.backgroundColor);
+  const placeholderContrast = getContrastRatio(styles.placeholderColor, styles.backgroundColor);
+
+  expect(textContrast).toBeGreaterThanOrEqual(4.5);
+  expect(placeholderContrast).toBeGreaterThanOrEqual(3);
 });

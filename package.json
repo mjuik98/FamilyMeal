@@ -10,6 +10,7 @@
     "test:ui": "node --test tests/ui-theme.test.mjs",
     "test:e2e": "playwright test",
     "test:e2e:install": "playwright install --with-deps chromium",
+    "audit:report": "npm audit --json",
     "ci:verify": "npm run lint && npm run typecheck && npm run build && npm run test:smoke && npm run test:ui",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",

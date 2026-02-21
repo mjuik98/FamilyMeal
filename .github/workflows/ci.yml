@@ -34,6 +34,7 @@ jobs:
         run: npm ci
 
       - name: Cache Playwright Browsers
+        id: playwright-cache
         uses: actions/cache@v4
         with:
           path: ~/.cache/ms-playwright
@@ -51,7 +52,19 @@ jobs:
       - name: Smoke Test
         run: npm run test:smoke
 
+      - name: Dependency Audit Report
+        run: npm audit --json > audit-report.json || true
+
+      - name: Upload Audit Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dependency-audit-report
+          path: audit-report.json
+          if-no-files-found: ignore
+
       - name: Install Playwright Browser
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
         run: npm run test:e2e:install
 
       - name: E2E Test
