@@ -3,7 +3,14 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import { UserRole, UserProfile } from '@/lib/types';
 import { auth, db } from '@/lib/firebase';
-import { onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signOut as firebaseSignOut, User } from 'firebase/auth';
+import {
+    onAuthStateChanged,
+    GoogleAuthProvider,
+    signInWithPopup,
+    signInWithRedirect,
+    signOut as firebaseSignOut,
+    User,
+} from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 type UserContextType = {
@@ -80,11 +87,34 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
     const signInWithGoogle = async () => {
         const provider = new GoogleAuthProvider();
+        provider.setCustomParameters({ prompt: 'select_account' });
+        setAuthError(null);
+
         try {
             await signInWithPopup(auth, provider);
-        } catch (error) {
+        } catch (error: unknown) {
+            const code =
+                typeof error === 'object' && error && 'code' in error
+                    ? String((error as { code?: string }).code)
+                    : '';
+
+            if (
+                code === 'auth/popup-blocked' ||
+                code === 'auth/popup-closed-by-user' ||
+                code === 'auth/cancelled-popup-request' ||
+                code === 'auth/operation-not-supported-in-this-environment'
+            ) {
+                await signInWithRedirect(auth, provider);
+                return;
+            }
+
+            if (code === 'auth/unauthorized-domain') {
+                setAuthError("이 도메인은 Firebase Auth 허용 도메인에 등록되어 있지 않습니다. 관리자에게 문의해 주세요.");
+                return;
+            }
+
+            setAuthError("Google 로그인에 실패했습니다. 잠시 후 다시 시도해 주세요.");
             console.error("Error signing in with Google", error);
-            throw error;
         }
     };
 

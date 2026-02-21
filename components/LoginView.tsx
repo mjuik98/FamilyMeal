@@ -26,25 +26,45 @@ export default function LoginView() {
     // 1. Not signed in
     if (!user) {
         return (
-            <div className="flex flex-col items-center justify-center min-h-[60vh] gap-8 p-4 text-center">
-                <div className="space-y-2">
-                    <h1 className="text-3xl font-bold">가족 식사 기록 🍽️</h1>
-                    <p className="text-muted">가족들과 함께 맛있는 추억을 남겨보세요</p>
+            <div className="flex flex-col min-h-[85vh] px-5 pt-12 pb-10">
+                {/* Header-like section */}
+                <header className="flex justify-between items-center mb-6">
+                    <div>
+                        <p className="text-sm text-muted-foreground mb-1">우리 가족의 식사 일기</p>
+                        <h1 className="text-xl font-bold">환영합니다! 👋</h1>
+                    </div>
+                </header>
+
+                {/* Main Card */}
+                <div className="bg-primary rounded-[20px] p-6 text-white mb-8 relative overflow-hidden shadow-sm">
+                    {/* Decorative circles matching main page */}
+                    <div className="absolute -top-[20px] -right-[10px] w-[100px] h-[100px] rounded-full bg-white/10" />
+                    <div className="absolute -bottom-[30px] right-[40px] w-[70px] h-[70px] rounded-full bg-[rgba(255,255,255,0.07)]" />
+                    
+                    <p className="text-sm opacity-85 mb-2 font-medium">가족 식사 기록 🍽️</p>
+                    <p className="text-[1.6rem] font-extrabold tracking-tight leading-snug">
+                        가족들과 함께<br/>
+                        맛있는 추억을<br/>
+                        남겨보세요
+                    </p>
                 </div>
 
                 {authError && (
-                    <div className="p-4 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 rounded-lg text-sm border border-red-200 dark:border-red-800 animate-in fade-in slide-in-from-bottom-2">
+                    <div className="p-4 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 rounded-xl text-sm border border-red-200 dark:border-red-800 animate-in fade-in mb-6">
                         {authError}
                     </div>
                 )}
 
-                <button
-                    onClick={signInWithGoogle}
-                    className="flex items-center gap-2 btn btn-primary px-8 py-4 text-lg"
-                >
-                    <LogIn size={24} />
-                    Google로 시작하기
-                </button>
+                <div className="mt-auto mb-4">
+                    <button
+                        onClick={signInWithGoogle}
+                        className="w-full flex justify-center items-center gap-3 bg-white text-gray-800 border border-gray-200 dark:bg-zinc-800 dark:text-white dark:border-zinc-700 shadow-sm rounded-[16px] px-6 py-4 text-[1.05rem] font-bold hover:bg-gray-50 dark:hover:bg-zinc-700 active:scale-[0.98] transition-all"
+                    >
+                        {/* Using custom google icon approach instead of generic LogIn if possible, but keep LogIn for now as per original */}
+                        <LogIn size={22} className="text-primary" />
+                        Google로 시작하기
+                    </button>
+                </div>
             </div>
         );
     }
