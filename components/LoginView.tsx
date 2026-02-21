@@ -26,22 +26,22 @@ export default function LoginView() {
     // 1. Not signed in
     if (!user) {
         return (
-            <div className="flex flex-col min-h-[100dvh] bg-white px-7 pt-16 pb-12 font-sans dark:bg-[#121212]">
+            <div className="flex flex-col min-h-[100dvh] bg-white px-7 pt-[8vh] pb-12 font-sans dark:bg-[#121212]">
                 {/* Top Logo Section */}
-                <div className="flex justify-center items-center gap-2 mb-10 mt-8">
-                    <div className="flex items-center justify-center w-[46px] h-[46px] bg-green-50 rounded-[14px] shadow-sm border border-green-100 dark:bg-green-900/20 dark:border-green-800/50">
-                        <span className="text-2xl" style={{ transform: 'translateY(1px)' }}>🍽️</span>
+                <div className="flex justify-center items-center gap-3 mb-12 mt-4">
+                    <div className="flex items-center justify-center w-[54px] h-[54px] bg-green-50 rounded-[16px] shadow-[0_2px_8px_rgba(0,0,0,0.04)] border border-green-100 dark:bg-green-900/20 dark:border-green-800/50">
+                        <span className="text-[32px]" style={{ transform: 'translateY(1px)' }}>🍽️</span>
                     </div>
                     <div className="flex flex-col justify-center">
-                        <h1 className="text-[26px] font-bold text-green-600 dark:text-green-500 leading-none tracking-tight">Family<span className="text-gray-900 dark:text-white">Meal</span></h1>
-                        <p className="text-[11px] text-gray-500 font-medium mt-1 tracking-wide dark:text-gray-400">Dinner is Ready</p>
+                        <h1 className="text-[32px] font-bold text-green-600 dark:text-green-500 leading-none tracking-tight">Family<span className="text-gray-900 dark:text-white">Meal</span></h1>
+                        <p className="text-[12px] text-gray-500 font-medium mt-1 tracking-wide dark:text-gray-400">Dinner is Ready</p>
                     </div>
                 </div>
 
                 {/* Welcome Text Section */}
                 <div className="mb-8">
-                    <h2 className="text-[28px] font-bold text-gray-900 mb-2.5 tracking-tight dark:text-white">Welcome</h2>
-                    <p className="text-[#6b7280] text-[15px] leading-[1.4] dark:text-gray-400">
+                    <h2 className="text-[32px] font-bold text-gray-900 mb-3 tracking-tight dark:text-white">Welcome</h2>
+                    <p className="text-[#6b7280] text-[16px] leading-[1.4] dark:text-gray-400">
                         To get started, please sign in using your<br />username and password.
                     </p>
                 </div>
