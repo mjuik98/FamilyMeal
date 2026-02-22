@@ -3,15 +3,17 @@
 import { createContext, useContext, useState, useCallback, useRef, useEffect } from 'react';
 
 type ToastType = 'success' | 'error' | 'info';
+type ToastPosition = 'top' | 'center';
 
 interface Toast {
     id: number;
     message: string;
     type: ToastType;
+    position: ToastPosition;
 }
 
 interface ToastContextType {
-    showToast: (message: string, type?: ToastType) => void;
+    showToast: (message: string, type?: ToastType, position?: ToastPosition) => void;
 }
 
 const ToastContext = createContext<ToastContextType | undefined>(undefined);
@@ -20,13 +22,20 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     const [toasts, setToasts] = useState<Toast[]>([]);
     const idRef = useRef(0);
 
-    const showToast = useCallback((message: string, type: ToastType = 'info') => {
+    const showToast = useCallback((
+        message: string,
+        type: ToastType = 'info',
+        position: ToastPosition = 'top'
+    ) => {
         const id = ++idRef.current;
-        setToasts(prev => [...prev, { id, message, type }]);
+        setToasts(prev => [...prev, { id, message, type, position }]);
         setTimeout(() => {
             setToasts(prev => prev.filter(t => t.id !== id));
         }, 3000);
     }, []);
+
+    const topToasts = toasts.filter((toast) => toast.position === 'top');
+    const centerToasts = toasts.filter((toast) => toast.position === 'center');
 
     return (
         <ToastContext.Provider value={{ showToast }}>
@@ -44,7 +53,25 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
                 width: '90%',
                 pointerEvents: 'none',
             }}>
-                {toasts.map(toast => (
+                {topToasts.map(toast => (
+                    <ToastItem key={toast.id} toast={toast} onDismiss={() => setToasts(prev => prev.filter(t => t.id !== toast.id))} />
+                ))}
+            </div>
+            <div style={{
+                position: 'fixed',
+                top: '50%',
+                left: '50%',
+                transform: 'translate(-50%, -50%)',
+                zIndex: 10000,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '8px',
+                maxWidth: '440px',
+                width: '90%',
+                pointerEvents: 'none',
+            }}>
+                {centerToasts.map(toast => (
                     <ToastItem key={toast.id} toast={toast} onDismiss={() => setToasts(prev => prev.filter(t => t.id !== toast.id))} />
                 ))}
             </div>

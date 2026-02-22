@@ -83,3 +83,23 @@ test("logout clears qa mock session", async ({ page }) => {
   await page.getByTestId("home-logout-button").click();
   await expect(page.getByTestId("meal-card-comment-toggle")).toHaveCount(0);
 });
+
+test("qa mock mode can add comments without auth", async ({ page }) => {
+  await enableQaMockMode(page);
+  await page.goto("/");
+
+  const toggleButton = page.getByTestId("meal-card-comment-toggle");
+  await expect(toggleButton).toBeVisible();
+  await toggleButton.click();
+
+  const commentInput = page.getByTestId("meal-card-comment-input");
+  await expect(commentInput).toBeVisible();
+  await expect(page.locator(".comment-item")).toHaveCount(1);
+
+  await commentInput.fill("qa local add");
+  await page.locator(".comment-send-btn").click();
+
+  await expect(page.locator(".comment-item")).toHaveCount(2);
+  await expect(page.locator(".comment-text").last()).toHaveText("qa local add");
+  await expect(toggleButton).toContainText("댓글 2");
+});

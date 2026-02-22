@@ -4,6 +4,7 @@ import { Meal, MealComment } from '@/lib/types';
 import { Check, ChevronDown, ChevronUp, Clock, MessageSquare, Pencil, Send, Trash2, X } from 'lucide-react';
 import { useUser } from '@/context/UserContext';
 import { addMealComment, deleteMeal, deleteMealComment, subscribeMealComments, updateMealComment } from '@/lib/data';
+import { isQaMockMode } from '@/lib/qa';
 import { useRouter } from 'next/navigation';
 import { useToast } from './Toast';
 import { useConfirm } from './ConfirmDialog';
@@ -40,6 +41,14 @@ export default function MealCard({ meal }: { meal: Meal }) {
   useEffect(() => {
     if (!commentsOpen) {
       setComments([]);
+      return;
+    }
+
+    const fallbackComments = meal.comments ?? [];
+    setComments(fallbackComments);
+    setCommentCount(meal.commentCount ?? fallbackComments.length);
+
+    if (isQaMockMode()) {
       return;
     }
 
@@ -118,6 +127,14 @@ export default function MealCard({ meal }: { meal: Meal }) {
       timestamp: now,
     };
 
+    if (isQaMockMode()) {
+      setCommentText('');
+      setComments((prev) => [...prev, optimisticComment]);
+      setCommentCount((prev) => prev + 1);
+      showToast('댓글이 등록되었습니다.', 'success');
+      return;
+    }
+
     setIsSubmittingComment(true);
     setCommentText('');
     setComments((prev) => [...prev, optimisticComment]);
@@ -132,7 +149,7 @@ export default function MealCard({ meal }: { meal: Meal }) {
       setComments((prev) => prev.filter((comment) => comment.id !== optimisticId));
       setCommentCount((prev) => Math.max(0, prev - 1));
       setCommentText(trimmed);
-      showToast('댓글 등록에 실패했습니다.', 'error');
+      showToast('댓글 등록에 실패했습니다.', 'error', 'center');
     } finally {
       setIsSubmittingComment(false);
     }
@@ -165,6 +182,12 @@ export default function MealCard({ meal }: { meal: Meal }) {
           : comment
       );
     });
+
+    if (isQaMockMode()) {
+      cancelEditingComment();
+      showToast('댓글이 수정되었습니다.', 'success');
+      return;
+    }
 
     setCommentActionId(commentId);
     try {
@@ -199,6 +222,14 @@ export default function MealCard({ meal }: { meal: Meal }) {
       return prev.filter((comment) => comment.id !== commentId);
     });
     setCommentCount((prev) => Math.max(0, prev - 1));
+
+    if (isQaMockMode()) {
+      if (editingCommentId === commentId) {
+        cancelEditingComment();
+      }
+      showToast('댓글이 삭제되었습니다.', 'success');
+      return;
+    }
 
     setCommentActionId(commentId);
     try {
