@@ -7,7 +7,6 @@ const rawPublicEnv = {
   NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
   NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
   NEXT_PUBLIC_FIREBASE_APP_ID: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
-  NEXT_PUBLIC_ALLOWED_EMAILS: process.env.NEXT_PUBLIC_ALLOWED_EMAILS,
   NEXT_PUBLIC_ENABLE_PWA: process.env.NEXT_PUBLIC_ENABLE_PWA,
 };
 
@@ -18,7 +17,6 @@ const PublicEnvSchema = z.object({
   NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: z.string().trim().min(1),
   NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: z.string().trim().min(1),
   NEXT_PUBLIC_FIREBASE_APP_ID: z.string().trim().min(1),
-  NEXT_PUBLIC_ALLOWED_EMAILS: z.string().optional().default(""),
   NEXT_PUBLIC_ENABLE_PWA: z.enum(["true", "false"]).optional().default("false"),
 });
 
@@ -31,10 +29,6 @@ if (!parsed.success) {
 
 const values = parsed.data;
 
-const allowedEmails = values.NEXT_PUBLIC_ALLOWED_EMAILS.split(",")
-  .map((email) => email.trim().toLowerCase())
-  .filter(Boolean);
-
 export const publicEnv = {
   firebase: {
     apiKey: values.NEXT_PUBLIC_FIREBASE_API_KEY.trim(),
@@ -44,6 +38,5 @@ export const publicEnv = {
     messagingSenderId: values.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID.trim(),
     appId: values.NEXT_PUBLIC_FIREBASE_APP_ID.trim(),
   },
-  allowedEmails,
   enablePwa: values.NEXT_PUBLIC_ENABLE_PWA === "true",
 } as const;

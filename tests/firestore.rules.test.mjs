@@ -166,6 +166,35 @@ test("meal description longer than 300 chars is rejected", async () => {
   );
 });
 
+test("meal with invalid imageUrl or excessive keywords is rejected", async () => {
+  const ownerDb = testEnv.authenticatedContext(OWNER_UID).firestore();
+  const excessiveKeywords = Array.from({ length: 81 }, (_, idx) => `kw-${idx}`);
+
+  await assertFails(
+    setDoc(doc(ownerDb, "meals", "meal-invalid-image"), {
+      ownerUid: OWNER_UID,
+      userIds: [ROLE_DAD],
+      description: "유효하지 않은 이미지 URL",
+      type: TYPE_DINNER,
+      imageUrl: "ftp://invalid.example.com/a.jpg",
+      timestamp: Timestamp.fromMillis(Date.now()),
+      commentCount: 0,
+    })
+  );
+
+  await assertFails(
+    setDoc(doc(ownerDb, "meals", "meal-too-many-keywords"), {
+      ownerUid: OWNER_UID,
+      userIds: [ROLE_DAD],
+      description: "키워드 과다",
+      type: TYPE_LUNCH,
+      keywords: excessiveKeywords,
+      timestamp: Timestamp.fromMillis(Date.now()),
+      commentCount: 0,
+    })
+  );
+});
+
 test("meal participants can read meal", async () => {
   const ownerDb = testEnv.authenticatedContext(OWNER_UID).firestore();
   const momDb = testEnv.authenticatedContext(MOM_UID).firestore();
@@ -305,6 +334,20 @@ test("user profile create requires auth email match", async () => {
   );
 });
 
+test("user profile create with non-null role is denied", async () => {
+  const uid = "role-create-user";
+  const userDb = testEnv.authenticatedContext(uid, { email: "role-create@test.com" }).firestore();
+
+  await assertFails(
+    setDoc(doc(userDb, "users", uid), {
+      uid,
+      email: "role-create@test.com",
+      displayName: "Role User",
+      role: ROLE_DAD,
+    })
+  );
+});
+
 test("user profile cannot change persisted email", async () => {
   const ownerDb = testEnv.authenticatedContext(OWNER_UID, { email: "owner@test.com" }).firestore();
 
@@ -317,6 +360,16 @@ test("user profile cannot change persisted email", async () => {
   await assertFails(
     updateDoc(doc(ownerDb, "users", OWNER_UID), {
       email: "attacker@test.com",
+    })
+  );
+});
+
+test("user profile role cannot be changed by client", async () => {
+  const ownerDb = testEnv.authenticatedContext(OWNER_UID, { email: "owner@test.com" }).firestore();
+
+  await assertFails(
+    updateDoc(doc(ownerDb, "users", OWNER_UID), {
+      role: ROLE_MOM,
     })
   );
 });

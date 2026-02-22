@@ -38,6 +38,18 @@ service cloud.firestore {
         && value.size() <= 500;
     }
 
+    function validImageUrl(value) {
+      return value is string
+        && value.size() > 0
+        && value.size() <= 2048
+        && value.matches('https?://.*');
+    }
+
+    function validKeywords(value) {
+      return value is list
+        && value.size() <= 80;
+    }
+
     function hasValidParticipantList(mealData) {
       return mealData.userIds is list
         && mealData.userIds.size() > 0
@@ -76,6 +88,8 @@ service cloud.firestore {
         && mealData.timestamp is timestamp
         && mealData.commentCount is int
         && mealData.commentCount >= 0
+        && (!('imageUrl' in mealData) || validImageUrl(mealData.imageUrl))
+        && (!('keywords' in mealData) || validKeywords(mealData.keywords))
         && (!('userId' in mealData) || validRole(mealData.userId));
     }
 
@@ -108,13 +122,15 @@ service cloud.firestore {
 
       allow create: if signedIn()
         && request.auth.uid == uid
-        && validUserProfile(request.resource.data);
+        && validUserProfile(request.resource.data)
+        && request.resource.data.role == null;
 
       allow update: if signedIn()
         && request.auth.uid == uid
         && validUserProfile(request.resource.data)
         && request.resource.data.uid == resource.data.uid
-        && request.resource.data.email == resource.data.email;
+        && request.resource.data.email == resource.data.email
+        && request.resource.data.role == resource.data.role;
 
       allow delete: if signedIn() && request.auth.uid == uid;
     }

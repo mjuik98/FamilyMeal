@@ -26,10 +26,20 @@ const toVerifiedUser = (decoded: DecodedIdToken): VerifiedUser => ({
   email: typeof decoded.email === "string" ? decoded.email : null,
 });
 
-const allowedEmails = (process.env.NEXT_PUBLIC_ALLOWED_EMAILS ?? "")
-  .split(",")
-  .map((email) => email.trim().toLowerCase())
-  .filter(Boolean);
+const parseAllowedEmails = (raw: string): string[] =>
+  raw
+    .split(",")
+    .map((email) => email.trim().toLowerCase())
+    .filter(Boolean);
+
+const allowedEmails = parseAllowedEmails(process.env.ALLOWED_EMAILS ?? "");
+const isProduction = process.env.NODE_ENV === "production";
+
+const assertAllowlistConfigured = () => {
+  if (isProduction && allowedEmails.length === 0) {
+    throw new AuthError("Server allowlist is not configured", 503);
+  }
+};
 
 const isAllowedEmail = (email: string | null): boolean => {
   if (allowedEmails.length === 0) return true;
@@ -37,7 +47,14 @@ const isAllowedEmail = (email: string | null): boolean => {
   return allowedEmails.includes(email.toLowerCase());
 };
 
+const verifyAllowlistedEmail = (email: string | null) => {
+  if (isAllowedEmail(email)) return;
+  throw new AuthError("Email is not allowed", 403);
+};
+
 export const verifyRequestUser = async (request: Request): Promise<VerifiedUser> => {
+  assertAllowlistConfigured();
+
   const raw = request.headers.get("authorization") ?? "";
   if (!raw.startsWith("Bearer ")) {
     throw new AuthError("Missing bearer token", 401);
@@ -51,9 +68,7 @@ export const verifyRequestUser = async (request: Request): Promise<VerifiedUser>
   try {
     const decoded = await adminAuth.verifyIdToken(token, true);
     const user = toVerifiedUser(decoded);
-    if (!isAllowedEmail(user.email)) {
-      throw new AuthError("Email is not allowed", 403);
-    }
+    verifyAllowlistedEmail(user.email);
     return user;
   } catch (error) {
     if (error instanceof AuthError) {

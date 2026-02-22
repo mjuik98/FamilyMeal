@@ -90,6 +90,13 @@ npm run migrate:meals
   - `FIREBASE_ADMIN_PROJECT_ID`
   - `FIREBASE_ADMIN_CLIENT_EMAIL`
   - `FIREBASE_ADMIN_PRIVATE_KEY`
+- Configure server-side email allowlist:
+  - `ALLOWED_EMAILS` (comma-separated)
+  - Production is fail-closed when this is missing.
+- Role assignment policy:
+  - Roles are assigned through `/api/profile/role`.
+  - By default role is locked after first assignment.
+  - Optional override: `ALLOW_ROLE_REASSIGN=true`.
 - If explicit service-account env vars are not set, the server falls back to Application Default Credentials.
 
 ## Error Rate Limiting

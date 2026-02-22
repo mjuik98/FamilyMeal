@@ -9,11 +9,10 @@ import {
   signOut as firebaseSignOut,
   User,
 } from "firebase/auth";
-import { doc, getDoc, setDoc } from "firebase/firestore";
+import { doc, getDoc } from "firebase/firestore";
 
 import { UserProfile, UserRole } from "@/lib/types";
 import { auth, db } from "@/lib/firebase";
-import { publicEnv } from "@/lib/env";
 import { QA_MOCK_MODE_KEY, getQaDefaultRole, isQaMockMode } from "@/lib/qa";
 
 type UserContextType = {
@@ -37,6 +36,29 @@ const createQaProfile = (role: UserRole = getQaDefaultRole()): UserProfile => ({
   role,
 });
 
+const getAccessToken = async (): Promise<string> => {
+  const current = auth.currentUser;
+  if (!current) {
+    throw new Error("Not authenticated");
+  }
+  return current.getIdToken();
+};
+
+const parseErrorMessage = async (
+  response: Response,
+  fallback: string
+): Promise<string> => {
+  try {
+    const payload = (await response.json()) as { error?: unknown };
+    if (typeof payload.error === "string" && payload.error.trim().length > 0) {
+      return payload.error;
+    }
+  } catch {
+    // Ignore JSON parse errors and use fallback.
+  }
+  return fallback;
+};
+
 export function UserProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
@@ -54,22 +76,6 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (firebaseUser) {
-        const allowedEmails = publicEnv.allowedEmails;
-
-        if (
-          allowedEmails.length > 0 &&
-          (!firebaseUser.email || !allowedEmails.includes(firebaseUser.email.toLowerCase()))
-        ) {
-          await firebaseSignOut(auth);
-          setUser(null);
-          setUserProfile(null);
-          setAuthError(
-            "\uC6B0\uB9AC \uAC00\uC871\uC73C\uB85C \uB4F1\uB85D\uB418\uC9C0 \uC54A\uC740 \uACC4\uC815\uC785\uB2C8\uB2E4. \uAC00\uC871\uC5D0\uAC8C \uBB38\uC758\uD574\uC8FC\uC138\uC694!"
-          );
-          setLoading(false);
-          return;
-        }
-
         setUser(firebaseUser);
         setAuthError(null);
 
@@ -184,18 +190,36 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
     if (!user) return;
 
-    const newProfile: UserProfile = {
-      uid: user.uid,
-      email: user.email,
-      displayName: user.displayName,
-      role,
-    };
-
     try {
-      await setDoc(doc(db, "users", user.uid), newProfile);
-      setUserProfile(newProfile);
+      const token = await getAccessToken();
+      const response = await fetch("/api/profile/role", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        cache: "no-store",
+        body: JSON.stringify({ role }),
+      });
+
+      if (!response.ok) {
+        const message = await parseErrorMessage(response, "역할 저장에 실패했습니다.");
+        throw new Error(message);
+      }
+
+      const payload = (await response.json()) as { profile?: UserProfile };
+      if (!payload.profile) {
+        throw new Error("역할 저장 결과가 올바르지 않습니다.");
+      }
+      setUserProfile(payload.profile);
+      setAuthError(null);
     } catch (error) {
       console.error("Error saving user role", error);
+      setAuthError(
+        error instanceof Error
+          ? error.message
+          : "역할 저장에 실패했습니다. 잠시 후 다시 시도해 주세요."
+      );
       throw error;
     }
   };

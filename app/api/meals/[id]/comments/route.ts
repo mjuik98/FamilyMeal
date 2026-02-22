@@ -15,6 +15,13 @@ type Params = {
   id: string;
 };
 
+type MealDoc = {
+  ownerUid?: unknown;
+  userIds?: unknown;
+  userId?: unknown;
+  commentCount?: unknown;
+};
+
 class RouteError extends Error {
   status: number;
 
@@ -53,6 +60,18 @@ const getErrorStatus = (error: unknown): number =>
 const getErrorMessage = (error: unknown): string =>
   error instanceof AuthError || error instanceof RouteError ? error.message : "internal error";
 
+const canCommentOnMeal = (meal: MealDoc, uid: string, role: string): boolean => {
+  if (typeof meal.ownerUid === "string" && meal.ownerUid === uid) {
+    return true;
+  }
+
+  if (Array.isArray(meal.userIds)) {
+    return meal.userIds.some((participant) => participant === role);
+  }
+
+  return typeof meal.userId === "string" && meal.userId === role;
+};
+
 export async function POST(
   request: Request,
   context: { params: Promise<Params> }
@@ -87,7 +106,11 @@ export async function POST(
         throw new RouteError("Meal not found", 404);
       }
 
-      const mealData = mealSnap.data() as { commentCount?: unknown };
+      const mealData = mealSnap.data() as MealDoc;
+      if (!canCommentOnMeal(mealData, user.uid, role)) {
+        throw new RouteError("Not allowed", 403);
+      }
+
       const baseCount =
         typeof mealData.commentCount === "number" && Number.isFinite(mealData.commentCount)
           ? Math.max(0, Math.floor(mealData.commentCount))
