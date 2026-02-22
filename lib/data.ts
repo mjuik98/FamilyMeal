@@ -20,6 +20,9 @@ import {
 export const users: UserRole[] = ['아빠', '엄마', '딸', '아들'];
 
 const DEFAULT_MEAL_TYPE: Meal['type'] = '점심';
+const MAX_MEAL_DESCRIPTION_LENGTH = 300;
+const SEARCH_INDEX_LIMIT = 300;
+const SEARCH_FALLBACK_LIMIT = 300;
 
 const getAccessToken = async (): Promise<string> => {
     const user = auth.currentUser;
@@ -129,6 +132,17 @@ const buildMealKeywords = (meal: Pick<Meal, 'description' | 'type' | 'userIds' |
     return Array.from(new Set(tokens));
 };
 
+const normalizeMealDescription = (description: string): string => {
+    const trimmed = description.trim();
+    if (!trimmed) {
+        throw new Error('Meal description is empty');
+    }
+    if (trimmed.length > MAX_MEAL_DESCRIPTION_LENGTH) {
+        throw new Error(`Meal description must be <= ${MAX_MEAL_DESCRIPTION_LENGTH} characters`);
+    }
+    return trimmed;
+};
+
 const matchesKeyword = (meal: Meal, keyword: string): boolean => {
     const lower = keyword.toLowerCase();
     return meal.description.toLowerCase().includes(lower) ||
@@ -162,6 +176,13 @@ const getDayRange = (date: Date) => {
     endOfDay.setHours(23, 59, 59, 999);
 
     return { startOfDay, endOfDay };
+};
+
+const getDayKey = (date: Date): string => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
 };
 
 const dedupeAndSortMeals = (meals: Meal[]): Meal[] => {
@@ -215,15 +236,18 @@ export const addMeal = async (meal: Omit<Meal, 'id'>) => {
     if (!meal.ownerUid) {
         throw new Error('ownerUid is required');
     }
+    const normalizedDescription = normalizeMealDescription(meal.description);
 
     const mealsRef = collection(db, 'meals');
     const { comments, ...restMeal } = meal;
     const commentCount = comments?.length ?? meal.commentCount ?? 0;
+    const indexedPayload = { ...restMeal, description: normalizedDescription };
 
     await addDoc(mealsRef, {
         ...restMeal,
+        description: normalizedDescription,
         commentCount,
-        keywords: buildMealKeywords(restMeal),
+        keywords: buildMealKeywords(indexedPayload),
         timestamp: Timestamp.fromMillis(meal.timestamp),
     });
 };
@@ -252,6 +276,9 @@ export const getMealById = async (id: string): Promise<Meal | null> => {
 export const updateMeal = async (id: string, updates: Partial<Omit<Meal, 'id'>>) => {
     const mealRef = doc(db, 'meals', id);
     const nextUpdates = { ...updates };
+    if (typeof nextUpdates.description === 'string') {
+        nextUpdates.description = normalizeMealDescription(nextUpdates.description);
+    }
     delete (nextUpdates as { comments?: unknown }).comments;
     delete (nextUpdates as { commentCount?: unknown }).commentCount;
     const dataToUpdate: Record<string, unknown> = { ...nextUpdates };
@@ -381,25 +408,37 @@ export const getWeeklyStats = async (): Promise<{ date: Date; label: string; cou
         return d;
     });
 
-    return Promise.all(
-        dates.map(async (date) => {
-            const { startOfDay: start, endOfDay: end } = getDayRange(date);
+    const firstRange = getDayRange(dates[0]);
+    const lastRange = getDayRange(dates[dates.length - 1]);
 
-            const mealsRef = collection(db, 'meals');
-            const q = query(
-                mealsRef,
-                where('timestamp', '>=', Timestamp.fromDate(start)),
-                where('timestamp', '<=', Timestamp.fromDate(end))
-            );
-            const snapshot = await getDocs(q);
-
-            return {
-                date,
-                label: dayNames[date.getDay()],
-                count: snapshot.size,
-            };
-        })
+    const mealsRef = collection(db, 'meals');
+    const q = query(
+        mealsRef,
+        where('timestamp', '>=', Timestamp.fromDate(firstRange.startOfDay)),
+        where('timestamp', '<=', Timestamp.fromDate(lastRange.endOfDay))
     );
+    const snapshot = await getDocs(q);
+
+    const countByDay = new Map<string, number>();
+    dates.forEach((date) => {
+        countByDay.set(getDayKey(date), 0);
+    });
+
+    snapshot.docs.forEach((docSnap) => {
+        const meal = convertMeal(docSnap);
+        const key = getDayKey(new Date(meal.timestamp));
+        if (!countByDay.has(key)) return;
+        countByDay.set(key, (countByDay.get(key) ?? 0) + 1);
+    });
+
+    return dates.map((date) => {
+        const key = getDayKey(date);
+        return {
+            date,
+            label: dayNames[date.getDay()],
+            count: countByDay.get(key) ?? 0,
+        };
+    });
 };
 
 export const searchMeals = async (keyword: string): Promise<Meal[]> => {
@@ -407,26 +446,35 @@ export const searchMeals = async (keyword: string): Promise<Meal[]> => {
     if (!normalized) return [];
 
     const mealsRef = collection(db, 'meals');
-    const firstToken = normalized.split(/\s+/)[0];
+    const searchTokens = Array.from(
+        new Set(
+            normalized
+                .split(/\s+/)
+                .map((token) => token.trim())
+                .filter((token) => token.length >= 2)
+        )
+    ).slice(0, 10);
 
     try {
-        const indexedQuery = query(
-            mealsRef,
-            where('keywords', 'array-contains', firstToken),
-            limit(200)
-        );
-        const indexedSnapshot = await getDocs(indexedQuery);
-        const indexedMeals = indexedSnapshot.docs.map(convertMeal);
-        if (indexedMeals.length > 0) {
-            return indexedMeals
-                .filter((meal) => matchesKeyword(meal, normalized))
-                .sort((a, b) => b.timestamp - a.timestamp);
+        if (searchTokens.length > 0) {
+            const indexedQuery = query(
+                mealsRef,
+                where('keywords', 'array-contains-any', searchTokens),
+                limit(SEARCH_INDEX_LIMIT)
+            );
+            const indexedSnapshot = await getDocs(indexedQuery);
+            const indexedMeals = indexedSnapshot.docs.map(convertMeal);
+            if (indexedMeals.length > 0) {
+                return indexedMeals
+                    .filter((meal) => matchesKeyword(meal, normalized))
+                    .sort((a, b) => b.timestamp - a.timestamp);
+            }
         }
     } catch (error) {
         console.warn('Indexed search failed, falling back to full scan', error);
     }
 
-    const fallbackQuery = query(mealsRef, orderBy('timestamp', 'desc'), limit(500));
+    const fallbackQuery = query(mealsRef, orderBy('timestamp', 'desc'), limit(SEARCH_FALLBACK_LIMIT));
     const fallbackSnapshot = await getDocs(fallbackQuery);
     const all = fallbackSnapshot.docs.map(convertMeal);
     return all.filter((meal) => matchesKeyword(meal, normalized));

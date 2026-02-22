@@ -166,9 +166,16 @@ test("meal description longer than 300 chars is rejected", async () => {
   );
 });
 
-test("family member with profile can read non-participant meal", async () => {
+test("meal participants can read meal", async () => {
+  const ownerDb = testEnv.authenticatedContext(OWNER_UID).firestore();
+  const momDb = testEnv.authenticatedContext(MOM_UID).firestore();
+  await assertSucceeds(getDoc(doc(ownerDb, "meals", MEAL_ID)));
+  await assertSucceeds(getDoc(doc(momDb, "meals", MEAL_ID)));
+});
+
+test("non-participant with profile cannot read meal", async () => {
   const outsiderDb = testEnv.authenticatedContext(OUTSIDER_UID).firestore();
-  await assertSucceeds(getDoc(doc(outsiderDb, "meals", MEAL_ID)));
+  await assertFails(getDoc(doc(outsiderDb, "meals", MEAL_ID)));
 });
 
 test("authenticated user without profile cannot read meal", async () => {

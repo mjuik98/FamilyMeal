@@ -31,7 +31,12 @@ const CommentCreateSchema = z.object({
 
 const getMealId = async (params: Promise<Params>): Promise<string> => {
   const { id } = await params;
-  const mealId = decodeURIComponent(id || "").trim();
+  let mealId = "";
+  try {
+    mealId = decodeURIComponent(id || "").trim();
+  } catch {
+    throw new RouteError("Invalid meal id", 400);
+  }
   if (!mealId) {
     throw new RouteError("Invalid meal id", 400);
   }
@@ -61,7 +66,12 @@ export async function POST(
       throw new RouteError("Valid user role is required", 403);
     }
 
-    const body = await request.json();
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      throw new RouteError("Invalid JSON body", 400);
+    }
     const parsed = CommentCreateSchema.safeParse(body);
     if (!parsed.success) {
       throw new RouteError("Invalid payload", 400);

@@ -58,8 +58,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
         if (
           allowedEmails.length > 0 &&
-          firebaseUser.email &&
-          !allowedEmails.includes(firebaseUser.email.toLowerCase())
+          (!firebaseUser.email || !allowedEmails.includes(firebaseUser.email.toLowerCase()))
         ) {
           await firebaseSignOut(auth);
           setUser(null);

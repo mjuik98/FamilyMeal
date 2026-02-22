@@ -55,7 +55,12 @@ const getErrorMessage = (error: unknown): string =>
 
 const decodeMealId = async (params: Promise<Params>): Promise<string> => {
   const { id } = await params;
-  const mealId = decodeURIComponent(id || "").trim();
+  let mealId = "";
+  try {
+    mealId = decodeURIComponent(id || "").trim();
+  } catch {
+    throw new RouteError("Invalid meal id", 400);
+  }
   if (!mealId) {
     throw new RouteError("Invalid meal id", 400);
   }
@@ -99,15 +104,6 @@ const planDeleteOperation = async (
     const now = Date.now();
 
     if (!mealSnap.exists) {
-      tx.set(
-        jobRef,
-        {
-          status: "completed",
-          deletedAt: now,
-          updatedAt: now,
-        },
-        { merge: true }
-      );
       return { action: "already_deleted" } satisfies DeletePlan;
     }
 

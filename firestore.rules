@@ -28,6 +28,7 @@ service cloud.firestore {
     function validMealDescription(value) {
       return value is string
         && value.size() > 0
+        && value.matches('.*\\S.*')
         && value.size() <= 300;
     }
 
@@ -60,7 +61,7 @@ service cloud.firestore {
     }
 
     function canReadMeal(mealData) {
-      return hasUserProfile();
+      return isMealParticipant(mealData);
     }
 
     function validMealDocument(mealData) {

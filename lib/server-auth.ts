@@ -26,6 +26,17 @@ const toVerifiedUser = (decoded: DecodedIdToken): VerifiedUser => ({
   email: typeof decoded.email === "string" ? decoded.email : null,
 });
 
+const allowedEmails = (process.env.NEXT_PUBLIC_ALLOWED_EMAILS ?? "")
+  .split(",")
+  .map((email) => email.trim().toLowerCase())
+  .filter(Boolean);
+
+const isAllowedEmail = (email: string | null): boolean => {
+  if (allowedEmails.length === 0) return true;
+  if (!email) return false;
+  return allowedEmails.includes(email.toLowerCase());
+};
+
 export const verifyRequestUser = async (request: Request): Promise<VerifiedUser> => {
   const raw = request.headers.get("authorization") ?? "";
   if (!raw.startsWith("Bearer ")) {
@@ -39,8 +50,15 @@ export const verifyRequestUser = async (request: Request): Promise<VerifiedUser>
 
   try {
     const decoded = await adminAuth.verifyIdToken(token, true);
-    return toVerifiedUser(decoded);
-  } catch {
+    const user = toVerifiedUser(decoded);
+    if (!isAllowedEmail(user.email)) {
+      throw new AuthError("Email is not allowed", 403);
+    }
+    return user;
+  } catch (error) {
+    if (error instanceof AuthError) {
+      throw error;
+    }
     throw new AuthError("Invalid auth token", 401);
   }
 };

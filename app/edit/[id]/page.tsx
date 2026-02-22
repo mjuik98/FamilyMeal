@@ -89,6 +89,15 @@ export default function EditMealPage() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!userProfile?.role) return;
+        const normalizedDescription = description.trim();
+        if (!normalizedDescription) {
+            showToast('설명을 입력해 주세요.', 'error');
+            return;
+        }
+        if (normalizedDescription.length > 300) {
+            showToast('설명은 300자 이하로 입력해 주세요.', 'error');
+            return;
+        }
 
         setIsSubmitting(true);
 
@@ -104,7 +113,7 @@ export default function EditMealPage() {
             await updateMeal(mealId, {
                 ...(needsOwnerAdoption ? { ownerUid: userProfile.uid } : {}),
                 userIds: selectedUsers,
-                description,
+                description: normalizedDescription,
                 type,
                 imageUrl,
             });
@@ -214,6 +223,7 @@ export default function EditMealPage() {
                         placeholder="어떤 식사를 했는지 적어주세요"
                         className="input-base textarea-base w-full p-3 resize-none h-24 focus:outline-none focus:ring-2 focus:ring-primary/50"
                         required
+                        maxLength={300}
                     />
                 </div>
 

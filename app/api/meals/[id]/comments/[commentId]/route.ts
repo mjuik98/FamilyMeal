@@ -60,12 +60,18 @@ const toMillis = (value: unknown, fallback: number): number => {
   return fallback;
 };
 
-const decodeParam = (value: string): string => decodeURIComponent(value || "").trim();
+const decodeParam = (value: string, label: string): string => {
+  try {
+    return decodeURIComponent(value || "").trim();
+  } catch {
+    throw new RouteError(`Invalid ${label}`, 400);
+  }
+};
 
 const getRouteParams = async (params: Promise<Params>) => {
   const { id, commentId } = await params;
-  const mealId = decodeParam(id);
-  const normalizedCommentId = decodeParam(commentId);
+  const mealId = decodeParam(id, "meal id");
+  const normalizedCommentId = decodeParam(commentId, "comment id");
 
   if (!mealId) {
     throw new RouteError("Invalid meal id", 400);
@@ -103,7 +109,12 @@ export async function PATCH(
     const user = await verifyRequestUser(request);
     const { mealId, commentId } = await getRouteParams(context.params);
 
-    const body = await request.json();
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      throw new RouteError("Invalid JSON body", 400);
+    }
     const parsed = CommentUpdateSchema.safeParse(body);
     if (!parsed.success) {
       throw new RouteError("Invalid payload", 400);
