@@ -2,10 +2,27 @@ import { App, applicationDefault, cert, getApps, initializeApp } from "firebase-
 import { getAuth } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
 
-const adminProjectId =
-  process.env.FIREBASE_ADMIN_PROJECT_ID || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
-const adminClientEmail = process.env.FIREBASE_ADMIN_CLIENT_EMAIL;
-const adminPrivateKey = process.env.FIREBASE_ADMIN_PRIVATE_KEY?.replace(/\\n/g, "\n");
+const normalizeEnvValue = (value: string | undefined): string | undefined => {
+  if (typeof value !== "string") return undefined;
+
+  const trimmed = value.trim();
+  if (!trimmed) return undefined;
+
+  if (trimmed.startsWith('"') && trimmed.endsWith('"') && trimmed.length >= 2) {
+    return trimmed.slice(1, -1);
+  }
+
+  return trimmed;
+};
+
+const adminProjectId = normalizeEnvValue(
+  process.env.FIREBASE_ADMIN_PROJECT_ID || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID
+);
+const adminClientEmail = normalizeEnvValue(process.env.FIREBASE_ADMIN_CLIENT_EMAIL);
+const adminPrivateKey = normalizeEnvValue(process.env.FIREBASE_ADMIN_PRIVATE_KEY)?.replace(
+  /\\n/g,
+  "\n"
+);
 
 const hasServiceAccount = Boolean(adminProjectId && adminClientEmail && adminPrivateKey);
 
