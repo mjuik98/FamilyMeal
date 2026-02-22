@@ -14,10 +14,11 @@ test("server auth uses server-only allowlist and production fail-closed guard", 
   assert.doesNotMatch(serverAuth, /allowedEmailsRaw[\s\S]*NEXT_PUBLIC_ALLOWED_EMAILS/);
 });
 
-test("comment creation route checks meal participant authorization", () => {
+test("comment creation route only requires authenticated role", () => {
   const commentRoute = read("app/api/meals/[id]/comments/route.ts");
-  assert.match(commentRoute, /const canCommentOnMeal =/);
-  assert.match(commentRoute, /throw new RouteError\("Not allowed", 403\)/);
+  assert.match(commentRoute, /Valid user role is required/);
+  assert.doesNotMatch(commentRoute, /const canCommentOnMeal =/);
+  assert.doesNotMatch(commentRoute, /throw new RouteError\("Not allowed", 403\)/);
 });
 
 test("role updates are handled by server route with lock policy", () => {
