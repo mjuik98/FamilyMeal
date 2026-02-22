@@ -24,12 +24,12 @@ const MAX_MEAL_DESCRIPTION_LENGTH = 300;
 const SEARCH_INDEX_LIMIT = 300;
 const SEARCH_FALLBACK_LIMIT = 300;
 
-const getAccessToken = async (): Promise<string> => {
+const getAccessToken = async (forceRefresh = false): Promise<string> => {
     const user = auth.currentUser;
     if (!user) {
         throw new Error('Not authenticated');
     }
-    return user.getIdToken();
+    return user.getIdToken(forceRefresh);
 };
 
 const getErrorMessageFromResponse = async (response: Response, fallback: string): Promise<string> => {
@@ -45,18 +45,25 @@ const getErrorMessageFromResponse = async (response: Response, fallback: string)
 };
 
 const fetchAuthedJson = async <T>(input: string, init?: RequestInit): Promise<T> => {
-    const token = await getAccessToken();
-    const headers = new Headers(init?.headers);
-    headers.set('Authorization', `Bearer ${token}`);
-    if (!headers.has('Content-Type') && init?.body) {
-        headers.set('Content-Type', 'application/json');
-    }
+    const requestWithToken = async (forceRefresh = false): Promise<Response> => {
+        const token = await getAccessToken(forceRefresh);
+        const headers = new Headers(init?.headers);
+        headers.set('Authorization', `Bearer ${token}`);
+        if (!headers.has('Content-Type') && init?.body) {
+            headers.set('Content-Type', 'application/json');
+        }
 
-    const response = await fetch(input, {
-        ...init,
-        headers,
-        cache: 'no-store',
-    });
+        return fetch(input, {
+            ...init,
+            headers,
+            cache: 'no-store',
+        });
+    };
+
+    let response = await requestWithToken(false);
+    if (response.status === 401) {
+        response = await requestWithToken(true);
+    }
 
     if (!response.ok) {
         const message = await getErrorMessageFromResponse(response, `Request failed (${response.status})`);

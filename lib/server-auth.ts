@@ -72,6 +72,27 @@ const isAdminCredentialError = (error: unknown): boolean => {
   );
 };
 
+const parseAuthFailure = (error: unknown): { code: string; message: string } => {
+  if (!error || typeof error !== "object") {
+    return { code: "", message: "" };
+  }
+
+  const code = "code" in error ? String((error as { code?: unknown }).code ?? "") : "";
+  const message = "message" in error ? String((error as { message?: unknown }).message ?? "") : "";
+  return { code, message };
+};
+
+const isTokenExpiredError = (code: string, message: string): boolean =>
+  code === "auth/id-token-expired" ||
+  code === "auth/id-token-revoked" ||
+  message.includes("ID token has expired") ||
+  message.includes("ID token has been revoked");
+
+const isProjectMismatchError = (message: string): boolean =>
+  message.includes('incorrect "aud" (audience) claim') ||
+  message.includes('incorrect "iss" (issuer) claim') ||
+  message.includes("Make sure the ID token comes from the same Firebase project");
+
 export const verifyRequestUser = async (request: Request): Promise<VerifiedUser> => {
   assertAllowlistConfigured();
 
@@ -96,6 +117,13 @@ export const verifyRequestUser = async (request: Request): Promise<VerifiedUser>
     }
     if (isAdminCredentialError(error)) {
       throw new AuthError("Server auth is not configured", 503);
+    }
+    const { code, message } = parseAuthFailure(error);
+    if (isTokenExpiredError(code, message)) {
+      throw new AuthError("Auth token expired", 401);
+    }
+    if (isProjectMismatchError(message)) {
+      throw new AuthError("Server Firebase project mismatch", 503);
     }
     throw new AuthError("Invalid auth token", 401);
   }

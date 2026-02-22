@@ -93,10 +93,19 @@ export default function MealCard({ meal }: { meal: Meal }) {
     if (raw === 'Valid user role is required' || raw === 'User profile is required') {
       return '프로필에서 역할을 먼저 설정해 주세요.';
     }
-    if (raw === 'Server allowlist is not configured' || raw === 'Server auth is not configured') {
+    if (
+      raw === 'Server allowlist is not configured' ||
+      raw === 'Server auth is not configured' ||
+      raw === 'Server Firebase project mismatch'
+    ) {
       return '서버 인증 설정을 확인해 주세요.';
     }
-    if (raw === 'Missing bearer token' || raw === 'Empty bearer token' || raw === 'Invalid auth token') {
+    if (
+      raw === 'Missing bearer token' ||
+      raw === 'Empty bearer token' ||
+      raw === 'Invalid auth token' ||
+      raw === 'Auth token expired'
+    ) {
       return '로그인이 만료되었습니다. 다시 로그인해 주세요.';
     }
     if (raw.length > 0 && raw !== 'internal error') {
