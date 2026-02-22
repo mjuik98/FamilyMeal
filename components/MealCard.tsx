@@ -84,6 +84,27 @@ export default function MealCard({ meal }: { meal: Meal }) {
     return Boolean(userProfile.role && uids.length > 0 && uids[0] === userProfile.role);
   }, [meal.ownerUid, uids, userProfile]);
 
+  const toCommentCreateErrorMessage = (error: unknown): string => {
+    const raw = error instanceof Error ? error.message.trim() : '';
+
+    if (raw === 'Not allowed') {
+      return '이 식사 참여자만 댓글을 작성할 수 있어요.';
+    }
+    if (raw === 'Valid user role is required' || raw === 'User profile is required') {
+      return '프로필에서 역할을 먼저 설정해 주세요.';
+    }
+    if (raw === 'Server allowlist is not configured' || raw === 'Server auth is not configured') {
+      return '서버 인증 설정을 확인해 주세요.';
+    }
+    if (raw === 'Missing bearer token' || raw === 'Empty bearer token' || raw === 'Invalid auth token') {
+      return '로그인이 만료되었습니다. 다시 로그인해 주세요.';
+    }
+    if (raw.length > 0 && raw !== 'internal error') {
+      return raw;
+    }
+    return '잠시 후 다시 시도해 주세요.';
+  };
+
   const handleDelete = async () => {
     const confirmed = await showConfirm({
       title: '식사 기록 삭제',
@@ -149,7 +170,7 @@ export default function MealCard({ meal }: { meal: Meal }) {
       setComments((prev) => prev.filter((comment) => comment.id !== optimisticId));
       setCommentCount((prev) => Math.max(0, prev - 1));
       setCommentText(trimmed);
-      showToast('댓글 등록에 실패했습니다.', 'error', 'center');
+      showToast(`댓글 등록에 실패했습니다. ${toCommentCreateErrorMessage(error)}`, 'error', 'center');
     } finally {
       setIsSubmittingComment(false);
     }

@@ -32,7 +32,9 @@ const parseAllowedEmails = (raw: string): string[] =>
     .map((email) => email.trim().toLowerCase())
     .filter(Boolean);
 
-const allowedEmails = parseAllowedEmails(process.env.ALLOWED_EMAILS ?? "");
+const allowedEmails = parseAllowedEmails(
+  process.env.ALLOWED_EMAILS ?? process.env.NEXT_PUBLIC_ALLOWED_EMAILS ?? ""
+);
 const isProduction = process.env.NODE_ENV === "production";
 
 const assertAllowlistConfigured = () => {
@@ -50,6 +52,24 @@ const isAllowedEmail = (email: string | null): boolean => {
 const verifyAllowlistedEmail = (email: string | null) => {
   if (isAllowedEmail(email)) return;
   throw new AuthError("Email is not allowed", 403);
+};
+
+const isAdminCredentialError = (error: unknown): boolean => {
+  if (!error || typeof error !== "object") {
+    return false;
+  }
+
+  const code = "code" in error ? String((error as { code?: unknown }).code ?? "") : "";
+  const message = "message" in error ? String((error as { message?: unknown }).message ?? "") : "";
+
+  if (code === "app/invalid-credential" || code === "auth/invalid-credential") {
+    return true;
+  }
+
+  return (
+    message.includes("Could not load the default credentials") ||
+    message.includes("Failed to determine service account")
+  );
 };
 
 export const verifyRequestUser = async (request: Request): Promise<VerifiedUser> => {
@@ -73,6 +93,9 @@ export const verifyRequestUser = async (request: Request): Promise<VerifiedUser>
   } catch (error) {
     if (error instanceof AuthError) {
       throw error;
+    }
+    if (isAdminCredentialError(error)) {
+      throw new AuthError("Server auth is not configured", 503);
     }
     throw new AuthError("Invalid auth token", 401);
   }
