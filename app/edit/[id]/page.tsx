@@ -133,43 +133,47 @@ export default function EditMealPage() {
 
     if (loading) {
         return (
-            <div className="flex items-center justify-center min-h-[50vh]">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-            </div>
-        );
-    }
+            <div className="flex items-cent    return (
+        <div style={{ padding: '20px 16px', paddingBottom: '100px' }}>
+            <h1 style={{ fontSize: '1.5rem', fontWeight: 800, letterSpacing: '-0.03em', marginBottom: '4px' }}>
+                기록 수정하기
+            </h1>
+            <p style={{ color: 'var(--muted-foreground)', fontSize: '0.875rem', marginBottom: '24px' }}>
+                기록된 내용을 수정해보세요
+            </p>
 
-    return (
-        <div className="p-4">
-            <h1 className="text-xl font-bold mb-4">기록 수정하기</h1>
-
-            <form onSubmit={handleSubmit} className="flex flex-col gap-6">
-                <div
-                    className="aspect-video bg-muted rounded-lg flex items-center justify-center cursor-pointer overflow-hidden relative border-2 border-dashed border-input hover:border-primary transition-colors"
-                    onClick={() => fileInputRef.current?.click()}
-                >
-                    {imagePreview ? (
-                        <>
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
+            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div style={{ border: '1px solid var(--border)', borderRadius: '16px', overflow: 'hidden', background: 'var(--card)' }}>
+                    <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <span style={{ fontWeight: 600, fontSize: '0.95rem' }}>사진</span>
+                        {imagePreview && (
                             <button
                                 type="button"
-                                onClick={(e) => {
-                                    e.stopPropagation();
+                                onClick={() => {
                                     setImagePreview(null);
                                     if (fileInputRef.current) fileInputRef.current.value = '';
                                 }}
-                                className="absolute top-2 right-2 bg-black/50 text-white p-1 rounded-full"
+                                style={{ fontSize: '0.8rem', color: 'var(--muted-foreground)', background: 'none', border: 'none', cursor: 'pointer' }}
                             >
-                                <X size={16} />
+                                삭제
                             </button>
-                        </>
-                    ) : (
-                        <div className="flex flex-col items-center text-muted-foreground">
-                            <Camera size={32} className="mb-2" />
-                            <span className="text-sm">사진 촬영/선택</span>
-                        </div>
-                    )}
+                        )}
+                    </div>
+
+                    <div
+                        onClick={() => fileInputRef.current?.click()}
+                        style={{ aspectRatio: '16/9', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', background: 'var(--muted)', position: 'relative' }}
+                    >
+                        {imagePreview ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={imagePreview} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        ) : (
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', color: 'var(--muted-foreground)', gap: '8px' }}>
+                                <Camera size={36} strokeWidth={1.5} />
+                                <span style={{ fontSize: '0.85rem' }}>눌러서 사진 추가</span>
+                            </div>
+                        )}
+                    </div>
                 </div>
 
                 <input
@@ -177,55 +181,126 @@ export default function EditMealPage() {
                     ref={fileInputRef}
                     onChange={handleImageChange}
                     accept="image/*"
-                    className="hidden"
+                    style={{ display: 'none' }}
                 />
 
-                <div>
-                    <label className="block text-sm font-medium mb-2">누구와 함께 먹었나요?</label>
-                    <div className="flex gap-2 flex-wrap">
-                        {ROLES.map((role) => (
-                            <button
-                                key={role}
-                                type="button"
-                                onClick={() => toggleUser(role)}
-                                className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
-                                    selectedUsers.includes(role)
-                                        ? 'bg-primary text-white ring-2 ring-offset-2 ring-primary'
-                                        : 'bg-muted text-muted-foreground hover:bg-muted/80'
-                                }`}
-                            >
-                                {role} {selectedUsers.includes(role) && '✓'}
-                            </button>
-                        ))}
+                <div style={{ border: '1px solid var(--border)', borderRadius: '16px', overflow: 'hidden', background: 'var(--card)' }}>
+                    <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--border)' }}>
+                        <span style={{ fontWeight: 600, fontSize: '0.95rem' }}>식사 정보</span>
+                    </div>
+
+                    <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <span style={{ fontSize: '0.9rem', color: 'var(--muted-foreground)' }}>식사 종류</span>
+                        <div style={{ display: 'flex', gap: '6px' }}>
+                            {(['아침', '점심', '저녁', '간식'] as const).map((t) => (
+                                <button
+                                    key={t}
+                                    type="button"
+                                    onClick={() => setType(t)}
+                                    style={{
+                                        padding: '6px 14px',
+                                        borderRadius: '20px',
+                                        fontSize: '0.85rem',
+                                        fontWeight: type === t ? 600 : 400,
+                                        background: type === t ? 'var(--primary)' : 'var(--muted)',
+                                        color: type === t ? 'white' : 'var(--muted-foreground)',
+                                        border: 'none',
+                                        cursor: 'pointer',
+                                    }}
+                                >
+                                    {t}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <span style={{ fontSize: '0.9rem', color: 'var(--muted-foreground)' }}>함께 먹은 사람</span>
+                        <div style={{ display: 'flex', gap: '6px' }}>
+                            {ROLES.map((role) => (
+                                <button
+                                    key={role}
+                                    type="button"
+                                    onClick={() => toggleUser(role)}
+                                    style={{
+                                        padding: '6px 14px',
+                                        borderRadius: '20px',
+                                        fontSize: '0.85rem',
+                                        fontWeight: selectedUsers.includes(role) ? 600 : 400,
+                                        background: selectedUsers.includes(role) ? 'var(--primary)' : 'var(--muted)',
+                                        color: selectedUsers.includes(role) ? 'white' : 'var(--muted-foreground)',
+                                        border: 'none',
+                                        cursor: 'pointer',
+                                    }}
+                                >
+                                    {role}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div style={{ padding: '14px 16px' }}>
+                        <span style={{ fontSize: '0.9rem', color: 'var(--muted-foreground)', display: 'block', marginBottom: '10px' }}>
+                            설명
+                        </span>
+                        <textarea
+                            value={description}
+                            onChange={(e) => setDescription(e.target.value)}
+                            placeholder="어떤 식사를 했는지 적어주세요"
+                            required
+                            maxLength={300}
+                            className="input-base textarea-base"
+                            style={{ width: '100%', padding: '12px', resize: 'none', height: '80px', fontSize: '0.9rem', fontFamily: 'inherit', outline: 'none' }}
+                        />
                     </div>
                 </div>
 
-                <div className="flex gap-2 overflow-x-auto pb-2">
-                    {(['아침', '점심', '저녁', '간식'] as const).map((t) => (
-                        <button
-                            key={t}
-                            type="button"
-                            onClick={() => setType(t)}
-                            className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
-                                type === t ? 'bg-primary text-white' : 'bg-muted text-muted-foreground'
-                            }`}
-                        >
-                            {t} {type === t && '✓'}
-                        </button>
-                    ))}
+                <div style={{ display: 'flex', gap: '12px' }}>
+                    <button
+                        type="button"
+                        onClick={() => router.back()}
+                        style={{
+                            flex: 1,
+                            padding: '16px',
+                            borderRadius: '14px',
+                            background: 'var(--muted)',
+                            color: 'var(--foreground)',
+                            border: 'none',
+                            cursor: 'pointer',
+                            fontSize: '1rem',
+                            fontWeight: 600,
+                        }}
+                    >
+                        취소
+                    </button>
+                    <button
+                        type="submit"
+                        disabled={isSubmitting}
+                        style={{
+                            flex: 2,
+                            padding: '16px',
+                            borderRadius: '14px',
+                            background: 'var(--primary)',
+                            color: 'white',
+                            border: 'none',
+                            cursor: 'pointer',
+                            fontSize: '1rem',
+                            fontWeight: 600,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '8px',
+                            opacity: isSubmitting ? 0.6 : 1,
+                        }}
+                    >
+                        {isSubmitting ? '수정 중...' : (<><Save size={18} /> 수정 완료</>)}
+                    </button>
                 </div>
-
-                <div>
-                    <label className="block text-sm font-medium mb-2">설명</label>
-                    <textarea
-                        value={description}
-                        onChange={(e) => setDescription(e.target.value)}
-                        placeholder="어떤 식사를 했는지 적어주세요"
-                        className="input-base textarea-base w-full p-3 resize-none h-24 focus:outline-none focus:ring-2 focus:ring-primary/50"
-                        required
-                        maxLength={300}
-                    />
-                </div>
+            </form>
+        </div>
+    );
+}
+</div>
 
                 <button type="submit" disabled={isSubmitting} className="btn w-full gap-2 text-lg">
                     {isSubmitting ? '수정 중...' : (<><Save size={20} /> 수정 완료</>)}
