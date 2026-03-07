@@ -133,7 +133,13 @@ export default function EditMealPage() {
 
     if (loading) {
         return (
-            <div className="flex items-cent    return (
+            <div className="flex items-center justify-center min-vh-100">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+            </div>
+        );
+    }
+
+    return (
         <div style={{ padding: '20px 16px', paddingBottom: '100px' }}>
             <h1 style={{ fontSize: '1.5rem', fontWeight: 800, letterSpacing: '-0.03em', marginBottom: '4px' }}>
                 기록 수정하기
@@ -296,15 +302,6 @@ export default function EditMealPage() {
                         {isSubmitting ? '수정 중...' : (<><Save size={18} /> 수정 완료</>)}
                     </button>
                 </div>
-            </form>
-        </div>
-    );
-}
-</div>
-
-                <button type="submit" disabled={isSubmitting} className="btn w-full gap-2 text-lg">
-                    {isSubmitting ? '수정 중...' : (<><Save size={20} /> 수정 완료</>)}
-                </button>
             </form>
         </div>
     );
