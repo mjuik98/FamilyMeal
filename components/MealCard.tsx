@@ -33,6 +33,18 @@ export default function MealCard({ meal }: { meal: Meal }) {
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [editingText, setEditingText] = useState('');
   const [commentActionId, setCommentActionId] = useState<string | null>(null);
+  const [isImageExpanded, setIsImageExpanded] = useState(false);
+
+  // Handle ESC key to close expanded image
+  useEffect(() => {
+    if (!isImageExpanded) return;
+
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setIsImageExpanded(false);
+    };
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, [isImageExpanded]);
 
   useEffect(() => {
     setCommentCount(meal.commentCount ?? meal.comments?.length ?? 0);
@@ -298,7 +310,10 @@ export default function MealCard({ meal }: { meal: Meal }) {
   return (
     <div style={{ border: '1px solid var(--border)', borderRadius: '16px', overflow: 'hidden', background: 'var(--card)' }}>
       {meal.imageUrl && (
-        <div style={{ position: 'relative', width: '100%', aspectRatio: '16/9', background: 'var(--muted)', overflow: 'hidden' }}>
+        <div 
+          onClick={() => setIsImageExpanded(true)}
+          style={{ position: 'relative', width: '100%', aspectRatio: '16/9', background: 'var(--muted)', overflow: 'hidden', cursor: 'zoom-in' }}
+        >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={meal.imageUrl}
@@ -307,6 +322,90 @@ export default function MealCard({ meal }: { meal: Meal }) {
             onLoad={() => setImgLoaded(true)}
             style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: imgLoaded ? 1 : 0, transition: 'opacity 0.3s ease' }}
           />
+        </div>
+      )}
+
+      {/* Expanded Image Overlay */}
+      {isImageExpanded && meal.imageUrl && (
+        <div 
+          onClick={() => setIsImageExpanded(false)}
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            width: '100vw',
+            height: '100vh',
+            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+            backdropFilter: 'blur(10px)',
+            WebkitBackdropFilter: 'blur(10px)',
+            zIndex: 1000,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'zoom-out',
+            animation: 'fadeIn 0.2s ease-out'
+          }}
+        >
+          <button
+            onClick={(e) => { e.stopPropagation(); setIsImageExpanded(false); }}
+            style={{
+              position: 'absolute',
+              top: '20px',
+              right: '24px',
+              background: 'rgba(255, 255, 255, 0.2)',
+              border: 'none',
+              borderRadius: '50%',
+              width: '40px',
+              height: '40px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: 'white',
+              cursor: 'pointer',
+              zIndex: 1001
+            }}
+          >
+            <X size={24} />
+          </button>
+          
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: '94%',
+              maxWidth: '1000px',
+              maxHeight: '90vh',
+              position: 'relative',
+              borderRadius: '12px',
+              overflow: 'hidden',
+              boxShadow: '0 20px 50px rgba(0,0,0,0.5)',
+              transform: 'scale(1)',
+              animation: 'zoomIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)'
+            }}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img 
+              src={meal.imageUrl} 
+              alt={meal.description}
+              style={{
+                width: '100%',
+                height: 'auto',
+                maxHeight: '90vh',
+                display: 'block',
+                objectFit: 'contain'
+              }}
+            />
+          </div>
+
+          <style jsx global>{`
+            @keyframes zoomIn {
+              from { transform: scale(0.9); opacity: 0; }
+              to { transform: scale(1); opacity: 1; }
+            }
+            @keyframes fadeIn {
+              from { opacity: 0; }
+              to { opacity: 1; }
+            }
+          `}</style>
         </div>
       )}
 
