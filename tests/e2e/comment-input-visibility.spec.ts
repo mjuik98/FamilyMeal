@@ -1,5 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
+test.describe.configure({ mode: "serial" });
+
 const parseRgb = (value: string): [number, number, number] => {
   const matches = value.match(/\d+(\.\d+)?/g);
   if (!matches || matches.length < 3) {
@@ -29,9 +31,34 @@ const enableQaMockMode = async (page: Page) => {
   });
 };
 
+const openQaMealDetail = async (page: Page) => {
+  await page.goto("/");
+  const openButton = page.getByTestId("meal-preview-open-qa-home-meal");
+  await expect(openButton).toBeVisible();
+  await openButton.click();
+  await expect(page).toHaveURL(/\/meals\/qa-home-meal/);
+  await expect(page.getByTestId("meal-detail-screen")).toBeVisible();
+};
+
+const expectDockWithinViewport = async (page: Page, testId: string) => {
+  const metrics = await page.getByTestId(testId).evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    return {
+      bottom: rect.bottom,
+      top: rect.top,
+      height: rect.height,
+      viewport: window.innerHeight,
+    };
+  });
+
+  expect(metrics.height).toBeGreaterThan(0);
+  expect(metrics.top).toBeGreaterThanOrEqual(0);
+  expect(metrics.bottom).toBeLessThanOrEqual(metrics.viewport);
+};
+
 test("comment input stays readable on mobile even when system theme is dark", async ({ page }) => {
   await enableQaMockMode(page);
-  await page.goto("/");
+  await openQaMealDetail(page);
 
   const toggleButton = page.getByTestId("meal-card-qa-home-meal").getByTestId("meal-card-comment-toggle");
   await expect(toggleButton).toBeVisible();
@@ -71,22 +98,22 @@ test("comment input stays readable on mobile even when system theme is dark", as
 
 test("home requires login when qa mock mode is not enabled", async ({ page }) => {
   await page.goto("/");
-  await expect(page.getByTestId("meal-card-comment-toggle")).toHaveCount(0);
+  await expect(page.getByTestId("meal-preview-open-qa-home-meal")).toHaveCount(0);
 });
 
 test("logout clears qa mock session", async ({ page }) => {
   await enableQaMockMode(page);
   await page.goto("/");
 
-  await expect(page.getByTestId("meal-card-comment-toggle").first()).toBeVisible();
+  await expect(page.getByTestId("meal-preview-open-qa-home-meal")).toBeVisible();
 
   await page.getByTestId("home-logout-button").click();
-  await expect(page.getByTestId("meal-card-comment-toggle")).toHaveCount(0);
+  await expect(page.getByTestId("meal-preview-open-qa-home-meal")).toHaveCount(0);
 });
 
 test("qa mock mode can add comments without auth", async ({ page }) => {
   await enableQaMockMode(page);
-  await page.goto("/");
+  await openQaMealDetail(page);
 
   const toggleButton = page.getByTestId("meal-card-qa-home-meal").getByTestId("meal-card-comment-toggle");
   await expect(toggleButton).toBeVisible();
@@ -106,7 +133,7 @@ test("qa mock mode can add comments without auth", async ({ page }) => {
 
 test("qa mock mode can toggle meal reactions locally", async ({ page }) => {
   await enableQaMockMode(page);
-  await page.goto("/");
+  await openQaMealDetail(page);
 
   const mealReaction = page.getByTestId("meal-card-qa-home-meal").getByTestId("meal-reaction-chip-heart");
   await expect(mealReaction).toBeVisible();
@@ -123,7 +150,7 @@ test("qa mock mode can toggle meal reactions locally", async ({ page }) => {
 
 test("qa mock mode can toggle comment reactions locally", async ({ page }) => {
   await enableQaMockMode(page);
-  await page.goto("/");
+  await openQaMealDetail(page);
 
   await page.getByTestId("meal-card-qa-home-meal").getByTestId("meal-card-comment-toggle").click();
 
@@ -136,28 +163,32 @@ test("qa mock mode can toggle comment reactions locally", async ({ page }) => {
   await expect(commentReaction).toHaveAttribute("data-active", "true");
 });
 
-test("qa mock mode shows activity summary and supports meal filters", async ({ page }) => {
+test("qa mock mode shows weekly date journal and persistent dock", async ({ page }) => {
   await enableQaMockMode(page);
   await page.goto("/");
 
-  await expect(page.getByTestId("activity-summary-card-comments")).toBeVisible();
-  await expect(page.getByTestId("activity-summary-card-reactions")).toBeVisible();
-  await expect(page.getByTestId("activity-alert-badge")).toBeVisible();
+  await expect(page.getByTestId("week-date-strip")).toBeVisible();
+  await expect(page.getByTestId("home-calendar-toggle")).toBeVisible();
+  await expect(page.locator('[data-testid^="meal-preview-card-"]')).toHaveCount(4);
+  await expect(page.locator(".week-date-thumbnail")).toHaveCount(6);
 
-  await expect(page.locator(".meal-card")).toHaveCount(3);
-  await page.getByTestId("filter-type-아침").click();
-  await expect(page.locator(".meal-card")).toHaveCount(1);
+  const selectedDay = page.locator('[data-testid^="week-date-button-"][data-active="true"]');
+  await expect(selectedDay).toHaveCount(1);
+  await expect(selectedDay).toHaveAttribute("data-has-meals", "true");
+  await expect(page.locator('[data-testid^="week-date-button-"][data-has-meals="false"]').first()).toBeVisible();
 
-  await page.getByTestId("filter-user-엄마").click();
-  await expect(page.locator(".meal-card")).toHaveCount(0);
+  const dock = page.getByTestId("bottom-dock");
+  await expect(dock).toBeVisible();
+  await expect(page.getByTestId("bottom-dock-add")).toBeVisible();
+  await expectDockWithinViewport(page, "bottom-dock");
 
-  await page.getByTestId("filter-type-전체").click();
-  await expect(page.locator(".meal-card")).toHaveCount(1);
+  await expect(page.getByTestId("activity-feed")).toHaveCount(0);
+  await expect(page.getByTestId("activity-summary-card-comments")).toHaveCount(0);
 });
 
 test("qa mock mode can add a reply with auto mention context", async ({ page }) => {
   await enableQaMockMode(page);
-  await page.goto("/");
+  await openQaMealDetail(page);
 
   await page.getByTestId("meal-card-qa-home-meal").getByTestId("meal-card-comment-toggle").click();
   await page.getByTestId("comment-reply-button-qa-home-comment").click();
@@ -171,4 +202,125 @@ test("qa mock mode can add a reply with auto mention context", async ({ page }) 
   await expect(page.locator(".comment-thread-reply")).toHaveCount(1);
   await expect(page.locator(".comment-thread-reply .comment-text")).toContainText("답글 테스트");
   await expect(page.locator(".comment-mention")).toContainText("아빠님께 답글");
+});
+
+test("qa mock mode can switch days from the weekly journal", async ({ page }) => {
+  await enableQaMockMode(page);
+  await page.goto("/");
+
+  await page.getByTestId("home-calendar-toggle").click();
+  await expect(page.locator(".react-calendar")).toBeVisible();
+
+  const dayButtons = page.locator('[data-testid^="week-date-button-"]');
+  const firstDay = dayButtons.first();
+  const lastDay = dayButtons.last();
+
+  await expect(firstDay).toHaveAttribute("data-active", "false");
+  await lastDay.click();
+  await expect(lastDay).toHaveAttribute("data-active", "true");
+  await expect(page.locator('[data-testid^="meal-preview-card-"]')).toHaveCount(4);
+  await firstDay.click();
+  await expect(firstDay).toHaveAttribute("data-active", "true");
+  await expect(page.locator('[data-testid^="meal-preview-card-"]')).toHaveCount(2);
+});
+
+test("qa mock mode archive supports search and filters", async ({ page }) => {
+  await enableQaMockMode(page);
+  await page.goto("/");
+
+  await page.getByTestId("home-archive-link").click();
+  await expect(page).toHaveURL(/\/archive/);
+  await expect(page.getByTestId("archive-search-input")).toBeVisible();
+  await expect(page.locator('[data-testid^="meal-preview-card-"]')).toHaveCount(8);
+  await expect(page.getByTestId("archive-load-more")).toBeVisible();
+  await page.getByTestId("archive-load-more").click();
+  await expect(page.locator('[data-testid^="meal-preview-card-"]')).toHaveCount(12);
+  await expect(page.getByTestId("archive-group-2026-03")).toBeVisible();
+  await expect(page.getByTestId("archive-group-2026-02")).toBeVisible();
+  await expect(page.getByTestId("archive-suggestion-user-엄마")).toBeVisible();
+
+  await page.getByTestId("archive-filter-type-간식").click();
+  await expect(page.locator('[data-testid^="meal-preview-card-"]')).toHaveCount(2);
+
+  await page.getByTestId("archive-filter-user-엄마").click();
+  await expect(page.locator('[data-testid^="meal-preview-card-"]')).toHaveCount(1);
+
+  await page.getByTestId("archive-search-input").fill("토스트");
+  await expect(page.locator('[data-testid^="meal-preview-card-"]')).toHaveCount(0);
+});
+
+test("qa mock mode detail supports same-day photo rail navigation", async ({ page }) => {
+  await enableQaMockMode(page);
+  await openQaMealDetail(page);
+
+  await expect(page.getByTestId("meal-photo-stage")).toBeVisible();
+  await expect(page.locator('[data-testid^="meal-photo-rail-item-"]')).toHaveCount(4);
+
+  const breakfastRailItem = page.getByTestId("meal-photo-rail-item-qa-breakfast-meal");
+  await breakfastRailItem.click();
+
+  await expect(page).toHaveURL(/\/meals\/qa-breakfast-meal/);
+  await expect(breakfastRailItem).toHaveAttribute("data-active", "true");
+  await expect(page.getByTestId("meal-detail-summary")).toContainText("토스트와 계란 아침");
+});
+
+test("qa mock mode can persist notification settings locally", async ({ page }) => {
+  await enableQaMockMode(page);
+  await page.goto("/profile");
+
+  const browserToggle = page.getByTestId("profile-notification-toggle-browserEnabled");
+  const reactionToggle = page.getByTestId("profile-notification-toggle-reactionAlerts");
+
+  await expect(browserToggle).toHaveAttribute("data-active", "true");
+  await expect(reactionToggle).toHaveAttribute("data-active", "true");
+
+  await reactionToggle.click();
+  await expect(reactionToggle).toHaveAttribute("data-active", "false");
+
+  await page.goto("/");
+  await page.goto("/profile");
+  await expect(page.getByTestId("profile-notification-toggle-reactionAlerts")).toHaveAttribute("data-active", "false");
+});
+
+test("qa mock mode remembers add form defaults", async ({ page }) => {
+  await enableQaMockMode(page);
+  await page.goto("/add");
+
+  const snackButton = page.getByTestId("add-meal-type-간식");
+  const momButton = page.getByTestId("add-meal-user-엄마");
+  const sonButton = page.getByTestId("add-meal-user-아들");
+
+  await snackButton.click();
+  await momButton.click();
+  await sonButton.click();
+
+  await page.goto("/");
+  await page.goto("/add");
+
+  await expect(page.getByTestId("add-meal-type-간식")).toHaveClass(/chip-button-active/);
+  await expect(page.getByTestId("add-meal-user-엄마")).toHaveClass(/chip-button-active/);
+  await expect(page.getByTestId("add-meal-user-아들")).toHaveClass(/chip-button-active/);
+});
+
+test("qa mock mode can quick save with auto description and return to the selected date", async ({ page }) => {
+  await enableQaMockMode(page);
+  await page.goto("/add");
+
+  await page.getByTestId("add-meal-type-간식").click();
+  await page.getByTestId("add-meal-user-엄마").click();
+  await page.getByTestId("add-meal-user-아빠").click();
+  await page.getByTestId("add-photo-input").setInputFiles({
+    name: "quick-meal.png",
+    mimeType: "image/png",
+    buffer: Buffer.from(
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl9Mh0AAAAASUVORK5CYII=",
+      "base64"
+    ),
+  });
+
+  await page.getByTestId("add-quick-save").click();
+
+  await expect(page).toHaveURL(/\/\?date=/);
+  await expect(page.locator('[data-testid^="meal-preview-card-"]')).toHaveCount(5);
+  await expect(page.getByText("엄마와 함께한 간식 기록")).toBeVisible();
 });

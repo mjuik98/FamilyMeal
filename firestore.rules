@@ -55,6 +55,19 @@ service cloud.firestore {
         && value.keys().hasOnly(['❤️', '👍', '😋', '👏', '🔥']);
     }
 
+    function validReactionEmojiValue(value) {
+      return value in ['❤️', '👍', '😋', '👏', '🔥'];
+    }
+
+    function validNotificationPreferences(value) {
+      return value is map
+        && value.keys().hasOnly(['browserEnabled', 'commentAlerts', 'reactionAlerts', 'replyAlerts'])
+        && value.browserEnabled is bool
+        && value.commentAlerts is bool
+        && value.reactionAlerts is bool
+        && value.replyAlerts is bool;
+    }
+
     function hasNoSeedReactions(mealData) {
       return !('reactions' in mealData) || mealData.reactions.keys().size() == 0;
     }
@@ -131,14 +144,41 @@ service cloud.firestore {
     }
 
     function validUserProfile(profileData) {
-      return profileData.keys().hasOnly(['uid', 'email', 'displayName', 'role'])
+      return profileData.keys().hasOnly(['uid', 'email', 'displayName', 'role', 'notificationPreferences'])
         && profileData.uid is string
         && profileData.uid == request.auth.uid
         && profileData.email is string
         && request.auth.token.email is string
         && profileData.email == request.auth.token.email
         && (!('displayName' in profileData) || profileData.displayName == null || profileData.displayName is string)
-        && (profileData.role == null || validRole(profileData.role));
+        && (profileData.role == null || validRole(profileData.role))
+        && (!('notificationPreferences' in profileData) || validNotificationPreferences(profileData.notificationPreferences));
+    }
+
+    function validActivityDocument(activityData) {
+      return activityData.keys().hasOnly(['type', 'actorUid', 'actorRole', 'mealId', 'commentId', 'reactionEmoji', 'preview', 'createdAt', 'readAt'])
+        && activityData.type in ['meal-comment', 'comment-reply', 'meal-reaction', 'comment-reaction']
+        && activityData.actorUid is string
+        && validRole(activityData.actorRole)
+        && activityData.mealId is string
+        && activityData.preview is string
+        && activityData.preview.size() > 0
+        && activityData.preview.size() <= 300
+        && activityData.createdAt is timestamp
+        && (!('commentId' in activityData) || (activityData.commentId is string && activityData.commentId.size() > 0))
+        && (!('reactionEmoji' in activityData) || validReactionEmojiValue(activityData.reactionEmoji))
+        && (!('readAt' in activityData) || activityData.readAt == null || activityData.readAt is timestamp);
+    }
+
+    function sameNotificationPreferences(nextProfile, currentProfile) {
+      return (
+        !('notificationPreferences' in nextProfile)
+        && !('notificationPreferences' in currentProfile)
+      ) || (
+        'notificationPreferences' in nextProfile
+        && 'notificationPreferences' in currentProfile
+        && nextProfile.notificationPreferences == currentProfile.notificationPreferences
+      );
     }
 
     match /users/{uid} {
@@ -154,9 +194,26 @@ service cloud.firestore {
         && validUserProfile(request.resource.data)
         && request.resource.data.uid == resource.data.uid
         && request.resource.data.email == resource.data.email
-        && request.resource.data.role == resource.data.role;
+        && request.resource.data.role == resource.data.role
+        && sameNotificationPreferences(request.resource.data, resource.data);
 
       allow delete: if signedIn() && request.auth.uid == uid;
+
+      match /activity/{activityId} {
+        allow read: if signedIn()
+          && request.auth.uid == uid
+          && validActivityDocument(resource.data);
+
+        allow create: if false;
+
+        allow update: if signedIn()
+          && request.auth.uid == uid
+          && validActivityDocument(resource.data)
+          && validActivityDocument(request.resource.data)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['readAt']);
+
+        allow delete: if false;
+      }
     }
 
     match /meals/{mealId} {

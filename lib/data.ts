@@ -1,4 +1,5 @@
-import { Meal, MealComment, UserRole } from './types';
+import { ActivityFeedItem, Meal, MealComment, NotificationPreferences, UserActivity, UserRole, WeeklyMealStat } from './types';
+import { convertActivityDoc, normalizeNotificationPreferences, toActivityFeedItem } from './activity';
 import { isReactionEmoji, normalizeReactionMap } from './reactions';
 import { auth, db } from './firebase';
 import {
@@ -16,6 +17,7 @@ import {
     limit,
     DocumentData,
     QueryDocumentSnapshot,
+    writeBatch,
 } from 'firebase/firestore';
 
 export const users: UserRole[] = ['아빠', '엄마', '딸', '아들'];
@@ -124,6 +126,8 @@ const convertCommentDoc = (docSnap: QueryDocumentSnapshot<DocumentData>): MealCo
     return normalizeComment(docSnap.id, raw);
 };
 
+const userActivitiesRef = (uid: string) => collection(db, 'users', uid, 'activity');
+
 const mealParticipants = (mealData: Partial<Meal> & { userIds?: unknown; userId?: unknown }): UserRole[] => {
     if (Array.isArray(mealData.userIds)) {
         return mealData.userIds.filter((role): role is UserRole => typeof role === 'string' && users.includes(role as UserRole));
@@ -213,6 +217,13 @@ export const getMealsForDate = async (date: Date): Promise<Meal[]> => {
         orderBy('timestamp', 'desc')
     );
 
+    const snapshot = await getDocs(q);
+    return dedupeAndSortMeals(snapshot.docs.map(convertMeal));
+};
+
+export const getRecentMeals = async (maxResults = 40): Promise<Meal[]> => {
+    const mealsRef = collection(db, 'meals');
+    const q = query(mealsRef, orderBy('timestamp', 'desc'), limit(maxResults));
     const snapshot = await getDocs(q);
     return dedupeAndSortMeals(snapshot.docs.map(convertMeal));
 };
@@ -413,6 +424,55 @@ export const deleteMealComment = async (
     );
 };
 
+export const subscribeUserActivity = (
+    uid: string,
+    onActivities: (activities: UserActivity[]) => void,
+    onError?: (error: Error) => void
+) => {
+    const q = query(userActivitiesRef(uid), orderBy('createdAt', 'desc'), limit(30));
+
+    return onSnapshot(
+        q,
+        (snapshot) => {
+            const activities = snapshot.docs
+                .map(convertActivityDoc)
+                .filter((activity): activity is UserActivity => Boolean(activity));
+            onActivities(activities);
+        },
+        (error) => {
+            console.error('Failed to subscribe to activities', error);
+            onError?.(error);
+        }
+    );
+};
+
+export const markAllActivitiesRead = async (uid: string, activityIds: string[]): Promise<void> => {
+    if (!uid || activityIds.length === 0) return;
+
+    const batch = writeBatch(db);
+    const readAt = Timestamp.fromMillis(Date.now());
+    activityIds.forEach((activityId) => {
+        batch.update(doc(db, 'users', uid, 'activity', activityId), {
+            readAt,
+        });
+    });
+    await batch.commit();
+};
+
+export const updateNotificationPreferences = async (
+    preferences: NotificationPreferences
+): Promise<NotificationPreferences> => {
+    const response = await fetchAuthedJson<{ ok: true; profile: { notificationPreferences?: unknown } }>(
+        '/api/profile/settings',
+        {
+            method: 'POST',
+            body: JSON.stringify({ notificationPreferences: preferences }),
+        }
+    );
+
+    return normalizeNotificationPreferences(response.profile?.notificationPreferences);
+};
+
 export const toggleMealReaction = async (
     mealId: string,
     emoji: string
@@ -453,7 +513,7 @@ export const toggleMealCommentReaction = async (
     return normalizeReactionMap(response.reactions);
 };
 
-export const getWeeklyStats = async (): Promise<{ date: Date; label: string; count: number }[]> => {
+export const getWeeklyStats = async (): Promise<WeeklyMealStat[]> => {
     const now = new Date();
     const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
     const dates = Array.from({ length: 7 }, (_, idx) => {
@@ -474,6 +534,7 @@ export const getWeeklyStats = async (): Promise<{ date: Date; label: string; cou
     const snapshot = await getDocs(q);
 
     const countByDay = new Map<string, number>();
+    const previewByDay = new Map<string, string>();
     dates.forEach((date) => {
         countByDay.set(getDayKey(date), 0);
     });
@@ -483,6 +544,9 @@ export const getWeeklyStats = async (): Promise<{ date: Date; label: string; cou
         const key = getDayKey(new Date(meal.timestamp));
         if (!countByDay.has(key)) return;
         countByDay.set(key, (countByDay.get(key) ?? 0) + 1);
+        if (!previewByDay.has(key) && typeof meal.imageUrl === 'string' && meal.imageUrl.length > 0) {
+            previewByDay.set(key, meal.imageUrl);
+        }
     });
 
     return dates.map((date) => {
@@ -491,6 +555,7 @@ export const getWeeklyStats = async (): Promise<{ date: Date; label: string; cou
             date,
             label: dayNames[date.getDay()],
             count: countByDay.get(key) ?? 0,
+            previewImageUrl: previewByDay.get(key),
         };
     });
 };
@@ -506,7 +571,134 @@ export const countCommentReactions = (comments: MealComment[]): number =>
         0
     );
 
-export type MealSortOrder = 'recent' | 'comments' | 'reactions';
+export type MealSortOrder = 'recent' | 'comments' | 'reactions' | 'activity';
+
+const getMealCommentsSnapshot = (
+    meal: Meal,
+    commentsByMeal?: Record<string, MealComment[]>
+): MealComment[] => commentsByMeal?.[meal.id] ?? meal.comments ?? [];
+
+export const getMealCommentCount = (
+    meal: Meal,
+    commentsByMeal?: Record<string, MealComment[]>
+): number => commentsByMeal?.[meal.id]?.length ?? meal.commentCount ?? meal.comments?.length ?? 0;
+
+const getMealEngagementCount = (
+    meal: Meal,
+    commentsByMeal?: Record<string, MealComment[]>
+): number => countMealReactions(meal) + countCommentReactions(getMealCommentsSnapshot(meal, commentsByMeal));
+
+const shortenPreview = (text: string, maxLength = 34): string => {
+    const trimmed = text.trim();
+    if (trimmed.length <= maxLength) return trimmed;
+    return `${trimmed.slice(0, maxLength).trimEnd()}...`;
+};
+
+const buildKnownRoleByUid = (
+    meals: Meal[],
+    commentsByMeal: Record<string, MealComment[]>
+): Map<string, UserRole> => {
+    const knownRoles = new Map<string, UserRole>();
+
+    meals.forEach((meal) => {
+        if (meal.ownerUid && meal.userIds?.length === 1) {
+            knownRoles.set(meal.ownerUid, meal.userIds[0]);
+        }
+
+        getMealCommentsSnapshot(meal, commentsByMeal).forEach((comment) => {
+            if (comment.authorUid) {
+                knownRoles.set(comment.authorUid, comment.author);
+            }
+        });
+    });
+
+    return knownRoles;
+};
+
+export const buildActivityFeed = (
+    meals: Meal[],
+    commentsByMeal: Record<string, MealComment[]>,
+    currentUid?: string
+): ActivityFeedItem[] => {
+    if (!currentUid) return [];
+
+    const knownRoles = buildKnownRoleByUid(meals, commentsByMeal);
+    const items: ActivityFeedItem[] = [];
+
+    meals.forEach((meal) => {
+        const comments = getMealCommentsSnapshot(meal, commentsByMeal);
+        const commentById = new Map(comments.map((comment) => [comment.id, comment]));
+
+        comments.forEach((comment) => {
+            if (comment.authorUid === currentUid) return;
+
+            const isReplyToMe =
+                typeof comment.parentId === 'string' &&
+                commentById.get(comment.parentId)?.authorUid === currentUid;
+
+            if (meal.ownerUid === currentUid && !comment.parentId) {
+                items.push({
+                    id: `meal-comment:${meal.id}:${comment.id}`,
+                    kind: 'meal-comment',
+                    actorLabel: comment.author,
+                    actionLabel: '내 식사에 댓글을 남겼어요',
+                    preview: shortenPreview(comment.text),
+                    timestamp: comment.updatedAt ?? comment.createdAt ?? comment.timestamp ?? meal.timestamp,
+                });
+            }
+
+            if (isReplyToMe) {
+                items.push({
+                    id: `comment-reply:${meal.id}:${comment.id}`,
+                    kind: 'comment-reply',
+                    actorLabel: comment.author,
+                    actionLabel: '내 댓글에 답글을 남겼어요',
+                    preview: shortenPreview(comment.text),
+                    timestamp: comment.updatedAt ?? comment.createdAt ?? comment.timestamp ?? meal.timestamp,
+                });
+            }
+        });
+
+        Object.entries(normalizeReactionMap(meal.reactions)).forEach(([emoji, uids]) => {
+            if (meal.ownerUid !== currentUid) return;
+
+            uids.forEach((uid, index) => {
+                if (uid === currentUid) return;
+                items.push({
+                    id: `meal-reaction:${meal.id}:${emoji}:${uid}:${index}`,
+                    kind: 'meal-reaction',
+                    actorLabel: knownRoles.get(uid) ?? '가족',
+                    actionLabel: `내 식사에 ${emoji} 반응을 남겼어요`,
+                    preview: shortenPreview(meal.description),
+                    timestamp: meal.timestamp,
+                });
+            });
+        });
+
+        comments.forEach((comment) => {
+            if (comment.authorUid !== currentUid) return;
+
+            Object.entries(normalizeReactionMap(comment.reactions)).forEach(([emoji, uids]) => {
+                uids.forEach((uid, index) => {
+                    if (uid === currentUid) return;
+                    items.push({
+                        id: `comment-reaction:${meal.id}:${comment.id}:${emoji}:${uid}:${index}`,
+                        kind: 'comment-reaction',
+                        actorLabel: knownRoles.get(uid) ?? '가족',
+                        actionLabel: `내 댓글에 ${emoji} 반응을 남겼어요`,
+                        preview: shortenPreview(comment.text),
+                        timestamp: comment.updatedAt ?? comment.createdAt ?? comment.timestamp ?? meal.timestamp,
+                    });
+                });
+            });
+        });
+    });
+
+    return items.sort((a, b) => b.timestamp - a.timestamp);
+};
+
+export const mapUserActivitiesToFeedItems = (activities: UserActivity[]): ActivityFeedItem[] =>
+    activities.map(toActivityFeedItem);
 
 export const filterAndSortMeals = (
     meals: Meal[],
@@ -515,6 +707,12 @@ export const filterAndSortMeals = (
         type?: Meal['type'] | '전체';
         participant?: UserRole | '전체';
         sort?: MealSortOrder;
+        ownerUid?: string;
+        mineOnly?: boolean;
+        engagedOnly?: boolean;
+        minimumComments?: number;
+        minimumReactions?: number;
+        commentsByMeal?: Record<string, MealComment[]>;
     }
 ): Meal[] => {
     const normalizedQuery = options.query?.trim().toLowerCase() ?? '';
@@ -530,8 +728,14 @@ export const filterAndSortMeals = (
             !options.participant ||
             options.participant === '전체' ||
             Boolean(meal.userIds?.includes(options.participant));
+        const matchesMineOnly = !options.mineOnly || (Boolean(options.ownerUid) && meal.ownerUid === options.ownerUid);
+        const minimumComments = options.minimumComments ?? 0;
+        const minimumReactions = options.minimumReactions ?? 0;
+        const matchesCommentThreshold = minimumComments <= 0 || getMealCommentCount(meal, options.commentsByMeal) >= minimumComments;
+        const matchesEngagedOnly = !options.engagedOnly || getMealEngagementCount(meal, options.commentsByMeal) > 0;
+        const matchesReactionThreshold = minimumReactions <= 0 || getMealEngagementCount(meal, options.commentsByMeal) >= minimumReactions;
 
-        return matchesQuery && matchesType && matchesParticipant;
+        return matchesQuery && matchesType && matchesParticipant && matchesMineOnly && matchesCommentThreshold && matchesEngagedOnly && matchesReactionThreshold;
     });
 
     const sorted = [...filtered];
@@ -542,6 +746,9 @@ export const filterAndSortMeals = (
         }
         if (sort === 'reactions') {
             return countMealReactions(b) - countMealReactions(a) || b.timestamp - a.timestamp;
+        }
+        if (sort === 'activity') {
+            return getMealEngagementCount(b, options.commentsByMeal) - getMealEngagementCount(a, options.commentsByMeal) || b.timestamp - a.timestamp;
         }
         return b.timestamp - a.timestamp;
     });

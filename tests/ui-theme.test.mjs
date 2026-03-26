@@ -20,7 +20,7 @@ test("viewport metadata uses fixed light theme color", () => {
 });
 
 test("comment and form inputs use shared input classes", () => {
-  const mealCard = read("components/MealCard.tsx");
+  const commentComposer = read("components/comments/CommentComposer.tsx");
   const addPage = read("app/add/page.tsx");
   const editPage = read("app/edit/[id]/page.tsx");
   const profilePage = read("app/profile/page.tsx");
@@ -28,9 +28,8 @@ test("comment and form inputs use shared input classes", () => {
   const pageHeader = read("components/PageHeader.tsx");
   const surfaceSection = read("components/SurfaceSection.tsx");
 
-  assert.match(mealCard, /className="input-base input-pill comment-input"/);
-  assert.match(mealCard, /data-testid="meal-card-comment-toggle"/);
-  assert.match(mealCard, /data-testid="meal-card-comment-input"/);
+  assert.match(commentComposer, /className="input-base input-pill comment-input"/);
+  assert.match(commentComposer, /data-testid="meal-card-comment-input"/);
   assert.match(homePage, /data-testid="home-logout-button"/);
   assert.match(homePage, /page-shell/);
   assert.match(addPage, /page-shell/);
@@ -108,19 +107,111 @@ test("comment routes support replies and safe parent deletion guards", () => {
   const createRoute = read("app/api/meals/[id]/comments/route.ts");
   const updateDeleteRoute = read("app/api/meals/[id]/comments/[commentId]/route.ts");
   const mealCard = read("components/MealCard.tsx");
+  const mealConversationPanel = read("components/meal-detail/MealConversationPanel.tsx");
+  const commentItem = read("components/comments/CommentItem.tsx");
+  const commentComposer = read("components/comments/CommentComposer.tsx");
   const homePage = read("app/page.tsx");
   const activitySummary = read("components/ActivitySummary.tsx");
   const filterChips = read("components/FilterChips.tsx");
+  const archivePage = read("app/archive/page.tsx");
 
   assert.match(createRoute, /parentId/);
   assert.match(createRoute, /mentionedAuthor/);
   assert.match(updateDeleteRoute, /where\("parentId", "==", commentId\)/);
   assert.match(updateDeleteRoute, /Reply comments exist/);
-  assert.match(mealCard, /comment-reply-button-/);
-  assert.match(mealCard, /comment-reply-target/);
-  assert.match(activitySummary, /activity-summary-card-\$\{item\.key\}/);
+  assert.match(mealCard, /MealConversationPanel/);
+  assert.match(mealConversationPanel, /CommentThread/);
+  assert.match(commentItem, /comment-reply-button-/);
+  assert.match(commentComposer, /comment-reply-target/);
   assert.match(filterChips, /data-testid=\{`\$\{testIdPrefix\}-\$\{option\}`\}/);
-  assert.match(homePage, /const TYPE_OPTIONS = \["전체", "아침", "점심", "저녁", "간식"\]/);
+  assert.match(activitySummary, /activity-summary-card-\$\{item\.key\}/);
+  assert.match(homePage, /MealPreviewCard/);
+  assert.match(archivePage, /archive-load-more/);
+});
+
+test("home is rewritten as a weekly photo journal with a persistent bottom dock", () => {
+  const globals = read("app/globals.css");
+  const homePage = read("app/page.tsx");
+  const mealPreviewCard = read("components/MealPreviewCard.tsx");
+  const navbar = read("components/Navbar.tsx");
+  const weekDateStrip = read("components/WeekDateStrip.tsx");
+  const commentThread = read("components/comments/CommentThread.tsx");
+  const commentItem = read("components/comments/CommentItem.tsx");
+  const commentComposer = read("components/comments/CommentComposer.tsx");
+  const archivePage = read("app/archive/page.tsx");
+  const mealDetailPage = read("app/meals/[id]/page.tsx");
+  const mealPhotoStage = read("components/meal-detail/MealPhotoStage.tsx");
+  const mealDetailSummary = read("components/meal-detail/MealDetailSummary.tsx");
+  const mealConversationPanel = read("components/meal-detail/MealConversationPanel.tsx");
+
+  assert.match(globals, /@import "\.\/styles\/layout\.css";/);
+  assert.match(globals, /@import "\.\/styles\/forms\.css";/);
+  assert.match(globals, /@import "\.\/styles\/comments\.css";/);
+  assert.match(globals, /@import "\.\/styles\/activity\.css";/);
+  assert.match(homePage, /WeekDateStrip/);
+  assert.match(homePage, /home-journal-card/);
+  assert.match(homePage, /home-calendar-toggle/);
+  assert.match(homePage, /MealPreviewCard/);
+  assert.match(homePage, /home-archive-link/);
+  assert.doesNotMatch(homePage, /ActivitySummary/);
+  assert.doesNotMatch(homePage, /ActivityFeed/);
+  assert.doesNotMatch(homePage, /FilterChips/);
+  assert.match(mealPreviewCard, /meal-preview-open-/);
+  assert.match(mealPreviewCard, /meal-preview-card-/);
+  assert.match(navbar, /data-testid="bottom-dock"/);
+  assert.match(navbar, /data-testid="bottom-dock-add"/);
+  assert.match(weekDateStrip, /data-testid="week-date-strip"/);
+  assert.match(weekDateStrip, /week-date-thumbnail/);
+  assert.match(weekDateStrip, /data-has-meals/);
+  assert.match(archivePage, /FilterChips/);
+  assert.match(archivePage, /MealPreviewCard/);
+  assert.match(archivePage, /archive-group-/);
+  assert.match(archivePage, /archive-suggestion-user-/);
+  assert.match(mealDetailPage, /MealCard/);
+  assert.match(mealDetailPage, /meal-detail-screen/);
+  assert.match(mealPhotoStage, /meal-photo-stage/);
+  assert.match(mealPhotoStage, /meal-photo-rail-item-/);
+  assert.match(mealDetailSummary, /meal-detail-summary/);
+  assert.match(mealConversationPanel, /meal-conversation-panel/);
+  assert.match(commentThread, /comment-thread-reply/);
+  assert.match(commentItem, /comment-reply-button-/);
+  assert.match(commentComposer, /comment-reply-target/);
+});
+
+test("persistent activity feed and profile notification settings are wired", () => {
+  const types = read("lib/types.ts");
+  const data = read("lib/data.ts");
+  const activityFeed = read("components/ActivityFeed.tsx");
+  const profilePage = read("app/profile/page.tsx");
+  const userContext = read("context/UserContext.tsx");
+
+  assert.match(types, /notificationPreferences/);
+  assert.match(types, /ActivityFeedItem/);
+  assert.match(data, /subscribeUserActivity/);
+  assert.match(data, /markAllActivitiesRead/);
+  assert.match(data, /minimumReactions/);
+  assert.match(activityFeed, /activity-mark-all-read/);
+  assert.match(profilePage, /profile-notification-toggle-browserEnabled/);
+  assert.match(profilePage, /profile-notification-toggle-reactionAlerts/);
+  assert.match(userContext, /updateNotificationPreferences/);
+});
+
+test("add flow remembers recent meal draft defaults", () => {
+  const addPage = read("app/add/page.tsx");
+  const mealDraft = read("lib/meal-draft.ts");
+  const mealCopy = read("lib/meal-copy.ts");
+  const homePage = read("app/page.tsx");
+
+  assert.match(addPage, /getMealDraftDefaults/);
+  assert.match(addPage, /saveMealDraftDefaults/);
+  assert.match(addPage, /buildAutoMealDescription/);
+  assert.match(addPage, /data-testid="add-photo-input"/);
+  assert.match(addPage, /data-testid="add-quick-save"/);
+  assert.match(homePage, /useSearchParams/);
+  assert.match(mealDraft, /localStorage/);
+  assert.match(mealDraft, /mealType/);
+  assert.match(mealDraft, /participantIds/);
+  assert.match(mealCopy, /buildAutoMealDescription/);
 });
 
 test("meal delete route uses idempotent server cleanup flow", () => {

@@ -3,8 +3,10 @@ import { Timestamp } from "firebase-admin/firestore";
 import { z } from "zod";
 
 import { adminDb } from "@/lib/firebase-admin";
+import { createCommentActivities } from "@/lib/activity-log";
 import { normalizeReactionMap } from "@/lib/reactions";
 import { AuthError, getUserRole, verifyRequestUser } from "@/lib/server-auth";
+import type { UserRole } from "@/lib/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -18,10 +20,12 @@ type Params = {
 
 type MealDoc = {
   commentCount?: unknown;
+  ownerUid?: unknown;
 };
 
 type CommentDoc = {
   author?: unknown;
+  authorUid?: unknown;
   parentId?: unknown;
 };
 
@@ -76,6 +80,7 @@ export async function POST(
     if (!role || !VALID_ROLES.has(role)) {
       throw new RouteError("Valid user role is required", 403);
     }
+    const actorRole = role as UserRole;
 
     let body: unknown;
     try {
@@ -108,6 +113,7 @@ export async function POST(
       const now = Date.now();
       const nowTs = Timestamp.fromMillis(now);
       let mentionedAuthor: string | undefined;
+      let parentAuthorUid: string | undefined;
 
       if (parentId) {
         const parentRef = mealRef.collection("comments").doc(parentId);
@@ -122,6 +128,9 @@ export async function POST(
         }
         if (typeof parentData.author === "string") {
           mentionedAuthor = parentData.author;
+        }
+        if (typeof parentData.authorUid === "string" && parentData.authorUid.trim().length > 0) {
+          parentAuthorUid = parentData.authorUid;
         }
       }
 
@@ -139,9 +148,21 @@ export async function POST(
         commentCount: baseCount + 1,
       });
 
+      createCommentActivities({
+        tx,
+        mealId,
+        commentId: commentRef.id,
+        mealOwnerUid: typeof mealData.ownerUid === "string" ? mealData.ownerUid : undefined,
+        actorUid: user.uid,
+        actorRole,
+        preview: trimmed,
+        createdAt: nowTs,
+        parentAuthorUid,
+      });
+
       return {
         id: commentRef.id,
-        author: role,
+        author: actorRole,
         authorUid: user.uid,
         text: trimmed,
         ...(parentId ? { parentId } : {}),

@@ -35,3 +35,18 @@ test("firestore rules lock client-side role changes and validate optional fields
   assert.match(rules, /function validImageUrl/);
   assert.match(rules, /function validKeywords/);
 });
+
+test("profile settings and activity logging stay on the server side", () => {
+  const settingsRoute = read("app/api/profile/settings/route.ts");
+  const activityLog = read("lib/activity-log.ts");
+  const mealCommentRoute = read("app/api/meals/[id]/comments/route.ts");
+  const mealReactionRoute = read("app/api/meals/[id]/reactions/route.ts");
+  const commentReactionRoute = read("app/api/meals/[id]/comments/[commentId]/reactions/route.ts");
+
+  assert.match(settingsRoute, /verifyRequestUser/);
+  assert.match(settingsRoute, /notificationPreferences/);
+  assert.match(activityLog, /users"\)\.doc\(recipientUid\)\.collection\("activity"\)/);
+  assert.match(mealCommentRoute, /createCommentActivities/);
+  assert.match(mealReactionRoute, /syncMealReactionActivity/);
+  assert.match(commentReactionRoute, /syncCommentReactionActivity/);
+});

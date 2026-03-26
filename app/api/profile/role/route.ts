@@ -9,12 +9,19 @@ export const dynamic = "force-dynamic";
 
 const VALID_ROLES = ["아빠", "엄마", "딸", "아들"] as const;
 const allowRoleReassign = process.env.ALLOW_ROLE_REASSIGN === "true";
+const DEFAULT_NOTIFICATION_PREFERENCES = {
+  browserEnabled: true,
+  commentAlerts: true,
+  reactionAlerts: true,
+  replyAlerts: true,
+};
 
 type UserProfileDoc = {
   uid?: unknown;
   email?: unknown;
   displayName?: unknown;
   role?: unknown;
+  notificationPreferences?: unknown;
 };
 
 class RouteError extends Error {
@@ -84,6 +91,10 @@ export async function POST(request: Request) {
         email: toStringOrNull(existing.email) ?? authEmail,
         displayName: toStringOrNull(existing.displayName) ?? authDisplayName,
         role: requestedRole,
+        notificationPreferences:
+          existing.notificationPreferences && typeof existing.notificationPreferences === "object"
+            ? existing.notificationPreferences
+            : DEFAULT_NOTIFICATION_PREFERENCES,
       };
 
       if (!nextProfile.email) {

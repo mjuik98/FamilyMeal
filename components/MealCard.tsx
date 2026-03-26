@@ -1,18 +1,6 @@
 "use client";
 
-import { Meal, MealComment, ReactionEmoji, UserRole } from "@/lib/types";
-import {
-  Check,
-  ChevronDown,
-  ChevronUp,
-  Clock,
-  MessageSquare,
-  Pencil,
-  Reply,
-  Send,
-  Trash2,
-  X,
-} from "lucide-react";
+import { Meal, MealComment, ReactionEmoji } from "@/lib/types";
 import { useUser } from "@/context/UserContext";
 import {
   addMealComment,
@@ -29,27 +17,25 @@ import { useRouter } from "next/navigation";
 import { useToast } from "./Toast";
 import { useConfirm } from "./ConfirmDialog";
 import { useEffect, useMemo, useState } from "react";
-import ReactionBar from "./ReactionBar";
+import type { ReplyTarget } from "./comments/CommentComposer";
+import MealConversationPanel from "./meal-detail/MealConversationPanel";
+import MealDetailSummary from "./meal-detail/MealDetailSummary";
+import MealPhotoStage from "./meal-detail/MealPhotoStage";
 
-const roleEmoji: Record<string, string> = {
-  아빠: "👨",
-  엄마: "👩",
-  딸: "👧",
-  아들: "👦",
-};
-
-type ReplyTarget = {
-  id: string;
-  author: UserRole;
-};
-
-export default function MealCard({ meal }: { meal: Meal }) {
+export default function MealCard({
+  meal,
+  sameDayMeals = [],
+  onSelectMeal,
+}: {
+  meal: Meal;
+  sameDayMeals?: Meal[];
+  onSelectMeal?: (mealId: string) => void;
+}) {
   const { userProfile } = useUser();
   const router = useRouter();
   const { showToast } = useToast();
   const { showConfirm } = useConfirm();
 
-  const [imgLoaded, setImgLoaded] = useState(false);
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [comments, setComments] = useState<MealComment[]>(meal.comments ?? []);
   const [commentCount, setCommentCount] = useState(meal.commentCount ?? meal.comments?.length ?? 0);
@@ -62,19 +48,7 @@ export default function MealCard({ meal }: { meal: Meal }) {
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [editingText, setEditingText] = useState("");
   const [commentActionId, setCommentActionId] = useState<string | null>(null);
-  const [isImageExpanded, setIsImageExpanded] = useState(false);
   const [replyTarget, setReplyTarget] = useState<ReplyTarget | null>(null);
-
-  useEffect(() => {
-    if (!isImageExpanded) return;
-
-    const handleEsc = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setIsImageExpanded(false);
-    };
-
-    window.addEventListener("keydown", handleEsc);
-    return () => window.removeEventListener("keydown", handleEsc);
-  }, [isImageExpanded]);
 
   useEffect(() => {
     setCommentCount(meal.commentCount ?? meal.comments?.length ?? 0);
@@ -117,9 +91,6 @@ export default function MealCard({ meal }: { meal: Meal }) {
 
     return () => unsubscribe();
   }, [commentsOpen, meal.commentCount, meal.comments, meal.id]);
-
-  const date = new Date(meal.timestamp);
-  const timeString = date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
   const uids = useMemo(
     () => meal.userIds || (meal.userId ? [meal.userId] : []),
@@ -447,283 +418,46 @@ export default function MealCard({ meal }: { meal: Meal }) {
     return rtf.format(Math.trunc(diffSeconds / 31536000), "year");
   };
 
-  const author = uids[0];
-  const companions = uids.slice(1);
-
-  const renderComment = (comment: MealComment, isReply = false) => {
-    const timeBase = comment.updatedAt || comment.createdAt || comment.timestamp || Date.now();
-    const canManage = Boolean(userProfile?.uid && comment.authorUid === userProfile.uid);
-    const isEditing = editingCommentId === comment.id;
-
-    return (
-      <div key={comment.id} className={`comment-item${isReply ? " comment-item-reply" : ""}`}>
-        <div className="comment-header">
-          <div className="comment-meta">
-            <span className="comment-author">
-              {roleEmoji[comment.author] || "🙂"} {comment.author}
-            </span>
-            <span className="comment-time">{formatRelativeTime(timeBase)}</span>
-          </div>
-
-          <div className="comment-actions">
-            {!isReply && (
-              <button
-                type="button"
-                onClick={() => setReplyTarget({ id: comment.id, author: comment.author })}
-                className="comment-action-btn"
-                data-testid={`comment-reply-button-${comment.id}`}
-              >
-                <Reply size={12} />
-              </button>
-            )}
-            {canManage && (
-              <>
-                <button
-                  type="button"
-                  onClick={() => startEditingComment(comment.id, comment.text)}
-                  disabled={commentActionId === comment.id}
-                  className="comment-action-btn"
-                >
-                  <Pencil size={12} />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => void handleDeleteComment(comment.id)}
-                  disabled={commentActionId === comment.id}
-                  className="comment-action-btn"
-                >
-                  <Trash2 size={12} />
-                </button>
-              </>
-            )}
-          </div>
-        </div>
-
-        {isEditing ? (
-          <div className="comment-edit-row">
-            <input
-              type="text"
-              value={editingText}
-              onChange={(e) => setEditingText(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.nativeEvent.isComposing) {
-                  e.preventDefault();
-                  if (commentActionId !== comment.id) {
-                    void handleSaveComment(comment.id);
-                  }
-                }
-              }}
-              className="input-base input-pill comment-input"
-              style={{
-                flex: 1,
-                padding: "6px 10px",
-                fontSize: "0.8rem",
-                outline: "none",
-              }}
-            />
-
-            <button
-              type="button"
-              onClick={() => void handleSaveComment(comment.id)}
-              disabled={commentActionId === comment.id || !editingText.trim()}
-              className="comment-save-btn"
-            >
-              <Check size={12} />
-            </button>
-
-            <button
-              type="button"
-              onClick={cancelEditingComment}
-              disabled={commentActionId === comment.id}
-              className="comment-cancel-btn"
-            >
-              <X size={12} />
-            </button>
-          </div>
-        ) : (
-          <>
-            {comment.mentionedAuthor && (
-              <p className="comment-mention">
-                {comment.mentionedAuthor}님께 답글
-              </p>
-            )}
-            <p className="comment-text">{comment.text}</p>
-            <ReactionBar
-              scope="comment"
-              reactions={comment.reactions}
-              currentUid={userProfile?.uid}
-              onToggle={(emoji) => handleToggleCommentReaction(comment.id, emoji)}
-              disabled={pendingCommentReactionId === comment.id}
-              compact
-            />
-          </>
-        )}
-      </div>
-    );
-  };
-
   return (
     <article className="meal-card surface-card" data-testid={`meal-card-${meal.id}`}>
-      {meal.imageUrl && (
-        <div
-          onClick={() => setIsImageExpanded(true)}
-          className="meal-card-image-shell"
-          style={{ cursor: "zoom-in" }}
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={meal.imageUrl}
-            alt={meal.description}
-            loading="lazy"
-            onLoad={() => setImgLoaded(true)}
-            className="meal-card-image"
-            style={{ opacity: imgLoaded ? 1 : 0 }}
-          />
-        </div>
-      )}
+      <MealPhotoStage meal={meal} sameDayMeals={sameDayMeals} onSelectMeal={onSelectMeal} />
 
-      {isImageExpanded && meal.imageUrl && (
-        <div onClick={() => setIsImageExpanded(false)} className="image-overlay" style={{ cursor: "zoom-out" }}>
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              setIsImageExpanded(false);
-            }}
-            className="image-overlay-close"
-          >
-            <X size={24} />
-          </button>
-
-          <div onClick={(e) => e.stopPropagation()} className="image-overlay-frame">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={meal.imageUrl} alt={meal.description} className="image-overlay-image" />
-          </div>
-        </div>
-      )}
-
-      <div className="meal-card-body">
-        <div className="meal-card-header">
-          <div className="meal-card-meta">
-            <span className="type-pill">{meal.type}</span>
-            <span className="meta-inline text-muted">
-              <Clock size={12} /> {timeString}
-            </span>
-          </div>
-
-          {isOwner && (
-            <div className="meal-card-actions">
-              <button type="button" onClick={handleEdit} title="수정" className="icon-button">
-                <Pencil size={15} />
-              </button>
-              <button type="button" onClick={() => void handleDelete()} title="삭제" className="icon-button">
-                <Trash2 size={15} />
-              </button>
-            </div>
-          )}
-        </div>
-
-        <p className="meal-card-description">{meal.description}</p>
-
-        <div className="participant-list">
-          {author && (
-            <span className="participant-chip participant-chip-primary">
-              {roleEmoji[author] || "🙂"} {author}
-            </span>
-          )}
-          {companions.map((uid) => (
-            <span key={uid} className="participant-chip">
-              {roleEmoji[uid] || "🙂"} {uid}
-            </span>
-          ))}
-        </div>
-
-        <ReactionBar
-          scope="meal"
-          reactions={mealReactions}
-          currentUid={userProfile?.uid}
-          onToggle={handleToggleMealReaction}
-          pendingEmoji={pendingMealReaction}
-          disabled={Boolean(pendingMealReaction)}
+      <div className="meal-card-body meal-card-body-detail">
+        <MealDetailSummary
+          meal={meal}
+          isOwner={isOwner}
+          onEdit={handleEdit}
+          onDelete={() => void handleDelete()}
         />
 
-        <div className="comments-section">
-          <button
-            type="button"
-            onClick={() => setCommentsOpen((prev) => !prev)}
-            className="comments-toggle"
-            data-testid="meal-card-comment-toggle"
-          >
-            <span className="comments-toggle-label">
-              <MessageSquare size={14} /> 댓글 {commentCount}
-            </span>
-            <span className="comments-toggle-state">
-              {commentsOpen ? "닫기" : "열기"}
-              {commentsOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-            </span>
-          </button>
-
-          {commentsOpen && (
-            <>
-              {commentThreads.length > 0 && (
-                <div className="comments-list">
-                  {commentThreads.map(({ parent, replies }) => (
-                    <div key={parent.id} className="comment-thread">
-                      {renderComment(parent)}
-                      {replies.map((reply) => (
-                        <div key={reply.id} className="comment-thread-reply">
-                          {renderComment(reply, true)}
-                        </div>
-                      ))}
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {replyTarget && (
-                <div className="reply-target surface-card" data-testid="comment-reply-target">
-                  <span>{replyTarget.author}님께 답글</span>
-                  <button type="button" className="icon-button" onClick={() => setReplyTarget(null)}>
-                    <X size={14} />
-                  </button>
-                </div>
-              )}
-
-              <div className="comment-input-row">
-                <input
-                  type="text"
-                  value={commentText}
-                  onChange={(e) => setCommentText(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && !e.nativeEvent.isComposing) {
-                      e.preventDefault();
-                      if (!isSubmittingComment) {
-                        void handleAddComment();
-                      }
-                    }
-                  }}
-                  placeholder={replyTarget ? `${replyTarget.author}님께 답글을 남겨보세요` : "댓글을 입력하세요"}
-                  className="input-base input-pill comment-input"
-                  data-testid="meal-card-comment-input"
-                  style={{
-                    flex: 1,
-                    padding: "8px 12px",
-                    fontSize: "0.84rem",
-                    outline: "none",
-                  }}
-                />
-                <button
-                  type="button"
-                  onClick={() => void handleAddComment()}
-                  disabled={isSubmittingComment || !commentText.trim() || !userProfile?.role}
-                  className="comment-send-btn"
-                >
-                  <Send size={14} />
-                </button>
-              </div>
-            </>
-          )}
-        </div>
+        <MealConversationPanel
+          mealReactions={mealReactions}
+          currentUid={userProfile?.uid}
+          pendingMealReaction={pendingMealReaction}
+          commentCount={commentCount}
+          commentsOpen={commentsOpen}
+          commentThreads={commentThreads}
+          commentText={commentText}
+          replyTarget={replyTarget}
+          editingCommentId={editingCommentId}
+          editingText={editingText}
+          commentActionId={commentActionId}
+          pendingCommentReactionId={pendingCommentReactionId}
+          isSubmittingComment={isSubmittingComment}
+          onToggleComments={() => setCommentsOpen((prev) => !prev)}
+          onToggleMealReaction={(emoji) => void handleToggleMealReaction(emoji)}
+          onReply={setReplyTarget}
+          onStartEdit={startEditingComment}
+          onDelete={(commentId) => void handleDeleteComment(commentId)}
+          onEditingTextChange={setEditingText}
+          onSave={(commentId) => void handleSaveComment(commentId)}
+          onCancelEdit={cancelEditingComment}
+          onToggleReaction={(commentId, emoji) => void handleToggleCommentReaction(commentId, emoji)}
+          onCommentTextChange={setCommentText}
+          onSubmitComment={() => void handleAddComment()}
+          onClearReplyTarget={() => setReplyTarget(null)}
+          formatRelativeTime={formatRelativeTime}
+        />
       </div>
     </article>
   );

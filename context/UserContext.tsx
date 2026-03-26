@@ -11,9 +11,17 @@ import {
 } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 
-import { UserProfile, UserRole } from "@/lib/types";
+import { DEFAULT_NOTIFICATION_PREFERENCES, normalizeNotificationPreferences } from "@/lib/activity";
 import { auth, db } from "@/lib/firebase";
-import { QA_MOCK_MODE_KEY, getQaDefaultRole, isQaMockMode } from "@/lib/qa";
+import {
+  getQaDefaultRole,
+  getQaNotificationPreferences,
+  isQaMockMode,
+  QA_MOCK_MODE_KEY,
+  setQaNotificationPreferences,
+} from "@/lib/qa";
+import { NotificationPreferences, UserProfile, UserRole } from "@/lib/types";
+import { updateNotificationPreferences as saveNotificationPreferences } from "@/lib/data";
 
 type UserContextType = {
   user: User | null;
@@ -23,6 +31,9 @@ type UserContextType = {
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
   selectRole: (role: UserRole) => Promise<void>;
+  updateNotificationPreferences: (
+    preferences: NotificationPreferences
+  ) => Promise<void>;
 };
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
@@ -34,6 +45,7 @@ const createQaProfile = (role: UserRole = getQaDefaultRole()): UserProfile => ({
   email: "qa@example.com",
   displayName: "QA User",
   role,
+  notificationPreferences: getQaNotificationPreferences(),
 });
 
 const getAccessToken = async (): Promise<string> => {
@@ -83,13 +95,18 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         try {
           const userDoc = await getDoc(userDocRef);
           if (userDoc.exists()) {
-            setUserProfile(userDoc.data() as UserProfile);
+            const data = userDoc.data() as UserProfile;
+            setUserProfile({
+              ...data,
+              notificationPreferences: normalizeNotificationPreferences(data.notificationPreferences),
+            });
           } else {
             setUserProfile({
               uid: firebaseUser.uid,
               email: firebaseUser.email,
               displayName: firebaseUser.displayName,
               role: null,
+              notificationPreferences: { ...DEFAULT_NOTIFICATION_PREFERENCES },
             });
           }
         } catch (error) {
@@ -99,6 +116,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
             email: firebaseUser.email,
             displayName: firebaseUser.displayName,
             role: null,
+            notificationPreferences: { ...DEFAULT_NOTIFICATION_PREFERENCES },
           });
           setAuthError(
             "\uB85C\uADF8\uC778 \uC815\uBCF4\uB97C \uBD88\uB7EC\uC624\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4. \uC7A0\uC2DC \uD6C4 \uB2E4\uC2DC \uC2DC\uB3C4\uD574 \uC8FC\uC138\uC694."
@@ -184,6 +202,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         email: prev?.email ?? "qa@example.com",
         displayName: prev?.displayName ?? "QA User",
         role,
+        notificationPreferences: prev?.notificationPreferences ?? getQaNotificationPreferences(),
       }));
       return;
     }
@@ -211,7 +230,10 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       if (!payload.profile) {
         throw new Error("역할 저장 결과가 올바르지 않습니다.");
       }
-      setUserProfile(payload.profile);
+      setUserProfile({
+        ...payload.profile,
+        notificationPreferences: normalizeNotificationPreferences(payload.profile.notificationPreferences),
+      });
       setAuthError(null);
     } catch (error) {
       console.error("Error saving user role", error);
@@ -224,6 +246,34 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const updateNotificationPreferences = async (
+    preferences: NotificationPreferences
+  ) => {
+    if (isQaMockMode()) {
+      setQaNotificationPreferences(preferences);
+      setUserProfile((prev) =>
+        prev
+          ? { ...prev, notificationPreferences: preferences }
+          : {
+              uid: "qa-user",
+              email: "qa@example.com",
+              displayName: "QA User",
+              role: getQaDefaultRole(),
+              notificationPreferences: preferences,
+            }
+      );
+      return;
+    }
+
+    const savedPreferences = await saveNotificationPreferences(preferences);
+    setUserProfile((prev) =>
+      prev
+        ? { ...prev, notificationPreferences: savedPreferences }
+        : prev
+    );
+    setAuthError(null);
+  };
+
   const value: UserContextType = {
     user,
     userProfile,
@@ -232,6 +282,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     signInWithGoogle,
     signOut,
     selectRole,
+    updateNotificationPreferences,
   };
 
   return <UserContext.Provider value={value}>{children}</UserContext.Provider>;

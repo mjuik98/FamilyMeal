@@ -34,6 +34,7 @@ const MOM_UID = "mom-uid";
 const OUTSIDER_UID = "outsider-uid";
 const MEAL_ID = "meal-1";
 const COMMENT_ID = "comment-1";
+const ACTIVITY_ID = "activity-1";
 
 test.before(async () => {
   testEnv = await initializeTestEnvironment({
@@ -90,6 +91,15 @@ test.beforeEach(async () => {
       text: "\uB9DB\uC788\uC5C8\uC5B4\uC694",
       createdAt: Timestamp.fromMillis(Date.now()),
       updatedAt: Timestamp.fromMillis(Date.now()),
+    });
+
+    await setDoc(doc(db, "users", OWNER_UID, "activity", ACTIVITY_ID), {
+      type: "meal-comment",
+      actorUid: MOM_UID,
+      actorRole: ROLE_MOM,
+      mealId: MEAL_ID,
+      preview: "\uC0C8 \uB313\uAE00",
+      createdAt: Timestamp.fromMillis(Date.now()),
     });
   });
 });
@@ -413,6 +423,26 @@ test("client meal creation with non-empty reactions is denied", async () => {
       },
       timestamp: Timestamp.fromMillis(Date.now()),
       commentCount: 0,
+    })
+  );
+});
+
+test("user can read and mark own activity as read, but others cannot", async () => {
+  const ownerDb = testEnv.authenticatedContext(OWNER_UID).firestore();
+  const momDb = testEnv.authenticatedContext(MOM_UID).firestore();
+
+  await assertSucceeds(getDoc(doc(ownerDb, "users", OWNER_UID, "activity", ACTIVITY_ID)));
+  await assertFails(getDoc(doc(momDb, "users", OWNER_UID, "activity", ACTIVITY_ID)));
+
+  await assertSucceeds(
+    updateDoc(doc(ownerDb, "users", OWNER_UID, "activity", ACTIVITY_ID), {
+      readAt: Timestamp.fromMillis(Date.now() + 5000),
+    })
+  );
+
+  await assertFails(
+    updateDoc(doc(ownerDb, "users", OWNER_UID, "activity", ACTIVITY_ID), {
+      preview: "\uBCC0\uC870",
     })
   );
 });

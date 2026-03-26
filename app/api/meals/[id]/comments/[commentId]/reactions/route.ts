@@ -2,8 +2,10 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { adminDb } from "@/lib/firebase-admin";
+import { syncCommentReactionActivity } from "@/lib/activity-log";
 import { ALLOWED_REACTION_EMOJIS, isReactionEmoji, normalizeReactionMap, toggleReactionInMap } from "@/lib/reactions";
 import { AuthError, getUserRole, verifyRequestUser } from "@/lib/server-auth";
+import type { UserRole } from "@/lib/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -75,6 +77,7 @@ export async function POST(
     if (!role || !VALID_ROLES.has(role)) {
       throw new RouteError("Valid user role is required", 403);
     }
+    const actorRole = role as UserRole;
 
     let body: unknown;
     try {
@@ -100,15 +103,29 @@ export async function POST(
         throw new RouteError("Comment not found", 404);
       }
 
-      const commentData = commentSnap.data() as { reactions?: unknown };
+      const commentData = commentSnap.data() as { reactions?: unknown; authorUid?: unknown; text?: unknown };
+      const previousReactions = normalizeReactionMap(commentData.reactions);
+      const hadReaction = previousReactions[emoji]?.includes(user.uid) ?? false;
       const nextReactions = toggleReactionInMap(
-        normalizeReactionMap(commentData.reactions),
+        previousReactions,
         emoji,
         user.uid
       );
 
       tx.update(commentRef, {
         reactions: nextReactions,
+      });
+
+      syncCommentReactionActivity({
+        tx,
+        mealId,
+        commentId,
+        commentAuthorUid: typeof commentData.authorUid === "string" ? commentData.authorUid : undefined,
+        actorUid: user.uid,
+        actorRole,
+        emoji,
+        preview: typeof commentData.text === "string" ? commentData.text : "",
+        added: !hadReaction,
       });
 
       return nextReactions;

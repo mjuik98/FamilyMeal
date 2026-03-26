@@ -1,20 +1,31 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Camera, Send } from "lucide-react";
 
 import PageHeader from "@/components/PageHeader";
 import SurfaceSection from "@/components/SurfaceSection";
 import { useUser } from "@/context/UserContext";
+import { formatDateKey, parseDateKey } from "@/lib/date-utils";
+import { getMealDraftDefaults, saveMealDraftDefaults } from "@/lib/meal-draft";
+import { buildAutoMealDescription } from "@/lib/meal-copy";
+import { addQaCustomMeal, isQaMockMode } from "@/lib/qa";
 import { Meal, UserRole } from "@/lib/types";
 import { useToast } from "@/components/Toast";
 
 const ROLES: UserRole[] = ["아빠", "엄마", "딸", "아들"];
+const getQaAnchorDate = () => {
+  const date = new Date();
+  date.setHours(12, 0, 0, 0);
+  date.setDate(date.getDate() + (6 - date.getDay()));
+  return date;
+};
 
-export default function AddMealPage() {
-  const { userProfile } = useUser();
+function AddMealPageContent() {
+  const { userProfile, loading } = useUser();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { showToast } = useToast();
 
   const [description, setDescription] = useState("");
@@ -22,19 +33,49 @@ export default function AddMealPage() {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [selectedUsers, setSelectedUsers] = useState<UserRole[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [draftReady, setDraftReady] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const recordDate = useMemo(
+    () => parseDateKey(searchParams.get("date")) ?? (isQaMockMode() ? getQaAnchorDate() : new Date()),
+    [searchParams]
+  );
+  const autoDescription = useMemo(
+    () => buildAutoMealDescription(type, selectedUsers),
+    [selectedUsers, type]
+  );
 
   useEffect(() => {
+    if (loading) return;
+
     if (!userProfile?.role) {
       router.replace("/");
       return;
     }
 
-    if (selectedUsers.length === 0) {
-      setSelectedUsers([userProfile.role]);
-    }
-  }, [router, selectedUsers.length, userProfile?.role]);
+    if (draftReady) return;
+
+    const defaults = getMealDraftDefaults();
+    setType(defaults.mealType);
+    setSelectedUsers(defaults.participantIds.length > 0 ? defaults.participantIds : [userProfile.role]);
+    setDraftReady(true);
+  }, [draftReady, loading, router, userProfile?.role]);
+
+  useEffect(() => {
+    if (!draftReady || selectedUsers.length === 0) return;
+    saveMealDraftDefaults({
+      mealType: type,
+      participantIds: selectedUsers,
+    });
+  }, [draftReady, selectedUsers, type]);
+
+  if (loading) {
+    return (
+      <div className="loading-shell">
+        <div className="spinner" />
+      </div>
+    );
+  }
 
   if (!userProfile?.role) return null;
 
@@ -59,13 +100,14 @@ export default function AddMealPage() {
     });
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const normalizedDescription = description.trim();
-    if (!normalizedDescription) {
-      showToast("설명을 입력해 주세요.", "error");
+  const persistMeal = async () => {
+    if (!userProfile?.uid) return;
+    if (!imagePreview) {
+      showToast("식사 사진을 먼저 추가해 주세요.", "error");
       return;
     }
+
+    const normalizedDescription = description.trim() || autoDescription;
     if (normalizedDescription.length > 300) {
       showToast("설명은 300자 이하로 입력해 주세요.", "error");
       return;
@@ -73,26 +115,40 @@ export default function AddMealPage() {
 
     setIsSubmitting(true);
     try {
-      const { addMeal } = await import("@/lib/data");
-      const { uploadImage } = await import("@/lib/uploadImage");
+      const timestamp = recordDate.getTime();
 
-      let imageUrl: string | undefined;
-      if (imagePreview) {
-        imageUrl = await uploadImage(imagePreview);
+      if (isQaMockMode()) {
+        addQaCustomMeal({
+          id: `qa-custom-${Date.now()}`,
+          ownerUid: userProfile.uid,
+          userIds: selectedUsers,
+          description: normalizedDescription,
+          type,
+          imageUrl: imagePreview,
+          timestamp,
+          commentCount: 0,
+          comments: [],
+          reactions: {},
+        });
+      } else {
+        const { addMeal } = await import("@/lib/data");
+        const { uploadImage } = await import("@/lib/uploadImage");
+        const imageUrl = await uploadImage(imagePreview);
+
+        await addMeal({
+          ownerUid: userProfile.uid,
+          userIds: selectedUsers,
+          description: normalizedDescription,
+          type,
+          imageUrl,
+          timestamp,
+          commentCount: 0,
+          reactions: {},
+        });
       }
 
-      await addMeal({
-        ownerUid: userProfile.uid,
-        userIds: selectedUsers,
-        description: normalizedDescription,
-        type,
-        imageUrl,
-        timestamp: Date.now(),
-        commentCount: 0,
-        reactions: {},
-      });
-
-      router.push("/");
+      showToast("식사 기록이 저장되었습니다.", "success");
+      router.push(`/?date=${formatDateKey(recordDate)}`);
       router.refresh();
     } catch (error) {
       console.error("Failed to add meal", error);
@@ -102,14 +158,20 @@ export default function AddMealPage() {
     }
   };
 
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await persistMeal();
+  };
+
   return (
     <div className="page-shell">
       <div className="page-stack">
-        <PageHeader title="식사 작성하기" subtitle="오늘 먹은 식사를 사진과 함께 정리해보세요." />
+        <PageHeader title="새 식사 기록" subtitle="사진 한 장과 식사 종류만 있으면 바로 저장할 수 있어요." />
 
         <form onSubmit={handleSubmit} className="form-stack">
           <SurfaceSection
             title="사진"
+            caption="설명은 비워둬도 됩니다. 사진을 올리면 자동 문구로 바로 저장할 수 있어요."
             actions={
               imagePreview ? (
                 <button
@@ -137,7 +199,7 @@ export default function AddMealPage() {
               ) : (
                 <div className="media-placeholder">
                   <Camera size={36} strokeWidth={1.5} />
-                  <span style={{ fontSize: "0.85rem" }}>눌러서 사진 추가</span>
+                  <span style={{ fontSize: "0.85rem" }}>눌러서 식사 사진 추가</span>
                 </div>
               )}
             </button>
@@ -149,6 +211,7 @@ export default function AddMealPage() {
             onChange={handleImageChange}
             accept="image/*"
             style={{ display: "none" }}
+            data-testid="add-photo-input"
           />
 
           <SurfaceSection title="식사 정보" bodyClassName="surface-body form-stack">
@@ -161,6 +224,7 @@ export default function AddMealPage() {
                       type="button"
                       onClick={() => setType(value)}
                       className={`chip-button${type === value ? " chip-button-active" : ""}`}
+                      data-testid={`add-meal-type-${value}`}
                     >
                       {value}
                     </button>
@@ -177,6 +241,7 @@ export default function AddMealPage() {
                       type="button"
                       onClick={() => toggleUser(role)}
                       className={`chip-button${selectedUsers.includes(role) ? " chip-button-active" : ""}`}
+                      data-testid={`add-meal-user-${role}`}
                     >
                       {role}
                     </button>
@@ -189,8 +254,7 @@ export default function AddMealPage() {
                 <textarea
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  placeholder="어떤 식사를 했는지 적어주세요"
-                  required
+                  placeholder={`${autoDescription}처럼 자동으로 저장돼요`}
                   maxLength={300}
                   className="input-base textarea-base"
                   style={{
@@ -201,14 +265,43 @@ export default function AddMealPage() {
                     outline: "none",
                   }}
                 />
+                <p className="surface-note" style={{ marginTop: "8px" }}>
+                  비워두면 <strong>{autoDescription}</strong> 문구로 저장됩니다.
+                </p>
               </div>
           </SurfaceSection>
 
-          <button type="submit" disabled={isSubmitting} className="primary-button">
-            {isSubmitting ? "등록 중..." : <><Send size={18} /> 작성하기</>}
-          </button>
+          <div className="surface-row" style={{ gap: "10px", alignItems: "stretch" }}>
+            <button
+              type="button"
+              disabled={isSubmitting || !imagePreview}
+              className="secondary-button"
+              onClick={() => void persistMeal()}
+              data-testid="add-quick-save"
+              style={{ flex: 1 }}
+            >
+              {isSubmitting ? "저장 중..." : "사진만 저장"}
+            </button>
+            <button type="submit" disabled={isSubmitting || !imagePreview} className="primary-button" style={{ flex: 1 }}>
+              {isSubmitting ? "저장 중..." : <><Send size={18} /> 설명까지 저장</>}
+            </button>
+          </div>
         </form>
       </div>
     </div>
+  );
+}
+
+export default function AddMealPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="loading-shell">
+          <div className="spinner" />
+        </div>
+      }
+    >
+      <AddMealPageContent />
+    </Suspense>
   );
 }

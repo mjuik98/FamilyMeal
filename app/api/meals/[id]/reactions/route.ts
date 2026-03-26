@@ -2,8 +2,10 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { adminDb } from "@/lib/firebase-admin";
+import { syncMealReactionActivity } from "@/lib/activity-log";
 import { ALLOWED_REACTION_EMOJIS, isReactionEmoji, normalizeReactionMap, toggleReactionInMap } from "@/lib/reactions";
 import { AuthError, getUserRole, verifyRequestUser } from "@/lib/server-auth";
+import type { UserRole } from "@/lib/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -64,6 +66,7 @@ export async function POST(
     if (!role || !VALID_ROLES.has(role)) {
       throw new RouteError("Valid user role is required", 403);
     }
+    const actorRole = role as UserRole;
 
     let body: unknown;
     try {
@@ -89,15 +92,28 @@ export async function POST(
         throw new RouteError("Meal not found", 404);
       }
 
-      const mealData = mealSnap.data() as { reactions?: unknown };
+      const mealData = mealSnap.data() as { reactions?: unknown; ownerUid?: unknown; description?: unknown };
+      const previousReactions = normalizeReactionMap(mealData.reactions);
+      const hadReaction = previousReactions[emoji]?.includes(user.uid) ?? false;
       const nextReactions = toggleReactionInMap(
-        normalizeReactionMap(mealData.reactions),
+        previousReactions,
         emoji,
         user.uid
       );
 
       tx.update(mealRef, {
         reactions: nextReactions,
+      });
+
+      syncMealReactionActivity({
+        tx,
+        mealId,
+        mealOwnerUid: typeof mealData.ownerUid === "string" ? mealData.ownerUid : undefined,
+        actorUid: user.uid,
+        actorRole,
+        emoji,
+        preview: typeof mealData.description === "string" ? mealData.description : "",
+        added: !hadReaction,
       });
 
       return nextReactions;

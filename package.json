@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev --webpack",
-    "build": "next build --webpack",
+    "build": "node scripts/clean-next-dir.mjs && next build --webpack",
     "start": "next start",
     "test:smoke": "node scripts/smoke-test.mjs",
     "test:smoke:qa-token-required": "node scripts/smoke-qa-token-required.mjs",
@@ -17,7 +17,7 @@
     "ci:verify": "npm run lint && npm run typecheck && npm run build && npm run test:smoke && npm run test:ui && npm run test:api && npm run test:rules",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test:rules": "npx firebase-tools emulators:exec --only firestore \"node --test tests/firestore.rules.test.mjs\"",
+    "test:rules": "node scripts/run-firestore-rules.mjs",
     "migrate:comments": "node scripts/migrate-comments-to-subcollection.mjs",
     "migrate:comments:dry": "node scripts/migrate-comments-to-subcollection.mjs --dry-run",
     "migrate:meals": "node scripts/migrate-meals-schema.mjs",

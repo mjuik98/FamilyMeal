@@ -1,12 +1,51 @@
 export type UserRole = '아빠' | '엄마' | '딸' | '아들';
 export type ReactionEmoji = '❤️' | '👍' | '😋' | '👏' | '🔥';
 export type ReactionMap = Partial<Record<ReactionEmoji, string[]>>;
+export type UserActivityType = 'meal-comment' | 'comment-reply' | 'meal-reaction' | 'comment-reaction';
+
+export interface NotificationPreferences {
+  browserEnabled: boolean;
+  commentAlerts: boolean;
+  reactionAlerts: boolean;
+  replyAlerts: boolean;
+}
+
+export interface UserActivity {
+  id: string;
+  type: UserActivityType;
+  actorUid: string;
+  actorRole: UserRole;
+  mealId: string;
+  commentId?: string;
+  reactionEmoji?: ReactionEmoji;
+  preview: string;
+  createdAt: number;
+  readAt?: number | null;
+}
+
+export interface ActivityFeedItem {
+  id: string;
+  kind: UserActivityType;
+  actorLabel: string;
+  actionLabel: string;
+  preview: string;
+  timestamp: number;
+  readAt?: number | null;
+}
+
+export interface WeeklyMealStat {
+  date: Date;
+  label: string;
+  count: number;
+  previewImageUrl?: string;
+}
 
 export interface UserProfile {
   uid: string;
   email: string | null;
   displayName: string | null;
   role: UserRole | null;
+  notificationPreferences?: NotificationPreferences;
 }
 
 export interface MealComment {
