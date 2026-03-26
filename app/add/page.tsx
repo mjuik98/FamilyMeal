@@ -10,6 +10,7 @@ import { useUser } from "@/context/UserContext";
 import { formatDateKey, parseDateKey } from "@/lib/date-utils";
 import { getMealDraftDefaults, saveMealDraftDefaults } from "@/lib/meal-draft";
 import { buildAutoMealDescription } from "@/lib/meal-copy";
+import { toMealCreateErrorMessage } from "@/lib/meal-errors";
 import { addQaCustomMeal, isQaMockMode } from "@/lib/qa";
 import { Meal, UserRole } from "@/lib/types";
 import { useToast } from "@/components/Toast";
@@ -133,18 +134,31 @@ function AddMealPageContent() {
       } else {
         const { addMeal } = await import("@/lib/data");
         const { uploadImage } = await import("@/lib/uploadImage");
-        const imageUrl = await uploadImage(imagePreview);
+        let imageUrl = "";
+        try {
+          imageUrl = await uploadImage(imagePreview);
+        } catch (error) {
+          console.error("Failed to upload meal image", error);
+          showToast(toMealCreateErrorMessage(error, "upload"), "error");
+          return;
+        }
 
-        await addMeal({
-          ownerUid: userProfile.uid,
-          userIds: selectedUsers,
-          description: normalizedDescription,
-          type,
-          imageUrl,
-          timestamp,
-          commentCount: 0,
-          reactions: {},
-        });
+        try {
+          await addMeal({
+            ownerUid: userProfile.uid,
+            userIds: selectedUsers,
+            description: normalizedDescription,
+            type,
+            imageUrl,
+            timestamp,
+            commentCount: 0,
+            reactions: {},
+          });
+        } catch (error) {
+          console.error("Failed to save meal document", error);
+          showToast(toMealCreateErrorMessage(error, "save"), "error");
+          return;
+        }
       }
 
       showToast("식사 기록이 저장되었습니다.", "success");
@@ -152,7 +166,7 @@ function AddMealPageContent() {
       router.refresh();
     } catch (error) {
       console.error("Failed to add meal", error);
-      showToast("식사 기록 등록에 실패했습니다.", "error");
+      showToast(toMealCreateErrorMessage(error, "save"), "error");
     } finally {
       setIsSubmitting(false);
     }

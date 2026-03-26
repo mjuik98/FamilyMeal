@@ -27,6 +27,16 @@ npm run lint
 npm run test:rules
 ```
 
+## Meal Mutation Smoke Check
+- 실제 서버 라우트 기준으로 이미지 업로드, 식사 생성, 수정, 삭제 흐름을 검증합니다.
+- 필요 조건:
+  - `.env.local`에 Firebase client/admin 환경변수 설정
+  - `ALLOWED_EMAILS`에 포함된 Firebase Auth 사용자 1명 이상 존재
+
+```bash
+npm run test:smoke:meals
+```
+
 ## 레거시 댓글 마이그레이션
 기존 `meals.comments` 배열을 `meals/{mealId}/comments` 서브컬렉션으로 이전합니다.
 
@@ -85,7 +95,7 @@ npm run migrate:meals
 - Allowlist entries are advisory/package-scoped and should include `expiresOn` for periodic review.
 
 ## Server API Env
-- The app now uses server routes for comment mutations and meal deletion cleanup.
+- The app now uses server routes for comment mutations, meal create/update/delete, and image upload cleanup.
 - Configure Firebase Admin credentials:
   - `FIREBASE_ADMIN_PROJECT_ID`
   - `FIREBASE_ADMIN_CLIENT_EMAIL`

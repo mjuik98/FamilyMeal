@@ -1,8 +1,16 @@
 import { NextResponse } from "next/server";
 import type { QueryDocumentSnapshot } from "firebase-admin/firestore";
+import { z } from "zod";
 
 import { adminDb } from "@/lib/firebase-admin";
+import {
+  deleteStorageObjectByUrl,
+  isLegacyParticipant,
+  MealRouteError,
+  updateMealDocument,
+} from "@/lib/server-meals";
 import { AuthError, getUserRole, verifyRequestUser } from "@/lib/server-auth";
+import type { Meal, UserRole } from "@/lib/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -19,6 +27,7 @@ type MealDoc = {
   ownerUid?: unknown;
   userIds?: unknown;
   userId?: unknown;
+  imageUrl?: unknown;
 };
 
 type DeleteJobDoc = {
@@ -31,27 +40,28 @@ type DeleteJobDoc = {
 type DeletePlan =
   | { action: "already_deleted" }
   | { action: "wait_for_inflight" }
-  | { action: "delete_now" };
+  | { action: "delete_now"; mealImageUrl?: string };
 
-class RouteError extends Error {
-  status: number;
+const VALID_ROLES = ["아빠", "엄마", "딸", "아들"] as const;
+const VALID_MEAL_TYPES = ["아침", "점심", "저녁", "간식"] as const;
 
-  constructor(message: string, status = 400) {
-    super(message);
-    this.name = "RouteError";
-    this.status = status;
-  }
-}
+const MealUpdateSchema = z.object({
+  ownerUid: z.string().trim().min(1).optional(),
+  userIds: z.array(z.enum(VALID_ROLES)).min(1).optional(),
+  description: z.string().trim().min(1).max(300).optional(),
+  type: z.enum(VALID_MEAL_TYPES).optional(),
+  imageUrl: z.string().trim().url().max(2048).nullable().optional(),
+});
 
 const getErrorStatus = (error: unknown): number =>
   error instanceof AuthError
     ? error.status
-    : error instanceof RouteError
+    : error instanceof MealRouteError
       ? error.status
       : 500;
 
 const getErrorMessage = (error: unknown): string =>
-  error instanceof AuthError || error instanceof RouteError ? error.message : "internal error";
+  error instanceof AuthError || error instanceof MealRouteError ? error.message : "internal error";
 
 const decodeMealId = async (params: Promise<Params>): Promise<string> => {
   const { id } = await params;
@@ -59,10 +69,10 @@ const decodeMealId = async (params: Promise<Params>): Promise<string> => {
   try {
     mealId = decodeURIComponent(id || "").trim();
   } catch {
-    throw new RouteError("Invalid meal id", 400);
+    throw new MealRouteError("Invalid meal id", 400);
   }
   if (!mealId) {
-    throw new RouteError("Invalid meal id", 400);
+    throw new MealRouteError("Invalid meal id", 400);
   }
   return mealId;
 };
@@ -78,17 +88,6 @@ const toMillis = (value: unknown): number | null => {
     return (value as { toMillis: () => number }).toMillis();
   }
   return null;
-};
-
-const isLegacyParticipant = (meal: MealDoc, role: string | null): boolean => {
-  if (!role) return false;
-  if (typeof meal.ownerUid === "string" && meal.ownerUid) return false;
-
-  if (Array.isArray(meal.userIds)) {
-    return meal.userIds.some((participant) => participant === role);
-  }
-
-  return typeof meal.userId === "string" && meal.userId === role;
 };
 
 const planDeleteOperation = async (
@@ -111,7 +110,7 @@ const planDeleteOperation = async (
     const isOwner = typeof meal.ownerUid === "string" && meal.ownerUid === uid;
     const legacyAllowed = isLegacyParticipant(meal, role);
     if (!isOwner && !legacyAllowed) {
-      throw new RouteError("Not allowed", 403);
+      throw new MealRouteError("Not allowed", 403);
     }
 
     const existingJob = (jobSnap.data() ?? {}) as DeleteJobDoc;
@@ -143,7 +142,10 @@ const planDeleteOperation = async (
       { merge: true }
     );
 
-    return { action: "delete_now" } satisfies DeletePlan;
+    return {
+      action: "delete_now",
+      mealImageUrl: typeof meal.imageUrl === "string" ? meal.imageUrl : undefined,
+    } satisfies DeletePlan;
   });
 };
 
@@ -206,6 +208,13 @@ export async function DELETE(
 
     await deleteMealComments(mealId);
     await adminDb.collection("meals").doc(mealId).delete();
+    if (plan.action === "delete_now" && plan.mealImageUrl) {
+      try {
+        await deleteStorageObjectByUrl(plan.mealImageUrl);
+      } catch (error) {
+        console.error("Failed to delete meal image during delete cleanup", error);
+      }
+    }
     await markDeleteJob(mealId, {
       status: "completed",
       deletedAt: Date.now(),
@@ -230,5 +239,45 @@ export async function DELETE(
     }
 
     return NextResponse.json({ ok: false, error: message }, { status });
+  }
+}
+
+export async function PATCH(
+  request: Request,
+  context: { params: Promise<Params> }
+) {
+  try {
+    const user = await verifyRequestUser(request);
+    const mealId = await decodeMealId(context.params);
+    const role = await getUserRole(user.uid);
+    if (!role || !VALID_ROLES.includes(role as UserRole)) {
+      throw new MealRouteError("Valid user role is required", 403);
+    }
+
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      throw new MealRouteError("Invalid JSON body", 400);
+    }
+
+    const parsed = MealUpdateSchema.safeParse(body);
+    if (!parsed.success) {
+      throw new MealRouteError("Invalid payload", 400);
+    }
+
+    const meal = await updateMealDocument({
+      mealId,
+      uid: user.uid,
+      role,
+      input: parsed.data as Partial<Omit<Meal, "id">>,
+    });
+
+    return NextResponse.json({ ok: true, meal });
+  } catch (error) {
+    return NextResponse.json(
+      { ok: false, error: getErrorMessage(error) },
+      { status: getErrorStatus(error) }
+    );
   }
 }

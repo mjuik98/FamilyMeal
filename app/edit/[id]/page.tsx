@@ -7,6 +7,7 @@ import { Camera, Save } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
 import SurfaceSection from "@/components/SurfaceSection";
 import { useUser } from "@/context/UserContext";
+import { toMealUpdateErrorMessage } from "@/lib/meal-errors";
 import { Meal, UserRole } from "@/lib/types";
 import { useToast } from "@/components/Toast";
 
@@ -108,25 +109,39 @@ export default function EditMealPage() {
       const { updateMeal } = await import("@/lib/data");
       const { uploadImage } = await import("@/lib/uploadImage");
 
-      let imageUrl: string | undefined = imagePreview || undefined;
+      let imageUrl: string | null | undefined = imagePreview || undefined;
       if (imagePreview && imagePreview.startsWith("data:")) {
-        imageUrl = await uploadImage(imagePreview);
+        try {
+          imageUrl = await uploadImage(imagePreview);
+        } catch (error) {
+          console.error("Failed to upload updated meal image", error);
+          showToast(toMealUpdateErrorMessage(error, "upload"), "error");
+          return;
+        }
+      } else if (!imagePreview) {
+        imageUrl = null;
       }
 
-      await updateMeal(mealId, {
-        ...(needsOwnerAdoption ? { ownerUid: userProfile.uid } : {}),
-        userIds: selectedUsers,
-        description: normalizedDescription,
-        type,
-        imageUrl,
-      });
+      try {
+        await updateMeal(mealId, {
+          ...(needsOwnerAdoption ? { ownerUid: userProfile.uid } : {}),
+          userIds: selectedUsers,
+          description: normalizedDescription,
+          type,
+          imageUrl,
+        });
+      } catch (error) {
+        console.error("Failed to save updated meal", error);
+        showToast(toMealUpdateErrorMessage(error, "save"), "error");
+        return;
+      }
 
       showToast("수정되었습니다.", "success");
       router.push("/");
       router.refresh();
     } catch (error) {
       console.error("Failed to update meal", error);
-      showToast("수정에 실패했습니다.", "error");
+      showToast(toMealUpdateErrorMessage(error, "save"), "error");
     } finally {
       setIsSubmitting(false);
     }

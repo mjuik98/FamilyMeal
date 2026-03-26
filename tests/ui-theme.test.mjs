@@ -200,18 +200,37 @@ test("add flow remembers recent meal draft defaults", () => {
   const addPage = read("app/add/page.tsx");
   const mealDraft = read("lib/meal-draft.ts");
   const mealCopy = read("lib/meal-copy.ts");
+  const mealErrors = read("lib/meal-errors.ts");
   const homePage = read("app/page.tsx");
+  const uploadHelper = read("lib/uploadImage.ts");
+  const data = read("lib/data.ts");
 
   assert.match(addPage, /getMealDraftDefaults/);
   assert.match(addPage, /saveMealDraftDefaults/);
   assert.match(addPage, /buildAutoMealDescription/);
   assert.match(addPage, /data-testid="add-photo-input"/);
   assert.match(addPage, /data-testid="add-quick-save"/);
+  assert.match(addPage, /uploadImage/);
+  assert.match(addPage, /toMealCreateErrorMessage/);
+  assert.match(mealErrors, /사진 업로드에 실패했습니다\./);
+  assert.match(mealErrors, /식사 기록 저장에 실패했습니다\./);
   assert.match(homePage, /useSearchParams/);
   assert.match(mealDraft, /localStorage/);
   assert.match(mealDraft, /mealType/);
   assert.match(mealDraft, /participantIds/);
   assert.match(mealCopy, /buildAutoMealDescription/);
+  assert.match(uploadHelper, /Authorization/);
+  assert.match(uploadHelper, /\/api\/uploads\/meal-image/);
+  assert.match(data, /\/api\/meals/);
+});
+
+test("edit flow uses server mutation helper and specific failure copy", () => {
+  const editPage = read("app/edit/[id]/page.tsx");
+  const mealErrors = read("lib/meal-errors.ts");
+
+  assert.match(editPage, /toMealUpdateErrorMessage/);
+  assert.match(mealErrors, /사진 업로드에 실패했습니다\./);
+  assert.match(mealErrors, /식사 기록 수정에 실패했습니다\./);
 });
 
 test("meal delete route uses idempotent server cleanup flow", () => {

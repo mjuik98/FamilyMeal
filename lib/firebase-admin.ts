@@ -1,6 +1,7 @@
 import { App, applicationDefault, cert, getApps, initializeApp } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
+import { getStorage } from "firebase-admin/storage";
 
 const normalizeEnvValue = (value: string | undefined): string | undefined => {
   if (typeof value !== "string") return undefined;
@@ -23,6 +24,7 @@ const adminPrivateKey = normalizeEnvValue(process.env.FIREBASE_ADMIN_PRIVATE_KEY
   /\\n/g,
   "\n"
 );
+const adminStorageBucket = normalizeEnvValue(process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET);
 
 const hasServiceAccount = Boolean(adminProjectId && adminClientEmail && adminPrivateKey);
 
@@ -39,16 +41,19 @@ const createAdminApp = (): App => {
         privateKey: adminPrivateKey,
       }),
       projectId: adminProjectId,
+      ...(adminStorageBucket ? { storageBucket: adminStorageBucket } : {}),
     });
   }
 
   return initializeApp({
     credential: applicationDefault(),
     ...(adminProjectId ? { projectId: adminProjectId } : {}),
+    ...(adminStorageBucket ? { storageBucket: adminStorageBucket } : {}),
   });
 };
 
-const adminApp = createAdminApp();
+export const adminApp = createAdminApp();
 
 export const adminAuth = getAuth(adminApp);
 export const adminDb = getFirestore(adminApp);
+export const adminStorage = getStorage(adminApp);

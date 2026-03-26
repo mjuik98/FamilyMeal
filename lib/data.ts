@@ -4,7 +4,6 @@ import { isReactionEmoji, normalizeReactionMap } from './reactions';
 import { auth, db } from './firebase';
 import {
     collection,
-    addDoc,
     query,
     where,
     getDocs,
@@ -12,7 +11,6 @@ import {
     Timestamp,
     getDoc,
     doc,
-    updateDoc,
     onSnapshot,
     limit,
     DocumentData,
@@ -22,7 +20,10 @@ import {
 
 export const users: UserRole[] = ['아빠', '엄마', '딸', '아들'];
 
-const DEFAULT_MEAL_TYPE: Meal['type'] = '점심';
+export type MealUpdateInput = Partial<Omit<Meal, 'id' | 'imageUrl'>> & {
+    imageUrl?: string | null;
+};
+
 const MAX_MEAL_DESCRIPTION_LENGTH = 300;
 const SEARCH_INDEX_LIMIT = 300;
 const SEARCH_FALLBACK_LIMIT = 300;
@@ -138,15 +139,6 @@ const mealParticipants = (mealData: Partial<Meal> & { userIds?: unknown; userId?
     return [];
 };
 
-const buildMealKeywords = (meal: Pick<Meal, 'description' | 'type' | 'userIds' | 'userId'>): string[] => {
-    const raw = `${meal.description} ${meal.type} ${(meal.userIds || (meal.userId ? [meal.userId] : [])).join(' ')}`.toLowerCase();
-    const tokens = raw
-        .split(/[\s,./!?()[\]{}"'`~:;|\\-]+/g)
-        .map((token) => token.trim())
-        .filter((token) => token.length >= 2);
-    return Array.from(new Set(tokens));
-};
-
 const normalizeMealDescription = (description: string): string => {
     const trimmed = description.trim();
     if (!trimmed) {
@@ -255,24 +247,24 @@ export const subscribeMealsForDate = (
     );
 };
 
-export const addMeal = async (meal: Omit<Meal, 'id'>) => {
+export const addMeal = async (meal: Omit<Meal, 'id'>): Promise<Meal> => {
     if (!meal.ownerUid) {
         throw new Error('ownerUid is required');
     }
     const normalizedDescription = normalizeMealDescription(meal.description);
 
-    const mealsRef = collection(db, 'meals');
-    const { comments, ...restMeal } = meal;
-    const commentCount = comments?.length ?? meal.commentCount ?? 0;
-    const indexedPayload = { ...restMeal, description: normalizedDescription };
-
-    await addDoc(mealsRef, {
-        ...restMeal,
-        description: normalizedDescription,
-        commentCount,
-        keywords: buildMealKeywords(indexedPayload),
-        timestamp: Timestamp.fromMillis(meal.timestamp),
+    const response = await fetchAuthedJson<{ ok: true; meal: Meal }>('/api/meals', {
+        method: 'POST',
+        body: JSON.stringify({
+            userIds: meal.userIds,
+            description: normalizedDescription,
+            type: meal.type,
+            imageUrl: meal.imageUrl,
+            timestamp: meal.timestamp,
+        }),
     });
+
+    return response.meal;
 };
 
 export const getMealById = async (id: string): Promise<Meal | null> => {
@@ -297,32 +289,27 @@ export const getMealById = async (id: string): Promise<Meal | null> => {
     } as Meal;
 };
 
-export const updateMeal = async (id: string, updates: Partial<Omit<Meal, 'id'>>) => {
-    const mealRef = doc(db, 'meals', id);
+export const updateMeal = async (id: string, updates: MealUpdateInput): Promise<Meal> => {
     const nextUpdates = { ...updates };
     if (typeof nextUpdates.description === 'string') {
         nextUpdates.description = normalizeMealDescription(nextUpdates.description);
     }
     delete (nextUpdates as { comments?: unknown }).comments;
     delete (nextUpdates as { commentCount?: unknown }).commentCount;
-    const dataToUpdate: Record<string, unknown> = { ...nextUpdates };
+    delete (nextUpdates as { reactions?: unknown }).reactions;
+    delete (nextUpdates as { timestamp?: unknown }).timestamp;
+    delete (nextUpdates as { userId?: unknown }).userId;
 
-    if (typeof nextUpdates.timestamp === 'number') {
-        dataToUpdate.timestamp = Timestamp.fromMillis(nextUpdates.timestamp);
-    }
+    const encodedMealId = encodeURIComponent(id);
+    const response = await fetchAuthedJson<{ ok: true; meal: Meal }>(
+        `/api/meals/${encodedMealId}`,
+        {
+            method: 'PATCH',
+            body: JSON.stringify(nextUpdates),
+        }
+    );
 
-    if (nextUpdates.description || nextUpdates.type || nextUpdates.userIds || nextUpdates.userId) {
-        const snapshot = await getDoc(mealRef);
-        const prev = snapshot.exists() ? (snapshot.data() as Partial<Meal>) : {};
-        dataToUpdate.keywords = buildMealKeywords({
-            description: nextUpdates.description ?? prev.description ?? '',
-            type: nextUpdates.type ?? prev.type ?? DEFAULT_MEAL_TYPE,
-            userIds: nextUpdates.userIds ?? prev.userIds,
-            userId: nextUpdates.userId ?? prev.userId,
-        });
-    }
-
-    await updateDoc(mealRef, dataToUpdate as DocumentData);
+    return response.meal;
 };
 
 export const deleteMeal = async (id: string) => {

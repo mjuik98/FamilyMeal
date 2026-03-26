@@ -50,3 +50,32 @@ test("profile settings and activity logging stay on the server side", () => {
   assert.match(mealReactionRoute, /syncMealReactionActivity/);
   assert.match(commentReactionRoute, /syncCommentReactionActivity/);
 });
+
+test("meal image uploads are handled by authenticated server route", () => {
+  const uploadRoute = read("app/api/uploads/meal-image/route.ts");
+  const uploadHelper = read("lib/uploadImage.ts");
+
+  assert.match(uploadRoute, /verifyRequestUser/);
+  assert.match(uploadRoute, /adminStorage/);
+  assert.match(uploadRoute, /NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET/);
+  assert.match(uploadHelper, /\/api\/uploads\/meal-image/);
+  assert.doesNotMatch(uploadHelper, /firebase\/storage/);
+});
+
+test("meal create and update mutations are handled by authenticated server APIs", () => {
+  const clientData = read("lib/data.ts");
+  const createRoute = read("app/api/meals/route.ts");
+  const mealRoute = read("app/api/meals/[id]/route.ts");
+  const serverMeals = read("lib/server-meals.ts");
+
+  assert.match(clientData, /fetchAuthedJson<\{ ok: true; meal: Meal \}>\('\/api\/meals'/);
+  assert.match(clientData, /\/api\/meals\/\$\{encodedMealId\}/);
+  assert.match(createRoute, /verifyRequestUser/);
+  assert.match(createRoute, /createMealDocument/);
+  assert.match(mealRoute, /export async function PATCH/);
+  assert.match(mealRoute, /updateMealDocument/);
+  assert.match(serverMeals, /deleteStorageObjectByUrl/);
+  assert.match(serverMeals, /buildMealKeywords/);
+  assert.doesNotMatch(clientData, /await addDoc\(mealsRef/);
+  assert.doesNotMatch(clientData, /await updateDoc\(mealRef/);
+});
