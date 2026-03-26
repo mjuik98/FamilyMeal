@@ -23,11 +23,22 @@ test("comment and form inputs use shared input classes", () => {
   const mealCard = read("components/MealCard.tsx");
   const addPage = read("app/add/page.tsx");
   const editPage = read("app/edit/[id]/page.tsx");
+  const profilePage = read("app/profile/page.tsx");
+  const homePage = read("app/page.tsx");
+  const pageHeader = read("components/PageHeader.tsx");
+  const surfaceSection = read("components/SurfaceSection.tsx");
 
   assert.match(mealCard, /className="input-base input-pill comment-input"/);
   assert.match(mealCard, /data-testid="meal-card-comment-toggle"/);
   assert.match(mealCard, /data-testid="meal-card-comment-input"/);
-  assert.match(read("app/page.tsx"), /data-testid="home-logout-button"/);
+  assert.match(homePage, /data-testid="home-logout-button"/);
+  assert.match(homePage, /page-shell/);
+  assert.match(addPage, /page-shell/);
+  assert.match(editPage, /page-shell/);
+  assert.match(profilePage, /page-shell/);
+  assert.match(homePage, /surface-card/);
+  assert.match(pageHeader, /export default function PageHeader/);
+  assert.match(surfaceSection, /export default function SurfaceSection/);
   assert.match(addPage, /className="input-base textarea-base"/);
   assert.match(editPage, /className="input-base textarea-base[^"]*"/);
 });
@@ -76,6 +87,40 @@ test("comment mutations are handled by server APIs and update parent commentCoun
   assert.doesNotMatch(clientData, /runTransaction\(/);
   assert.match(createRoute, /commentCount:\s*baseCount \+ 1/);
   assert.match(deleteRoute, /commentCount:\s*Math\.max\(0,\s*baseCount - 1\)/);
+});
+
+test("reaction mutations are handled by dedicated APIs with shared validation", () => {
+  const clientData = read("lib/data.ts");
+  const reactionBar = read("components/ReactionBar.tsx");
+  const mealReactionRoute = read("app/api/meals/[id]/reactions/route.ts");
+  const commentReactionRoute = read("app/api/meals/[id]/comments/[commentId]/reactions/route.ts");
+  const reactionHelpers = read("lib/reactions.ts");
+
+  assert.match(clientData, /\/api\/meals\/\$\{encodedMealId\}\/reactions/);
+  assert.match(clientData, /\/api\/meals\/\$\{encodedMealId\}\/comments\/\$\{encodedCommentId\}\/reactions/);
+  assert.match(reactionBar, /data-testid=\{`\$\{scope\}-reaction-chip-\$\{option\.key\}`\}/);
+  assert.match(mealReactionRoute, /ALLOWED_REACTION_EMOJIS/);
+  assert.match(commentReactionRoute, /ALLOWED_REACTION_EMOJIS/);
+  assert.match(reactionHelpers, /export const ALLOWED_REACTION_EMOJIS/);
+});
+
+test("comment routes support replies and safe parent deletion guards", () => {
+  const createRoute = read("app/api/meals/[id]/comments/route.ts");
+  const updateDeleteRoute = read("app/api/meals/[id]/comments/[commentId]/route.ts");
+  const mealCard = read("components/MealCard.tsx");
+  const homePage = read("app/page.tsx");
+  const activitySummary = read("components/ActivitySummary.tsx");
+  const filterChips = read("components/FilterChips.tsx");
+
+  assert.match(createRoute, /parentId/);
+  assert.match(createRoute, /mentionedAuthor/);
+  assert.match(updateDeleteRoute, /where\("parentId", "==", commentId\)/);
+  assert.match(updateDeleteRoute, /Reply comments exist/);
+  assert.match(mealCard, /comment-reply-button-/);
+  assert.match(mealCard, /comment-reply-target/);
+  assert.match(activitySummary, /activity-summary-card-\$\{item\.key\}/);
+  assert.match(filterChips, /data-testid=\{`\$\{testIdPrefix\}-\$\{option\}`\}/);
+  assert.match(homePage, /const TYPE_OPTIONS = \["전체", "아침", "점심", "저녁", "간식"\]/);
 });
 
 test("meal delete route uses idempotent server cleanup flow", () => {

@@ -1,4 +1,6 @@
 export type UserRole = '아빠' | '엄마' | '딸' | '아들';
+export type ReactionEmoji = '❤️' | '👍' | '😋' | '👏' | '🔥';
+export type ReactionMap = Partial<Record<ReactionEmoji, string[]>>;
 
 export interface UserProfile {
   uid: string;
@@ -12,9 +14,12 @@ export interface MealComment {
   author: UserRole;
   authorUid: string;
   text: string;
+  parentId?: string;
+  mentionedAuthor?: UserRole;
   timestamp?: number; // legacy fallback
   createdAt: number;
   updatedAt: number;
+  reactions?: ReactionMap;
 }
 
 export interface Meal {
@@ -29,4 +34,5 @@ export interface Meal {
   timestamp: number;
   commentCount?: number;
   comments?: MealComment[];
+  reactions?: ReactionMap;
 }

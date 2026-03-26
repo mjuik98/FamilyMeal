@@ -398,3 +398,21 @@ test("meal creation allows all meal types", async () => {
     );
   }
 });
+
+test("client meal creation with non-empty reactions is denied", async () => {
+  const ownerDb = testEnv.authenticatedContext(OWNER_UID).firestore();
+
+  await assertFails(
+    setDoc(doc(ownerDb, "meals", "meal-with-reactions"), {
+      ownerUid: OWNER_UID,
+      userIds: [ROLE_DAD],
+      description: "반응 필드 주입",
+      type: TYPE_DINNER,
+      reactions: {
+        "❤️": [OWNER_UID],
+      },
+      timestamp: Timestamp.fromMillis(Date.now()),
+      commentCount: 0,
+    })
+  );
+});

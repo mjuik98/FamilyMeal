@@ -3,6 +3,7 @@ import { Timestamp } from "firebase-admin/firestore";
 import { z } from "zod";
 
 import { adminDb } from "@/lib/firebase-admin";
+import { normalizeReactionMap } from "@/lib/reactions";
 import { AuthError, getUserRole, verifyRequestUser } from "@/lib/server-auth";
 
 export const runtime = "nodejs";
@@ -19,6 +20,9 @@ type CommentDoc = {
   author?: unknown;
   authorUid?: unknown;
   text?: unknown;
+  parentId?: unknown;
+  mentionedAuthor?: unknown;
+  reactions?: unknown;
   createdAt?: { toMillis?: () => number } | number | null;
   updatedAt?: { toMillis?: () => number } | number | null;
 };
@@ -143,9 +147,12 @@ export async function PATCH(
         author: typeof raw.author === "string" ? raw.author : "",
         authorUid: user.uid,
         text: parsed.data.text.trim(),
+        parentId: typeof raw.parentId === "string" ? raw.parentId : undefined,
+        mentionedAuthor: typeof raw.mentionedAuthor === "string" ? raw.mentionedAuthor : undefined,
         createdAt,
         updatedAt: now,
         timestamp: now,
+        reactions: normalizeReactionMap(raw.reactions),
       };
     });
 
@@ -196,6 +203,12 @@ export async function DELETE(
         typeof meal.commentCount === "number" && Number.isFinite(meal.commentCount)
           ? Math.max(0, Math.floor(meal.commentCount))
           : 0;
+
+      const repliesQuery = mealRef.collection("comments").where("parentId", "==", commentId).limit(1);
+      const repliesSnap = await tx.get(repliesQuery);
+      if (!repliesSnap.empty) {
+        throw new RouteError("Reply comments exist", 409);
+      }
 
       tx.delete(commentRef);
       tx.update(mealRef, {

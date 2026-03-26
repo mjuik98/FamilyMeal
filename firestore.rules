@@ -50,6 +50,15 @@ service cloud.firestore {
         && value.size() <= 80;
     }
 
+    function validReactionMap(value) {
+      return value is map
+        && value.keys().hasOnly(['❤️', '👍', '😋', '👏', '🔥']);
+    }
+
+    function hasNoSeedReactions(mealData) {
+      return !('reactions' in mealData) || mealData.reactions.keys().size() == 0;
+    }
+
     function hasValidParticipantList(mealData) {
       return mealData.userIds is list
         && mealData.userIds.size() > 0
@@ -78,7 +87,7 @@ service cloud.firestore {
 
     function validMealDocument(mealData) {
       return mealData.keys().hasOnly([
-          'ownerUid', 'userId', 'userIds', 'keywords', 'imageUrl', 'description', 'type', 'timestamp', 'commentCount'
+          'ownerUid', 'userId', 'userIds', 'keywords', 'imageUrl', 'description', 'type', 'timestamp', 'commentCount', 'reactions'
         ])
         && mealData.ownerUid is string
         && mealData.ownerUid.size() > 0
@@ -90,6 +99,7 @@ service cloud.firestore {
         && mealData.commentCount >= 0
         && (!('imageUrl' in mealData) || validImageUrl(mealData.imageUrl))
         && (!('keywords' in mealData) || validKeywords(mealData.keywords))
+        && (!('reactions' in mealData) || validReactionMap(mealData.reactions))
         && (!('userId' in mealData) || validRole(mealData.userId));
     }
 
@@ -99,11 +109,25 @@ service cloud.firestore {
           isMealOwner(resource.data)
           || (isLegacyMeal(resource.data) && isMealParticipant(resource.data))
         )
-        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['commentCount'])
+        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['commentCount', 'reactions'])
         && (
           request.resource.data.ownerUid == resource.data.ownerUid
           || (isLegacyMeal(resource.data) && request.resource.data.ownerUid == request.auth.uid)
         );
+    }
+
+    function validStoredCommentDocument(commentData) {
+      return commentData.keys().hasOnly([
+          'author', 'authorUid', 'text', 'parentId', 'mentionedAuthor', 'reactions', 'createdAt', 'updatedAt'
+        ])
+        && validRole(commentData.author)
+        && commentData.authorUid is string
+        && validCommentText(commentData.text)
+        && (!('parentId' in commentData) || (commentData.parentId is string && commentData.parentId.size() > 0))
+        && (!('mentionedAuthor' in commentData) || validRole(commentData.mentionedAuthor))
+        && (!('reactions' in commentData) || validReactionMap(commentData.reactions))
+        && commentData.createdAt is timestamp
+        && commentData.updatedAt is timestamp;
     }
 
     function validUserProfile(profileData) {
@@ -141,6 +165,7 @@ service cloud.firestore {
       allow create: if hasUserProfile()
         && validMealDocument(request.resource.data)
         && request.resource.data.ownerUid == request.auth.uid
+        && hasNoSeedReactions(request.resource.data)
         && request.resource.data.userIds.hasAny([currentUserRole()]);
 
       allow update: if hasUserProfile() && canEditMealBody();
@@ -160,7 +185,7 @@ service cloud.firestore {
           return exists(parentMealPath()) && canReadMeal(parentMealData());
         }
 
-        allow read: if canAccessParentMeal();
+        allow read: if canAccessParentMeal() && validStoredCommentDocument(resource.data);
 
         allow create: if false;
         allow update: if false;

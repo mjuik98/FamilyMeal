@@ -3,6 +3,7 @@ import { Timestamp } from "firebase-admin/firestore";
 import { z } from "zod";
 
 import { adminDb } from "@/lib/firebase-admin";
+import { normalizeReactionMap } from "@/lib/reactions";
 import { AuthError, getUserRole, verifyRequestUser } from "@/lib/server-auth";
 
 export const runtime = "nodejs";
@@ -19,6 +20,11 @@ type MealDoc = {
   commentCount?: unknown;
 };
 
+type CommentDoc = {
+  author?: unknown;
+  parentId?: unknown;
+};
+
 class RouteError extends Error {
   status: number;
 
@@ -31,6 +37,7 @@ class RouteError extends Error {
 
 const CommentCreateSchema = z.object({
   text: z.string().trim().min(1).max(MAX_COMMENT_LENGTH),
+  parentId: z.string().trim().min(1).optional(),
 });
 
 const getMealId = async (params: Promise<Params>): Promise<string> => {
@@ -82,6 +89,7 @@ export async function POST(
     }
 
     const trimmed = parsed.data.text.trim();
+    const parentId = parsed.data.parentId?.trim();
     const mealRef = adminDb.collection("meals").doc(mealId);
     const commentRef = mealRef.collection("comments").doc();
 
@@ -99,11 +107,30 @@ export async function POST(
 
       const now = Date.now();
       const nowTs = Timestamp.fromMillis(now);
+      let mentionedAuthor: string | undefined;
+
+      if (parentId) {
+        const parentRef = mealRef.collection("comments").doc(parentId);
+        const parentSnap = await tx.get(parentRef);
+        if (!parentSnap.exists) {
+          throw new RouteError("Parent comment not found", 404);
+        }
+
+        const parentData = parentSnap.data() as CommentDoc;
+        if (typeof parentData.parentId === "string" && parentData.parentId.trim().length > 0) {
+          throw new RouteError("Nested replies are not supported", 400);
+        }
+        if (typeof parentData.author === "string") {
+          mentionedAuthor = parentData.author;
+        }
+      }
 
       tx.set(commentRef, {
         author: role,
         authorUid: user.uid,
         text: trimmed,
+        ...(parentId ? { parentId } : {}),
+        ...(mentionedAuthor ? { mentionedAuthor } : {}),
         createdAt: nowTs,
         updatedAt: nowTs,
       });
@@ -117,9 +144,12 @@ export async function POST(
         author: role,
         authorUid: user.uid,
         text: trimmed,
+        ...(parentId ? { parentId } : {}),
+        ...(mentionedAuthor ? { mentionedAuthor } : {}),
         createdAt: now,
         updatedAt: now,
         timestamp: now,
+        reactions: normalizeReactionMap(undefined),
       };
     });
 

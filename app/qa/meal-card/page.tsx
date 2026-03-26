@@ -14,6 +14,9 @@ const sampleMeal: Meal = {
   type: "\uC810\uC2EC" as Meal["type"],
   timestamp: now,
   commentCount: 1,
+  reactions: {
+    "❤️": ["qa-other"],
+  },
   comments: [
     {
       id: "qa-comment-1",
@@ -23,6 +26,9 @@ const sampleMeal: Meal = {
       createdAt: now - 60_000,
       updatedAt: now - 60_000,
       timestamp: now - 60_000,
+      reactions: {
+        "❤️": ["qa-other"],
+      },
     },
   ],
 };

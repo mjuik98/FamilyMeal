@@ -45,10 +45,11 @@ export default function Navbar() {
           width: 100%;
           max-width: 480px;
           height: 72px;
-          background: var(--card);
+          background: rgba(255, 255, 255, 0.9);
           backdrop-filter: blur(12px);
           -webkit-backdrop-filter: blur(12px);
           border-top: 1px solid var(--border);
+          box-shadow: 0 -8px 24px rgba(35, 37, 28, 0.08);
           display: flex;
           justify-content: space-around;
           align-items: center;
@@ -75,7 +76,7 @@ export default function Navbar() {
           transform: scale(0.92);
         }
         .nav-item.active {
-          color: var(--secondary-foreground);
+          color: var(--foreground);
           font-weight: 700;
         }
         .nav-icon-wrap {
@@ -89,8 +90,9 @@ export default function Navbar() {
           color: inherit;
         }
         .nav-icon-active {
-          background: var(--primary);
+          background: linear-gradient(135deg, var(--primary-light) 0%, var(--primary) 100%);
           color: white;
+          box-shadow: 0 8px 20px rgba(107, 142, 35, 0.22);
         }
         .nav-label {
           min-width: 40px;

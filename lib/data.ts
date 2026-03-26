@@ -1,4 +1,5 @@
 import { Meal, MealComment, UserRole } from './types';
+import { isReactionEmoji, normalizeReactionMap } from './reactions';
 import { auth, db } from './firebase';
 import {
     collection,
@@ -97,9 +98,12 @@ const normalizeComment = (
         author: raw.author,
         authorUid: typeof raw.authorUid === 'string' ? raw.authorUid : '',
         text: String(raw.text),
+        parentId: typeof raw.parentId === 'string' && raw.parentId.trim().length > 0 ? raw.parentId : undefined,
+        mentionedAuthor: typeof raw.mentionedAuthor === 'string' ? raw.mentionedAuthor as UserRole : undefined,
         createdAt,
         updatedAt,
         timestamp,
+        reactions: normalizeReactionMap((raw as { reactions?: unknown }).reactions),
     };
 };
 
@@ -171,6 +175,7 @@ const convertMeal = (docSnap: QueryDocumentSnapshot<DocumentData>): Meal => {
         userIds,
         comments,
         commentCount,
+        reactions: normalizeReactionMap(data.reactions),
         timestamp: data.timestamp?.toMillis ? data.timestamp.toMillis() : Date.now(),
     } as Meal;
 };
@@ -276,6 +281,7 @@ export const getMealById = async (id: string): Promise<Meal | null> => {
         userIds,
         comments,
         commentCount,
+        reactions: normalizeReactionMap(data.reactions),
         timestamp: data.timestamp?.toMillis ? data.timestamp.toMillis() : Date.now(),
     } as Meal;
 };
@@ -351,7 +357,8 @@ export const addMealComment = async (
     mealId: string,
     _author: UserRole,
     _authorUid: string,
-    text: string
+    text: string,
+    options?: { parentId?: string }
 ): Promise<MealComment> => {
     const trimmed = text.trim();
     if (!trimmed) throw new Error('Comment text is empty');
@@ -361,7 +368,7 @@ export const addMealComment = async (
         `/api/meals/${encodedMealId}/comments`,
         {
             method: 'POST',
-            body: JSON.stringify({ text: trimmed }),
+            body: JSON.stringify({ text: trimmed, parentId: options?.parentId }),
         }
     );
     return response.comment;
@@ -406,6 +413,46 @@ export const deleteMealComment = async (
     );
 };
 
+export const toggleMealReaction = async (
+    mealId: string,
+    emoji: string
+) => {
+    if (!isReactionEmoji(emoji)) {
+        throw new Error('Invalid reaction emoji');
+    }
+
+    const encodedMealId = encodeURIComponent(mealId);
+    const response = await fetchAuthedJson<{ ok: true; reactions: Meal['reactions'] }>(
+        `/api/meals/${encodedMealId}/reactions`,
+        {
+            method: 'POST',
+            body: JSON.stringify({ emoji }),
+        }
+    );
+    return normalizeReactionMap(response.reactions);
+};
+
+export const toggleMealCommentReaction = async (
+    mealId: string,
+    commentId: string,
+    emoji: string
+) => {
+    if (!isReactionEmoji(emoji)) {
+        throw new Error('Invalid reaction emoji');
+    }
+
+    const encodedMealId = encodeURIComponent(mealId);
+    const encodedCommentId = encodeURIComponent(commentId);
+    const response = await fetchAuthedJson<{ ok: true; reactions: MealComment['reactions'] }>(
+        `/api/meals/${encodedMealId}/comments/${encodedCommentId}/reactions`,
+        {
+            method: 'POST',
+            body: JSON.stringify({ emoji }),
+        }
+    );
+    return normalizeReactionMap(response.reactions);
+};
+
 export const getWeeklyStats = async (): Promise<{ date: Date; label: string; count: number }[]> => {
     const now = new Date();
     const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
@@ -446,6 +493,59 @@ export const getWeeklyStats = async (): Promise<{ date: Date; label: string; cou
             count: countByDay.get(key) ?? 0,
         };
     });
+};
+
+export const countMealReactions = (meal: Meal): number =>
+    Object.values(normalizeReactionMap(meal.reactions))
+        .reduce((sum, users) => sum + (users?.length ?? 0), 0);
+
+export const countCommentReactions = (comments: MealComment[]): number =>
+    comments.reduce(
+        (sum, comment) =>
+            sum + Object.values(normalizeReactionMap(comment.reactions)).reduce((inner, users) => inner + (users?.length ?? 0), 0),
+        0
+    );
+
+export type MealSortOrder = 'recent' | 'comments' | 'reactions';
+
+export const filterAndSortMeals = (
+    meals: Meal[],
+    options: {
+        query?: string;
+        type?: Meal['type'] | '전체';
+        participant?: UserRole | '전체';
+        sort?: MealSortOrder;
+    }
+): Meal[] => {
+    const normalizedQuery = options.query?.trim().toLowerCase() ?? '';
+    const filtered = meals.filter((meal) => {
+        const matchesQuery =
+            !normalizedQuery ||
+            meal.description.toLowerCase().includes(normalizedQuery) ||
+            meal.type.toLowerCase().includes(normalizedQuery) ||
+            Boolean(meal.userIds?.some((uid) => uid.toLowerCase().includes(normalizedQuery)));
+
+        const matchesType = !options.type || options.type === '전체' || meal.type === options.type;
+        const matchesParticipant =
+            !options.participant ||
+            options.participant === '전체' ||
+            Boolean(meal.userIds?.includes(options.participant));
+
+        return matchesQuery && matchesType && matchesParticipant;
+    });
+
+    const sorted = [...filtered];
+    const sort = options.sort ?? 'recent';
+    sorted.sort((a, b) => {
+        if (sort === 'comments') {
+            return (b.commentCount ?? 0) - (a.commentCount ?? 0) || b.timestamp - a.timestamp;
+        }
+        if (sort === 'reactions') {
+            return countMealReactions(b) - countMealReactions(a) || b.timestamp - a.timestamp;
+        }
+        return b.timestamp - a.timestamp;
+    });
+    return sorted;
 };
 
 export const searchMeals = async (keyword: string): Promise<Meal[]> => {

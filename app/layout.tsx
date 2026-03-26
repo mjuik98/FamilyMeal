@@ -118,7 +118,7 @@ export default function RootLayout({
           <ToastProvider>
             <ConfirmProvider>
               <div className="app-container">
-                <main className="flex-1">
+                <main style={{ flex: 1 }}>
                   {children}
                 </main>
                 <AppUpdateBanner />

@@ -33,7 +33,7 @@ test("comment input stays readable on mobile even when system theme is dark", as
   await enableQaMockMode(page);
   await page.goto("/");
 
-  const toggleButton = page.getByTestId("meal-card-comment-toggle");
+  const toggleButton = page.getByTestId("meal-card-qa-home-meal").getByTestId("meal-card-comment-toggle");
   await expect(toggleButton).toBeVisible();
   await toggleButton.click();
 
@@ -78,7 +78,7 @@ test("logout clears qa mock session", async ({ page }) => {
   await enableQaMockMode(page);
   await page.goto("/");
 
-  await expect(page.getByTestId("meal-card-comment-toggle")).toBeVisible();
+  await expect(page.getByTestId("meal-card-comment-toggle").first()).toBeVisible();
 
   await page.getByTestId("home-logout-button").click();
   await expect(page.getByTestId("meal-card-comment-toggle")).toHaveCount(0);
@@ -88,7 +88,7 @@ test("qa mock mode can add comments without auth", async ({ page }) => {
   await enableQaMockMode(page);
   await page.goto("/");
 
-  const toggleButton = page.getByTestId("meal-card-comment-toggle");
+  const toggleButton = page.getByTestId("meal-card-qa-home-meal").getByTestId("meal-card-comment-toggle");
   await expect(toggleButton).toBeVisible();
   await toggleButton.click();
 
@@ -102,4 +102,73 @@ test("qa mock mode can add comments without auth", async ({ page }) => {
   await expect(page.locator(".comment-item")).toHaveCount(2);
   await expect(page.locator(".comment-text").last()).toHaveText("qa local add");
   await expect(toggleButton).toContainText("댓글 2");
+});
+
+test("qa mock mode can toggle meal reactions locally", async ({ page }) => {
+  await enableQaMockMode(page);
+  await page.goto("/");
+
+  const mealReaction = page.getByTestId("meal-card-qa-home-meal").getByTestId("meal-reaction-chip-heart");
+  await expect(mealReaction).toBeVisible();
+  await expect(mealReaction).toContainText("1");
+
+  await mealReaction.click();
+  await expect(mealReaction).toContainText("2");
+  await expect(mealReaction).toHaveAttribute("data-active", "true");
+
+  await mealReaction.click();
+  await expect(mealReaction).toContainText("1");
+  await expect(mealReaction).toHaveAttribute("data-active", "false");
+});
+
+test("qa mock mode can toggle comment reactions locally", async ({ page }) => {
+  await enableQaMockMode(page);
+  await page.goto("/");
+
+  await page.getByTestId("meal-card-qa-home-meal").getByTestId("meal-card-comment-toggle").click();
+
+  const commentReaction = page.getByTestId("comment-reaction-chip-heart");
+  await expect(commentReaction).toBeVisible();
+  await expect(commentReaction).toContainText("1");
+
+  await commentReaction.click();
+  await expect(commentReaction).toContainText("2");
+  await expect(commentReaction).toHaveAttribute("data-active", "true");
+});
+
+test("qa mock mode shows activity summary and supports meal filters", async ({ page }) => {
+  await enableQaMockMode(page);
+  await page.goto("/");
+
+  await expect(page.getByTestId("activity-summary-card-comments")).toBeVisible();
+  await expect(page.getByTestId("activity-summary-card-reactions")).toBeVisible();
+  await expect(page.getByTestId("activity-alert-badge")).toBeVisible();
+
+  await expect(page.locator(".meal-card")).toHaveCount(3);
+  await page.getByTestId("filter-type-아침").click();
+  await expect(page.locator(".meal-card")).toHaveCount(1);
+
+  await page.getByTestId("filter-user-엄마").click();
+  await expect(page.locator(".meal-card")).toHaveCount(0);
+
+  await page.getByTestId("filter-type-전체").click();
+  await expect(page.locator(".meal-card")).toHaveCount(1);
+});
+
+test("qa mock mode can add a reply with auto mention context", async ({ page }) => {
+  await enableQaMockMode(page);
+  await page.goto("/");
+
+  await page.getByTestId("meal-card-qa-home-meal").getByTestId("meal-card-comment-toggle").click();
+  await page.getByTestId("comment-reply-button-qa-home-comment").click();
+
+  await expect(page.getByTestId("comment-reply-target")).toContainText("아빠님께 답글");
+
+  const commentInput = page.getByTestId("meal-card-comment-input");
+  await commentInput.fill("답글 테스트");
+  await page.locator(".comment-send-btn").click();
+
+  await expect(page.locator(".comment-thread-reply")).toHaveCount(1);
+  await expect(page.locator(".comment-thread-reply .comment-text")).toContainText("답글 테스트");
+  await expect(page.locator(".comment-mention")).toContainText("아빠님께 답글");
 });
