@@ -1,128 +1,161 @@
-# Family Meal Tracker
+# 🍽️ Family Meal Tracker
 
-가족 식사를 기록하고 검색하는 Next.js + Firebase 앱입니다.
+가족들과 함께 나누는 맛있는 추억을 기록하고 관리하는 Next.js 기반의 스마트 식사 기록 플랫폼입니다.
 
-## 시연 영상
+[![Next.js](https://img.shields.io/badge/Next.js-15-black?style=for-the-badge&logo=next.js)](https://nextjs.org/)
+[![Firebase](https://img.shields.io/badge/Firebase-12-orange?style=for-the-badge&logo=firebase)](https://firebase.google.com/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?style=for-the-badge&logo=typescript)](https://www.typescriptlang.org/)
+[![React](https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react)](https://react.dev/)
+[![PWA](https://img.shields.io/badge/PWA-Ready-009688?style=for-the-badge&logo=pwa)](https://web.dev/progressive-web-apps/)
+[![CI Status](https://github.com/mjuik98/FamilyMeal/actions/workflows/ci.yml/badge.svg)](https://github.com/mjuik98/FamilyMeal/actions/workflows/ci.yml)
+
+---
+
+## 🎬 시연 영상
+
 <div align="center">
-  <img src="./public/videos/demo.webp" width="100%" style="max-width: 600px;" />
+  <img src="./public/videos/demo.webp" width="100%" style="max-width: 600px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);" />
+  <p><i>실시간 댓글 구독 및 부드러운 식사 기록 흐름</i></p>
 </div>
 
-## 주요 기능
-- 식사 기록 추가/수정/삭제
-- 식사 검색 및 주간 통계
-- 댓글 작성/수정/삭제
-- 댓글 실시간 구독(카드 펼침 시에만 구독)
+---
 
-## 개발 실행
+## ✨ 주요 기능
+
+| 기능 | 설명 |
+| :--- | :--- |
+| 📸 **식사 기록** | 사진과 함께 오늘의 메뉴를 추가, 수정, 삭제할 수 있습니다. |
+| 📊 **통계 및 검색** | 지난 식사 기록을 검색하고 주간 식사 통계를 한눈에 확인합니다. |
+| 💬 **실시간 소통** | 가족 구성원들과 댓글을 통해 실시간으로 소통할 수 있습니다. (Firebase 실시간 리스너 적용) |
+| 📱 **PWA 지원** | 앱처럼 화면에 추가하여 언제 어디서든 간편하게 접근 가능합니다. |
+
+---
+
+## 🏗️ 시스템 아키텍처
+
+이 프로젝트는 현대적인 Serverless 아키텍처를 지향합니다.
+
+```mermaid
+graph TD
+    User([User Client]) <--> NextJS[Next.js App Router]
+    NextJS <--> Firebase[Firebase Cloud Services]
+    NextJS <--> Redis[Upstash Redis]
+    
+    subgraph "Backend Services"
+        Firebase --- Auth(Authentication)
+        Firebase --- FS(Firestore Database)
+        Firebase --- Storage(Cloud Storage)
+        Redis --- RL(Rate Limiting)
+    end
+    
+    subgraph "Client Side"
+        NextJS --- PWA(Service Worker / PWA)
+        NextJS --- RTL(Real-time Listener)
+    end
+```
+
+---
+
+## 🛠️ 기술 스택
+
+- **Frontend**: Next.js (App Router), React 19, Lucide Icons, React Calendar
+- **Backend**: Firebase (Authentication, Firestore, Storage)
+- **Security & Optimization**:
+  - Upstash Redis (Rate Limiting)
+  - Zod (Schema Validation)
+  - Firebase Roles Management
+- **Verification**: Playwright (E2E), Firestore Rules Testing
+
+---
+
+## 📁 프로젝트 구조
+
+```text
+FamilyMeal/
+├── app/             # UI 페이지 및 API 라우트
+├── components/      # 재사용 가능한 UI 컴포넌트
+├── context/         # 전역 상태 관리 (User, Toast 등)
+├── lib/             # 공통 유틸리티 및 클라이언트 설정
+├── scripts/         # 데이터 마이그레이션 및 자동화 스크립트
+├── tests/           # E2E 및 단위 테스트
+├── security/        # 보안 감사 정책 및 허용 목록
+└── public/          # 정적 자산 및 영상
+```
+
+---
+
+## 🚀 빠른 시작
+
 ```bash
+# 1. 의존성 설치
 npm install
+
+# 2. 로컬 개발 서버 실행
 npm run dev
 ```
 
-## 품질 확인
+> [!TIP]
+> 프로젝트 실행 전 `.env.example`을 참고하여 환경 변수 설정을 완료해 주세요.
+
+---
+
+## 🏗️ 개발 및 품질 관리
+
+<details>
+<summary><b>🔍 품질 확인 (Lint & Typecheck)</b></summary>
+
 ```bash
 npm run typecheck
 npm run lint
 ```
+</details>
 
-## Firestore Rules 테스트
-아래 명령은 Firestore Emulator를 자동 실행한 뒤 규칙 테스트를 수행합니다.
+<details>
+<summary><b>🧪 테스트 가이드 (Firestore Rules & Smoke Tests)</b></summary>
 
-```bash
-npm run test:rules
-```
+- **Firestore Rules**: Emulator를 통한 자동 테스트
+  ```bash
+  npm run test:rules
+  ```
+- **Meal Mutation Smoke Check**: 이미지 업로드 및 CRUD 흐름 검증
+  ```bash
+  npm run test:smoke:meals
+  ```
+- **QA Gate Check**: 서비스 보안을 위한 QA 환경 토큰 동작 검증
+  ```bash
+  npm run test:smoke:qa-token-required
+  ```
+</details>
 
-## Meal Mutation Smoke Check
-- 실제 서버 라우트 기준으로 이미지 업로드, 식사 생성, 수정, 삭제 흐름을 검증합니다.
-- 필요 조건:
-  - `.env.local`에 Firebase client/admin 환경변수 설정
-  - `ALLOWED_EMAILS`에 포함된 Firebase Auth 사용자 1명 이상 존재
+<details>
+<summary><b>🛠️ 데이터 마이그레이션 가이드</b></summary>
 
-```bash
-npm run test:smoke:meals
-```
+- **댓글 구조 마이그레이션**: 메인 문서에서 서브컬렉션으로 이동
+  ```bash
+  npm run migrate:comments # 실행
+  npm run migrate:comments:dry # 드라이런
+  ```
+- **식사 스키마 보정**: 누락된 필드 자동 보정
+  ```bash
+  npm run migrate:meals # 실행
+  npm run migrate:meals:dry # 드라이런
+  ```
+</details>
 
-## 레거시 댓글 마이그레이션
-기존 `meals.comments` 배열을 `meals/{mealId}/comments` 서브컬렉션으로 이전합니다.
+<details>
+<summary><b>🔐 보안 및 인프라 정책</b></summary>
 
-사전 준비:
-- GCP/Firebase 인증(ADC 또는 서비스 계정)
-- 필요 시 `FIREBASE_PROJECT_ID` 환경변수 설정
+- **Dependency Security**: [SECURITY_DEPENDENCIES.md](./SECURITY_DEPENDENCIES.md) 참고
+- **QA Operations**: 개발 모드(Default Enable), 운영 모드(`NEXT_PUBLIC_ENABLE_QA=true` 시 토큰 필요)
+- **Role Assignment**: `/api/profile/role`을 통한 역할 부여 (1회 제한)
+</details>
 
-드라이런:
-```bash
-npm run migrate:comments:dry
-```
+---
 
-실행:
-```bash
-npm run migrate:comments
-```
+## 📄 라이선스
+이 프로젝트는 개인용/가족용으로 개발되었습니다.
 
-## Firestore Rules 배포
-```bash
-npx firebase-tools deploy --only firestore:rules --project <PROJECT_ID>
-```
-
-## Meals 스키마 보정 마이그레이션
-기존 `meals` 문서의 누락 필드(`userIds`, `userId`, `keywords`, `commentCount`, `timestamp`)를 보정합니다.
-
-드라이런:
-```bash
-npm run migrate:meals:dry
-```
-
-실행:
-```bash
-npm run migrate:meals
-```
-
-## QA Route Control
-- QA routes are enabled in development by default.
-- In production, set `NEXT_PUBLIC_ENABLE_QA=true` only when QA pages are intentionally exposed.
-- In production, `QA_ROUTE_TOKEN` is required when QA routes are enabled. Access QA routes with `?qa_token=<token>` or `x-qa-token` header.
-
-## QA Mock Mode (E2E)
-- E2E uses a local mock mode key: `familymeal:qa-mock-mode`.
-- Mock mode is disabled in production by code and can run only in non-production.
-- This mode allows testing the home comment flow without Google auth.
-
-## QA Operations Policy
-- Keep `NEXT_PUBLIC_ENABLE_QA=false` in production by default.
-- When QA must be exposed in production, set `NEXT_PUBLIC_ENABLE_QA=true` temporarily and require `QA_ROUTE_TOKEN`.
-- Rotate `QA_ROUTE_TOKEN` after each QA window and remove public links containing `qa_token`.
-- Use `x-qa-token` header in scripted checks to avoid leaking token via URL logs.
-
-## Dependency Security
-- See `SECURITY_DEPENDENCIES.md` for dependency audit policy and unresolved upstream issues.
-- Production dependency gate: `npm run audit:prod:check`
-- Allowlist file: `security/audit-allowlist.json`
-- Allowlist entries are advisory/package-scoped and should include `expiresOn` for periodic review.
-
-## Server API Env
-- The app now uses server routes for comment mutations, meal create/update/delete, and image upload cleanup.
-- Configure Firebase Admin credentials:
-  - `FIREBASE_ADMIN_PROJECT_ID`
-  - `FIREBASE_ADMIN_CLIENT_EMAIL`
-  - `FIREBASE_ADMIN_PRIVATE_KEY`
-- Configure server-side email allowlist:
-  - `ALLOWED_EMAILS` (comma-separated)
-  - Production is fail-closed when this is missing.
-- Role assignment policy:
-  - Roles are assigned through `/api/profile/role`.
-  - By default role is locked after first assignment.
-  - Optional override: `ALLOW_ROLE_REASSIGN=true`.
-- If explicit service-account env vars are not set, the server falls back to Application Default Credentials.
-
-## Error Rate Limiting
-- `/api/client-errors` supports distributed rate limiting with Upstash Redis.
-- Optional env vars:
-  - `UPSTASH_REDIS_REST_URL`
-  - `UPSTASH_REDIS_REST_TOKEN`
-- If Upstash is not configured, the route falls back to in-memory rate limiting.
-
-## QA Gate Smoke Check
-- Verify production fail-closed QA route behavior (QA enabled + missing token must return 404):
-```bash
-npm run test:smoke:qa-token-required
-```
+---
+<div align="center">
+  <b>Family Meal Tracker</b> - 함께 먹는 즐거움을 기록하세요
+</div>
