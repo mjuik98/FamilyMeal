@@ -2,6 +2,11 @@
 
 가족 식사를 기록하고 검색하는 Next.js + Firebase 앱입니다.
 
+## 시연 영상
+<div align="center">
+  <video src="./public/videos/demo.mp4" controls width="100%" style="max-width: 600px;"></video>
+</div>
+
 ## 주요 기능
 - 식사 기록 추가/수정/삭제
 - 식사 검색 및 주간 통계
