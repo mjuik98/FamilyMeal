@@ -4,7 +4,7 @@
 
 ## 시연 영상
 <div align="center">
-  <video src="./public/videos/demo.mp4" controls width="100%" style="max-width: 600px;"></video>
+  <img src="./public/videos/demo.webp" width="100%" style="max-width: 600px;" />
 </div>
 
 ## 주요 기능
