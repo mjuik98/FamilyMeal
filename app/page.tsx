@@ -14,7 +14,7 @@ import { useSelectedDate } from "@/components/hooks/useSelectedDate";
 import { useWeeklyStats } from "@/components/hooks/useWeeklyStats";
 import { useUser } from "@/context/UserContext";
 import { formatDateKey } from "@/lib/date-utils";
-import { isQaMockMode } from "@/lib/qa";
+import { isQaMockMode } from "@/lib/qa/mode";
 
 const roleEmoji: Record<string, string> = {
   아빠: "👨",

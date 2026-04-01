@@ -6,16 +6,20 @@ import { Camera, Send } from "lucide-react";
 
 import PageHeader from "@/components/PageHeader";
 import SurfaceSection from "@/components/SurfaceSection";
+import { useToast } from "@/components/Toast";
 import { useUser } from "@/context/UserContext";
+import { addMeal } from "@/lib/client/meals";
 import { formatDateKey, parseDateKey } from "@/lib/date-utils";
+import { USER_ROLES, VALID_MEAL_TYPES } from "@/lib/domain/meal-policy";
 import { getMealDraftDefaults, saveMealDraftDefaults } from "@/lib/meal-draft";
 import { buildAutoMealDescription } from "@/lib/meal-copy";
 import { toMealCreateErrorMessage } from "@/lib/meal-errors";
-import { addQaCustomMeal, isQaMockMode } from "@/lib/qa";
+import { readMealImagePreview, toggleMealParticipant } from "@/lib/meal-form";
+import { addQaCustomMeal } from "@/lib/qa/fixtures";
+import { isQaMockMode } from "@/lib/qa/mode";
 import { Meal, UserRole } from "@/lib/types";
-import { useToast } from "@/components/Toast";
+import { uploadImage } from "@/lib/uploadImage";
 
-const ROLES: UserRole[] = ["아빠", "엄마", "딸", "아들"];
 const getQaAnchorDate = () => {
   const date = new Date();
   date.setHours(12, 0, 0, 0);
@@ -84,21 +88,11 @@ function AddMealPageContent() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setImagePreview(reader.result as string);
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const toggleUser = (role: UserRole) => {
-    setSelectedUsers((prev) => {
-      if (prev.includes(role)) {
-        if (prev.length === 1) return prev;
-        return prev.filter((item) => item !== role);
-      }
-      return [...prev, role];
-    });
+    void readMealImagePreview(file)
+      .then(setImagePreview)
+      .catch((error) => {
+        console.error("Failed to read meal image preview", error);
+      });
   };
 
   const persistMeal = async () => {
@@ -132,8 +126,6 @@ function AddMealPageContent() {
           reactions: {},
         });
       } else {
-        const { addMeal } = await import("@/lib/data");
-        const { uploadImage } = await import("@/lib/uploadImage");
         let imageUrl = "";
         try {
           imageUrl = await uploadImage(imagePreview);
@@ -232,7 +224,7 @@ function AddMealPageContent() {
               <div>
                 <label className="form-label">식사 종류</label>
                 <div className="chip-group">
-                  {(["아침", "점심", "저녁", "간식"] as const).map((value) => (
+                  {VALID_MEAL_TYPES.map((value) => (
                     <button
                       key={value}
                       type="button"
@@ -249,11 +241,11 @@ function AddMealPageContent() {
               <div>
                 <label className="form-label">함께 먹은 사람</label>
                 <div className="chip-group">
-                  {ROLES.map((role) => (
+                  {USER_ROLES.map((role) => (
                     <button
                       key={role}
                       type="button"
-                      onClick={() => toggleUser(role)}
+                      onClick={() => setSelectedUsers((prev) => toggleMealParticipant(prev, role))}
                       className={`chip-button${selectedUsers.includes(role) ? " chip-button-active" : ""}`}
                       data-testid={`add-meal-user-${role}`}
                     >

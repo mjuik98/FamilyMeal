@@ -3,7 +3,8 @@
 import { ChevronDown, ChevronUp, MessageSquare } from "lucide-react";
 
 import ReactionBar from "@/components/ReactionBar";
-import CommentComposer, { type ReplyTarget } from "@/components/comments/CommentComposer";
+import CommentComposer from "@/components/comments/CommentComposer";
+import type { ReplyTarget } from "@/lib/features/comments/ui/types";
 import CommentThread from "@/components/comments/CommentThread";
 import type { MealComment, ReactionEmoji, ReactionMap } from "@/lib/types";
 

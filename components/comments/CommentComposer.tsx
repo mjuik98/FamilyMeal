@@ -2,12 +2,7 @@
 
 import { Send, X } from "lucide-react";
 
-import type { UserRole } from "@/lib/types";
-
-export type ReplyTarget = {
-  id: string;
-  author: UserRole;
-};
+import type { ReplyTarget } from "@/lib/features/comments/ui/types";
 
 export default function CommentComposer({
   value,

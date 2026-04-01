@@ -1,5 +1,5 @@
 import MealCard from "@/components/MealCard";
-import { getQaDefaultRole } from "@/lib/qa";
+import { getQaDefaultRole } from "@/lib/qa/session";
 import { Meal } from "@/lib/types";
 import { notFound } from "next/navigation";
 

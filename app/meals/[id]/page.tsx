@@ -9,7 +9,11 @@ import MealCard from "@/components/MealCard";
 import PageHeader from "@/components/PageHeader";
 import { useUser } from "@/context/UserContext";
 import { getMealById, getMealsForDate } from "@/lib/client/meals";
-import { createQaMockRecentMeals, getQaMockMealById, isQaMockMode } from "@/lib/qa";
+import {
+  createQaMockRecentMeals,
+  getQaMockMealById,
+} from "@/lib/qa/fixtures";
+import { isQaMockMode } from "@/lib/qa/mode";
 import type { Meal } from "@/lib/types";
 
 export default function MealDetailPage() {

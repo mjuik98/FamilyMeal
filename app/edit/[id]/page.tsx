@@ -6,12 +6,14 @@ import { Camera, Save } from "lucide-react";
 
 import PageHeader from "@/components/PageHeader";
 import SurfaceSection from "@/components/SurfaceSection";
-import { useUser } from "@/context/UserContext";
-import { toMealUpdateErrorMessage } from "@/lib/meal-errors";
-import { Meal, UserRole } from "@/lib/types";
 import { useToast } from "@/components/Toast";
-
-const ROLES: UserRole[] = ["아빠", "엄마", "딸", "아들"];
+import { useUser } from "@/context/UserContext";
+import { getMealById, updateMeal } from "@/lib/client/meals";
+import { USER_ROLES, VALID_MEAL_TYPES } from "@/lib/domain/meal-policy";
+import { toMealUpdateErrorMessage } from "@/lib/meal-errors";
+import { isLocalMealImagePreview, readMealImagePreview, toggleMealParticipant } from "@/lib/meal-form";
+import { Meal, UserRole } from "@/lib/types";
+import { uploadImage } from "@/lib/uploadImage";
 
 export default function EditMealPage() {
   const { userProfile } = useUser();
@@ -38,7 +40,6 @@ export default function EditMealPage() {
 
     const loadMeal = async () => {
       try {
-        const { getMealById } = await import("@/lib/data");
         const meal = await getMealById(mealId);
         if (!meal) {
           showToast("해당 기록을 찾을 수 없습니다.", "error");
@@ -75,21 +76,11 @@ export default function EditMealPage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setImagePreview(reader.result as string);
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const toggleUser = (role: UserRole) => {
-    setSelectedUsers((prev) => {
-      if (prev.includes(role)) {
-        if (prev.length === 1) return prev;
-        return prev.filter((item) => item !== role);
-      }
-      return [...prev, role];
-    });
+    void readMealImagePreview(file)
+      .then(setImagePreview)
+      .catch((error) => {
+        console.error("Failed to read meal image preview", error);
+      });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -106,11 +97,8 @@ export default function EditMealPage() {
 
     setIsSubmitting(true);
     try {
-      const { updateMeal } = await import("@/lib/data");
-      const { uploadImage } = await import("@/lib/uploadImage");
-
       let imageUrl: string | null | undefined = imagePreview || undefined;
-      if (imagePreview && imagePreview.startsWith("data:")) {
+      if (isLocalMealImagePreview(imagePreview)) {
         try {
           imageUrl = await uploadImage(imagePreview);
         } catch (error) {
@@ -211,7 +199,7 @@ export default function EditMealPage() {
               <div>
                 <label className="form-label">식사 종류</label>
                 <div className="chip-group">
-                  {(["아침", "점심", "저녁", "간식"] as const).map((value) => (
+                  {VALID_MEAL_TYPES.map((value) => (
                     <button
                       key={value}
                       type="button"
@@ -227,11 +215,11 @@ export default function EditMealPage() {
               <div>
                 <label className="form-label">함께 먹은 사람</label>
                 <div className="chip-group">
-                  {ROLES.map((role) => (
+                  {USER_ROLES.map((role) => (
                     <button
                       key={role}
                       type="button"
-                      onClick={() => toggleUser(role)}
+                      onClick={() => setSelectedUsers((prev) => toggleMealParticipant(prev, role))}
                       className={`chip-button${selectedUsers.includes(role) ? " chip-button-active" : ""}`}
                     >
                       {role}

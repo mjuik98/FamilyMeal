@@ -7,6 +7,7 @@
     "build": "next build --webpack",
     "build:clean": "node scripts/clean-next-dir.mjs && next build --webpack",
     "start": "next start",
+    "test": "npm run test:ui && npm run test:api",
     "test:smoke": "node scripts/smoke-test.mjs",
     "test:smoke:meals": "node scripts/smoke-meal-mutations.mjs",
     "test:smoke:qa-token-required": "node scripts/smoke-qa-token-required.mjs",

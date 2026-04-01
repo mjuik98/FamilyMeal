@@ -5,9 +5,9 @@ import { useRouter } from "next/navigation";
 
 import { useUser } from "@/context/UserContext";
 import { deleteMeal } from "@/lib/client/meals";
+import { useMealCommentsController as useMealComments } from "@/lib/features/comments/ui/useMealCommentsController";
+import { useMealReactionsController as useMealReactions } from "@/lib/features/reactions/ui/useMealReactionsController";
 import type { Meal } from "@/lib/types";
-import { useMealComments } from "@/components/hooks/useMealComments";
-import { useMealReactions } from "@/components/hooks/useMealReactions";
 
 import { useConfirm } from "./ConfirmDialog";
 import MealConversationPanel from "./meal-detail/MealConversationPanel";

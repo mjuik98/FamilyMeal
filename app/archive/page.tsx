@@ -10,7 +10,8 @@ import MealPreviewCard from "@/components/MealPreviewCard";
 import PageHeader from "@/components/PageHeader";
 import { useUser } from "@/context/UserContext";
 import { filterAndSortMeals, getRecentMeals, searchMeals } from "@/lib/client/meals";
-import { createQaMockRecentMeals, isQaMockMode } from "@/lib/qa";
+import { createQaMockRecentMeals } from "@/lib/qa/fixtures";
+import { isQaMockMode } from "@/lib/qa/mode";
 import type { Meal, UserRole } from "@/lib/types";
 
 const TYPE_OPTIONS = ["전체", "아침", "점심", "저녁", "간식"] as const;

@@ -1,17 +1,15 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { isUserRole } from "@/lib/domain/meal-policy";
 import { adminDb } from "@/lib/firebase-admin";
 import { syncCommentReactionActivity } from "@/lib/activity-log";
 import { getRouteErrorMessage, getRouteErrorStatus, RouteError } from "@/lib/route-errors";
 import { ALLOWED_REACTION_EMOJIS, isReactionEmoji, normalizeReactionMap, toggleReactionInMap } from "@/lib/reactions";
 import { getUserRole, verifyRequestUser } from "@/lib/server-auth";
-import type { UserRole } from "@/lib/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-
-const VALID_ROLES = new Set(["아빠", "엄마", "딸", "아들"]);
 
 type Params = {
   id: string;
@@ -55,10 +53,10 @@ export async function POST(
     const role = await getUserRole(user.uid);
     const { mealId, commentId } = await getRouteParams(context.params);
 
-    if (!role || !VALID_ROLES.has(role)) {
+    if (!isUserRole(role)) {
       throw new RouteError("Valid user role is required", 403);
     }
-    const actorRole = role as UserRole;
+    const actorRole = role;
 
     let body: unknown;
     try {

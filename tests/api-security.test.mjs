@@ -66,21 +66,21 @@ test("meal image uploads are handled by authenticated server route", () => {
 });
 
 test("meal create and update mutations are handled by authenticated server APIs", () => {
-  const clientMeals = read("lib/client/meals.ts");
+  const mealMutations = read("lib/client/meal-mutations.ts");
   const createRoute = read("app/api/meals/route.ts");
   const mealRoute = read("app/api/meals/[id]/route.ts");
   const serverMeals = read("lib/server-meals.ts");
 
-  assert.match(clientMeals, /fetchAuthedJson<\{ ok: true; meal: Meal \}>\("\/api\/meals"/);
-  assert.match(clientMeals, /\/api\/meals\/\$\{encodedMealId\}/);
+  assert.match(mealMutations, /fetchAuthedJson<\{ ok: true; meal: Meal \}>\("\/api\/meals"/);
+  assert.match(mealMutations, /\/api\/meals\/\$\{encodedMealId\}/);
   assert.match(createRoute, /verifyRequestUser/);
   assert.match(createRoute, /createMealDocument/);
   assert.match(mealRoute, /export async function PATCH/);
   assert.match(mealRoute, /updateMealDocument/);
   assert.match(serverMeals, /deleteStorageObjectByUrl/);
   assert.match(serverMeals, /buildMealKeywords/);
-  assert.doesNotMatch(clientMeals, /await addDoc\(mealsRef/);
-  assert.doesNotMatch(clientMeals, /await updateDoc\(mealRef/);
+  assert.doesNotMatch(mealMutations, /await addDoc\(mealsRef/);
+  assert.doesNotMatch(mealMutations, /await updateDoc\(mealRef/);
 });
 
 test("route handlers share common route error helpers", () => {
@@ -195,4 +195,57 @@ test("comment routes delegate to extracted server use cases", () => {
   assert.match(commentPolicy, /export const CommentUpdateSchema/);
   assert.doesNotMatch(commentCreateRoute, /adminDb\.runTransaction/);
   assert.doesNotMatch(commentMutationRoute, /adminDb\.runTransaction/);
+});
+
+test("shared meal policy constants are reused across routes and draft helpers", () => {
+  const mealDraft = read("lib/meal-draft.ts");
+  const mealCreateRoute = read("app/api/meals/route.ts");
+  const mealUpdateRoute = read("app/api/meals/[id]/route.ts");
+  const roleRoute = read("app/api/profile/role/route.ts");
+  const mealReactionRoute = read("app/api/meals/[id]/reactions/route.ts");
+  const commentReactionRoute = read("app/api/meals/[id]/comments/[commentId]/reactions/route.ts");
+
+  assert.match(mealDraft, /from "@\/lib\/domain\/meal-policy"/);
+  assert.match(mealCreateRoute, /from "@\/lib\/domain\/meal-policy"/);
+  assert.match(mealUpdateRoute, /from "@\/lib\/domain\/meal-policy"/);
+  assert.match(roleRoute, /from "@\/lib\/domain\/meal-policy"/);
+  assert.match(mealReactionRoute, /from "@\/lib\/domain\/meal-policy"/);
+  assert.match(commentReactionRoute, /from "@\/lib\/domain\/meal-policy"/);
+
+  assert.doesNotMatch(mealDraft, /const VALID_TYPES =/);
+  assert.doesNotMatch(mealDraft, /const VALID_USERS =/);
+  assert.doesNotMatch(mealCreateRoute, /const VALID_ROLES = \["아빠"/);
+  assert.doesNotMatch(mealCreateRoute, /const VALID_MEAL_TYPES = \["아침"/);
+  assert.doesNotMatch(mealUpdateRoute, /const VALID_ROLES = \["아빠"/);
+  assert.doesNotMatch(mealUpdateRoute, /const VALID_MEAL_TYPES = \["아침"/);
+  assert.doesNotMatch(roleRoute, /const VALID_ROLES = \["아빠"/);
+  assert.doesNotMatch(mealReactionRoute, /new Set\(\["아빠"/);
+  assert.doesNotMatch(commentReactionRoute, /new Set\(\["아빠"/);
+});
+
+test("meal client access is split into query, mutation, and filtering modules", () => {
+  const mealsBarrel = read("lib/client/meals.ts");
+  const mealQueries = read("lib/client/meal-queries.ts");
+  const mealMutations = read("lib/client/meal-mutations.ts");
+  const mealFilters = read("lib/client/meal-filters.ts");
+
+  assert.match(mealsBarrel, /from "@\/lib\/client\/meal-queries"/);
+  assert.match(mealsBarrel, /from "@\/lib\/client\/meal-mutations"/);
+  assert.match(mealsBarrel, /from "@\/lib\/client\/meal-filters"/);
+
+  assert.match(mealQueries, /export const getMealsForDate = async/);
+  assert.match(mealQueries, /export const getRecentMeals = async/);
+  assert.match(mealQueries, /export const subscribeMealsForDate =/);
+  assert.match(mealQueries, /export const searchMeals = async/);
+  assert.match(mealQueries, /export const getWeeklyStats = async/);
+
+  assert.match(mealMutations, /export const addMeal = async/);
+  assert.match(mealMutations, /export const updateMeal = async/);
+  assert.match(mealMutations, /export const deleteMeal = async/);
+
+  assert.match(mealFilters, /export const filterAndSortMeals =/);
+  assert.match(mealFilters, /export const getMealCommentCount =/);
+
+  assert.doesNotMatch(mealsBarrel, /const getDayRange =/);
+  assert.doesNotMatch(mealsBarrel, /const deriveMealMetrics =/);
 });

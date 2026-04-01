@@ -7,7 +7,7 @@ import ServiceWorkerCleanup from "@/components/ServiceWorkerCleanup";
 import { UserProvider } from "@/context/UserContext";
 import { ToastProvider } from "@/components/Toast";
 import { ConfirmProvider } from "@/components/ConfirmDialog";
-import { publicEnv } from "@/lib/env";
+import { publicEnv } from "@/lib/config/public-env";
 
 const AppUpdateBanner = dynamic(() => import("@/components/AppUpdateBanner"));
 

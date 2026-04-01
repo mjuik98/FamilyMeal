@@ -14,10 +14,9 @@ import { auth } from "@/lib/firebase";
 import {
   getQaDefaultRole,
   getQaNotificationPreferences,
-  isQaMockMode,
-  QA_MOCK_MODE_KEY,
   setQaNotificationPreferences,
-} from "@/lib/qa";
+} from "@/lib/qa/session";
+import { isQaMockMode, QA_MOCK_MODE_KEY } from "@/lib/qa/mode";
 import { NotificationPreferences, UserProfile, UserRole } from "@/lib/types";
 import { updateNotificationPreferences as saveNotificationPreferences } from "@/lib/client/activity";
 import { buildFallbackUserProfile, loadUserProfile, saveUserRole } from "@/lib/client/profile-session";

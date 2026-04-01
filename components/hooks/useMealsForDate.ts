@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { subscribeMealsForDate } from "@/lib/client/meals";
 import { formatDateKey } from "@/lib/date-utils";
-import { createQaMockMeals } from "@/lib/qa";
+import { createQaMockMeals } from "@/lib/qa/fixtures";
 import type { Meal, UserRole } from "@/lib/types";
 
 export const useMealsForDate = ({

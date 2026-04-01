@@ -218,8 +218,8 @@ test("home is rewritten as a weekly photo journal with a persistent bottom dock"
 
 test("meal card uses extracted hooks, shared comment subscription store, and shared time formatting", () => {
   const mealCard = read("components/MealCard.tsx");
-  const mealCommentsHook = read("components/hooks/useMealComments.ts");
-  const mealReactionsHook = read("components/hooks/useMealReactions.ts");
+  const mealCommentsHook = read("lib/features/comments/ui/useMealCommentsController.ts");
+  const mealReactionsHook = read("lib/features/reactions/ui/useMealReactionsController.ts");
   const commentsStore = read("lib/meal-comments-store.ts");
   const timeUtils = read("lib/time.ts");
   const commentItem = read("components/comments/CommentItem.tsx");
@@ -233,8 +233,8 @@ test("meal card uses extracted hooks, shared comment subscription store, and sha
   assert.doesNotMatch(mealCard, /const formatRelativeTime =/);
 
   assert.match(mealCommentsHook, /subscribeToMealComments/);
-  assert.match(mealCommentsHook, /useMealComments/);
-  assert.match(mealReactionsHook, /useMealReactions/);
+  assert.match(mealCommentsHook, /useMealCommentsController/);
+  assert.match(mealReactionsHook, /useMealReactionsController/);
   assert.match(commentsStore, /const commentEntries = new Map/);
   assert.match(commentsStore, /refCount/);
   assert.match(timeUtils, /export const formatRelativeTime =/);
@@ -316,7 +316,7 @@ test("client error route lazy-loads Upstash only when credentials exist", () => 
 });
 
 test("qa fixtures use readable Korean literals in source", () => {
-  const qa = read("lib/qa.ts");
+  const qa = read("lib/qa/fixtures.ts");
 
   assert.match(qa, /테스트용 식사 기록입니다\./);
   assert.match(qa, /댓글 입력 가독성 테스트/);
@@ -353,7 +353,8 @@ test("home page delegates date, meals, and weekly stats state to focused hooks",
 test("date-driven hooks clear stale meal state and cache weekly stats by week", () => {
   const mealsHook = read("components/hooks/useMealsForDate.ts");
   const weeklyStatsHook = read("components/hooks/useWeeklyStats.ts");
-  const clientMeals = read("lib/client/meals.ts");
+  const mealQueries = read("lib/client/meal-queries.ts");
+  const mealFilters = read("lib/client/meal-filters.ts");
 
   assert.match(mealsHook, /setRemoteMeals\(\[\]\)/);
   assert.match(mealsHook, /loadedDateKey === currentDateKey/);
@@ -362,15 +363,15 @@ test("date-driven hooks clear stale meal state and cache weekly stats by week", 
   assert.match(weeklyStatsHook, /const cachedWeekStats = weeklyStatsCache\[weekKey\]/);
   assert.match(weeklyStatsHook, /if \(cachedWeekStats\)/);
   assert.doesNotMatch(weeklyStatsHook, /\[effectiveSelectedDate, qaMode, role, weekKey, weeklyStatsCache\]/);
-  assert.match(clientMeals, /serializeWeeklyStatMealSnapshot/);
-  assert.match(clientMeals, /type DerivedMealMetrics =/);
-  assert.match(clientMeals, /const derivedMeals = meals\.map\(\(meal\) =>/);
-  assert.match(clientMeals, /engagementCount:/);
-  assert.match(clientMeals, /reactionCount:/);
-  assert.match(clientMeals, /commentCount:/);
-  assert.match(clientMeals, /b\.engagementCount/);
-  assert.match(clientMeals, /b\.reactionCount/);
-  assert.match(clientMeals, /b\.commentCount/);
+  assert.match(mealQueries, /serializeWeeklyStatMealSnapshot/);
+  assert.match(mealFilters, /type DerivedMealMetrics =/);
+  assert.match(mealFilters, /const derivedMeals = meals\.map\(\(meal\) =>/);
+  assert.match(mealFilters, /engagementCount:/);
+  assert.match(mealFilters, /reactionCount:/);
+  assert.match(mealFilters, /commentCount:/);
+  assert.match(mealFilters, /b\.engagementCount/);
+  assert.match(mealFilters, /b\.reactionCount/);
+  assert.match(mealFilters, /b\.commentCount/);
 });
 
 test("client error route rejects oversized content-length before reading the body", () => {
@@ -418,7 +419,7 @@ test("add flow remembers recent meal draft defaults", () => {
   const homePage = read("app/page.tsx");
   const selectedDateHook = read("components/hooks/useSelectedDate.ts");
   const uploadHelper = read("lib/uploadImage.ts");
-  const clientMeals = read("lib/client/meals.ts");
+  const mealMutations = read("lib/client/meal-mutations.ts");
 
   assert.match(addPage, /getMealDraftDefaults/);
   assert.match(addPage, /saveMealDraftDefaults/);
@@ -437,7 +438,7 @@ test("add flow remembers recent meal draft defaults", () => {
   assert.match(mealCopy, /buildAutoMealDescription/);
   assert.match(uploadHelper, /Authorization/);
   assert.match(uploadHelper, /\/api\/uploads\/meal-image/);
-  assert.match(clientMeals, /\/api\/meals/);
+  assert.match(mealMutations, /\/api\/meals/);
 });
 
 test("edit flow uses server mutation helper and specific failure copy", () => {
@@ -459,7 +460,7 @@ test("meal delete route uses idempotent server cleanup flow", () => {
 });
 
 test("qa mock mode is disabled in production by env guard", () => {
-  const qaLib = read("lib/qa.ts");
+  const qaLib = read("lib/qa/mode.ts");
   assert.match(qaLib, /NODE_ENV !== "production"/);
 });
 
@@ -479,15 +480,17 @@ test("critical UI files are UTF-8 clean", () => {
 test("client data access is split into focused adapters and user context delegates profile I/O", () => {
   const clientData = read("lib/data.ts");
   const clientHttp = read("lib/client/http.ts");
-  const clientMeals = read("lib/client/meals.ts");
+  const clientMeals = read("lib/client/meal-queries.ts");
+  const mealMutations = read("lib/client/meal-mutations.ts");
+  const mealFilters = read("lib/client/meal-filters.ts");
   const clientComments = read("lib/client/comments.ts");
   const clientReactions = read("lib/client/reactions.ts");
   const clientActivity = read("lib/client/activity.ts");
   const clientProfile = read("lib/client/profile.ts");
   const profileSession = read("lib/client/profile-session.ts");
   const authHttp = read("lib/client/auth-http.ts");
-  const mealCommentsHook = read("components/hooks/useMealComments.ts");
-  const mealReactionsHook = read("components/hooks/useMealReactions.ts");
+  const mealCommentsHook = read("lib/features/comments/ui/useMealCommentsController.ts");
+  const mealReactionsHook = read("lib/features/reactions/ui/useMealReactionsController.ts");
   const mealsHook = read("components/hooks/useMealsForDate.ts");
   const weeklyStatsHook = read("components/hooks/useWeeklyStats.ts");
   const archivePage = read("app/archive/page.tsx");
@@ -499,6 +502,9 @@ test("client data access is split into focused adapters and user context delegat
   assert.match(clientHttp, /export const fetchAuthedJson = async/);
   assert.match(clientMeals, /export const getMealsForDate = async/);
   assert.match(clientMeals, /export const getMealById = async/);
+  assert.match(mealMutations, /export const addMeal = async/);
+  assert.match(mealMutations, /export const updateMeal = async/);
+  assert.match(mealFilters, /export const filterAndSortMeals =/);
   assert.match(clientComments, /export const addMealComment = async/);
   assert.match(clientComments, /export const updateMealComment = async/);
   assert.match(clientComments, /export const deleteMealComment = async/);
@@ -527,4 +533,70 @@ test("client data access is split into focused adapters and user context delegat
   assert.match(userContext, /from "@\/lib\/client\/profile-session"/);
   assert.match(userContext, /from "@\/lib\/client\/activity"/);
   assert.doesNotMatch(userContext, /doc, getDoc/);
+});
+
+test("runtime pages avoid compat meal barrel and comment store reuses shared serializers", () => {
+  const addPage = read("app/add/page.tsx");
+  const editPage = read("app/edit/[id]/page.tsx");
+  const commentsStore = read("lib/meal-comments-store.ts");
+
+  assert.match(addPage, /from "@\/lib\/client\/meals"/);
+  assert.match(editPage, /from "@\/lib\/client\/meals"/);
+  assert.doesNotMatch(addPage, /@\/lib\/data/);
+  assert.doesNotMatch(editPage, /@\/lib\/data/);
+
+  assert.match(commentsStore, /from "@\/lib\/client\/serializers"/);
+  assert.doesNotMatch(commentsStore, /const normalizeComment =/);
+  assert.doesNotMatch(commentsStore, /const convertCommentDoc =/);
+});
+
+test("meal editor pages reuse focused meal form helpers and direct public env config", () => {
+  const addPage = read("app/add/page.tsx");
+  const editPage = read("app/edit/[id]/page.tsx");
+  const mealForm = read("lib/meal-form.ts");
+  const layout = read("app/layout.tsx");
+  const firebase = read("lib/firebase.ts");
+
+  assert.match(mealForm, /export const readMealImagePreview = async/);
+  assert.match(mealForm, /export const toggleMealParticipant =/);
+  assert.match(mealForm, /export const isLocalMealImagePreview =/);
+
+  assert.match(addPage, /from "@\/lib\/meal-form"/);
+  assert.match(editPage, /from "@\/lib\/meal-form"/);
+  assert.doesNotMatch(addPage, /new FileReader\(/);
+  assert.doesNotMatch(editPage, /new FileReader\(/);
+  assert.doesNotMatch(addPage, /const toggleUser =/);
+  assert.doesNotMatch(editPage, /const toggleUser =/);
+
+  assert.match(layout, /from "@\/lib\/config\/public-env"/);
+  assert.match(firebase, /from "@\/lib\/config\/public-env"/);
+  assert.doesNotMatch(layout, /@\/lib\/env/);
+  assert.doesNotMatch(firebase, /@\/lib\/env/);
+});
+
+test("qa helpers are split by responsibility and meal card uses feature ui controllers", () => {
+  const qaBarrel = read("lib/qa.ts");
+  const qaMode = read("lib/qa/mode.ts");
+  const qaFixtures = read("lib/qa/fixtures.ts");
+  const qaSession = read("lib/qa/session.ts");
+  const homePage = read("app/page.tsx");
+  const archivePage = read("app/archive/page.tsx");
+  const mealDetailPage = read("app/meals/[id]/page.tsx");
+  const userContext = read("context/UserContext.tsx");
+  const mealCard = read("components/MealCard.tsx");
+
+  assert.match(qaBarrel, /from "@\/lib\/qa\/mode"/);
+  assert.match(qaBarrel, /from "@\/lib\/qa\/fixtures"/);
+  assert.match(qaBarrel, /from "@\/lib\/qa\/session"/);
+  assert.match(qaMode, /export const isQaMockMode =/);
+  assert.match(qaFixtures, /export const createQaMockMeals =/);
+  assert.match(qaSession, /export const getQaNotificationPreferences =/);
+
+  assert.match(homePage, /from "@\/lib\/qa\/mode"/);
+  assert.match(archivePage, /from "@\/lib\/qa\/fixtures"/);
+  assert.match(mealDetailPage, /from "@\/lib\/qa\/fixtures"/);
+  assert.match(userContext, /from "@\/lib\/qa\/session"/);
+
+  assert.match(mealCard, /from "@\/lib\/features\/comments\/ui\/useMealCommentsController"/);
+  assert.match(mealCard, /from "@\/lib\/features\/reactions\/ui\/useMealReactionsController"/);
 });

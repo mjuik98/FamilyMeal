@@ -1,3 +1,4 @@
+import { VALID_MEAL_TYPE_SET, VALID_USER_ROLE_SET } from "@/lib/domain/meal-policy";
 import type { Meal, UserRole } from "@/lib/types";
 
 type MealDraftDefaults = {
@@ -12,9 +13,6 @@ const DEFAULT_DRAFT: MealDraftDefaults = {
   participantIds: [],
 };
 
-const VALID_TYPES: Meal["type"][] = ["아침", "점심", "저녁", "간식"];
-const VALID_USERS: UserRole[] = ["아빠", "엄마", "딸", "아들"];
-
 export const getMealDraftDefaults = (): MealDraftDefaults => {
   if (typeof window === "undefined") return DEFAULT_DRAFT;
 
@@ -23,12 +21,12 @@ export const getMealDraftDefaults = (): MealDraftDefaults => {
     if (!raw) return DEFAULT_DRAFT;
 
     const parsed = JSON.parse(raw) as Partial<MealDraftDefaults>;
-    const mealType = VALID_TYPES.includes(parsed.mealType as Meal["type"])
+    const mealType = VALID_MEAL_TYPE_SET.has(parsed.mealType as Meal["type"])
       ? (parsed.mealType as Meal["type"])
       : DEFAULT_DRAFT.mealType;
     const participantIds = Array.isArray(parsed.participantIds)
       ? parsed.participantIds.filter(
-          (role): role is UserRole => typeof role === "string" && VALID_USERS.includes(role as UserRole)
+          (role): role is UserRole => typeof role === "string" && VALID_USER_ROLE_SET.has(role as UserRole)
         )
       : [];
 

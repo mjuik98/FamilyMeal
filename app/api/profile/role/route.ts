@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { USER_ROLES } from "@/lib/domain/meal-policy";
 import { adminAuth, adminDb } from "@/lib/firebase-admin";
 import { getRouteErrorMessage, getRouteErrorStatus, RouteError } from "@/lib/route-errors";
 import { verifyRequestUser } from "@/lib/server-auth";
@@ -8,7 +9,6 @@ import { verifyRequestUser } from "@/lib/server-auth";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const VALID_ROLES = ["아빠", "엄마", "딸", "아들"] as const;
 const allowRoleReassign = process.env.ALLOW_ROLE_REASSIGN === "true";
 const DEFAULT_NOTIFICATION_PREFERENCES = {
   browserEnabled: true,
@@ -26,7 +26,7 @@ type UserProfileDoc = {
 };
 
 const RoleUpdateSchema = z.object({
-  role: z.enum(VALID_ROLES),
+  role: z.enum(USER_ROLES),
 });
 
 const toStringOrNull = (value: unknown): string | null =>

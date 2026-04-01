@@ -2,6 +2,13 @@ import { NextResponse } from "next/server";
 import type { QueryDocumentSnapshot } from "firebase-admin/firestore";
 import { z } from "zod";
 
+import {
+  isUserRole,
+  MAX_MEAL_DESCRIPTION_LENGTH,
+  MAX_MEAL_IMAGE_URL_LENGTH,
+  USER_ROLES,
+  VALID_MEAL_TYPES,
+} from "@/lib/domain/meal-policy";
 import { adminDb } from "@/lib/firebase-admin";
 import { getRouteErrorMessage, getRouteErrorStatus } from "@/lib/route-errors";
 import {
@@ -11,7 +18,7 @@ import {
   updateMealDocument,
 } from "@/lib/server-meals";
 import { AuthError, getUserRole, verifyRequestUser } from "@/lib/server-auth";
-import type { Meal, UserRole } from "@/lib/types";
+import type { Meal } from "@/lib/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -43,15 +50,12 @@ type DeletePlan =
   | { action: "wait_for_inflight" }
   | { action: "delete_now"; mealImageUrl?: string };
 
-const VALID_ROLES = ["아빠", "엄마", "딸", "아들"] as const;
-const VALID_MEAL_TYPES = ["아침", "점심", "저녁", "간식"] as const;
-
 const MealUpdateSchema = z.object({
   ownerUid: z.string().trim().min(1).optional(),
-  userIds: z.array(z.enum(VALID_ROLES)).min(1).optional(),
-  description: z.string().trim().min(1).max(300).optional(),
+  userIds: z.array(z.enum(USER_ROLES)).min(1).optional(),
+  description: z.string().trim().min(1).max(MAX_MEAL_DESCRIPTION_LENGTH).optional(),
   type: z.enum(VALID_MEAL_TYPES).optional(),
-  imageUrl: z.string().trim().url().max(2048).nullable().optional(),
+  imageUrl: z.string().trim().url().max(MAX_MEAL_IMAGE_URL_LENGTH).nullable().optional(),
 });
 
 const decodeMealId = async (params: Promise<Params>): Promise<string> => {
@@ -242,7 +246,7 @@ export async function PATCH(
     const user = await verifyRequestUser(request);
     const mealId = await decodeMealId(context.params);
     const role = await getUserRole(user.uid);
-    if (!role || !VALID_ROLES.includes(role as UserRole)) {
+    if (!isUserRole(role)) {
       throw new MealRouteError("Valid user role is required", 403);
     }
 

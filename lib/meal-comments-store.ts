@@ -1,15 +1,13 @@
 import {
   collection,
-  DocumentData,
   onSnapshot,
   orderBy,
   query,
-  QueryDocumentSnapshot,
 } from "firebase/firestore";
 
+import { convertCommentDoc } from "@/lib/client/serializers";
 import { db } from "@/lib/firebase";
-import { normalizeReactionMap } from "@/lib/reactions";
-import type { MealComment, UserRole } from "@/lib/types";
+import type { MealComment } from "@/lib/types";
 
 type CommentListener = {
   onComments: (comments: MealComment[]) => void;
@@ -25,61 +23,6 @@ type CommentEntry = {
 };
 
 const commentEntries = new Map<string, CommentEntry>();
-
-const toMillis = (value: unknown, fallback: number): number => {
-  if (typeof value === "number" && Number.isFinite(value)) return value;
-  if (
-    value &&
-    typeof value === "object" &&
-    "toMillis" in value &&
-    typeof (value as { toMillis?: () => number }).toMillis === "function"
-  ) {
-    return (value as { toMillis: () => number }).toMillis();
-  }
-  return fallback;
-};
-
-const normalizeComment = (
-  id: string,
-  raw: Partial<MealComment> & { createdAt?: unknown; updatedAt?: unknown; timestamp?: unknown }
-): MealComment | null => {
-  if (!raw?.author || !raw?.text) return null;
-
-  const fallback = Date.now();
-  const createdAt = toMillis(raw.createdAt ?? raw.timestamp, fallback);
-  const updatedAt = toMillis(raw.updatedAt ?? raw.timestamp ?? raw.createdAt, createdAt);
-  const timestamp = toMillis(raw.timestamp, createdAt);
-
-  return {
-    id,
-    author: raw.author,
-    authorUid: typeof raw.authorUid === "string" ? raw.authorUid : "",
-    text: String(raw.text),
-    parentId:
-      typeof raw.parentId === "string" && raw.parentId.trim().length > 0
-        ? raw.parentId
-        : undefined,
-    mentionedAuthor:
-      typeof raw.mentionedAuthor === "string"
-        ? (raw.mentionedAuthor as UserRole)
-        : undefined,
-    createdAt,
-    updatedAt,
-    timestamp,
-    reactions: normalizeReactionMap((raw as { reactions?: unknown }).reactions),
-  };
-};
-
-const convertCommentDoc = (
-  docSnap: QueryDocumentSnapshot<DocumentData>
-): MealComment | null => {
-  const raw = docSnap.data() as Partial<MealComment> & {
-    createdAt?: unknown;
-    updatedAt?: unknown;
-    timestamp?: unknown;
-  };
-  return normalizeComment(docSnap.id, raw);
-};
 
 const emitComments = (entry: CommentEntry) => {
   entry.listeners.forEach((listener) => {
