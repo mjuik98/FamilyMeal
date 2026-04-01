@@ -34,11 +34,9 @@ export default function Navbar() {
       <Link
         href="/add"
         data-testid="bottom-dock-add"
-        className={`nav-item nav-item-primary ${isActive("/add") ? "active" : ""}`}
+        className={`nav-item ${isActive("/add") ? "active" : ""}`}
       >
-        <div
-          className={`nav-icon-wrap nav-icon-wrap-primary ${isActive("/add") ? "nav-icon-active" : ""}`}
-        >
+        <div className={`nav-icon-wrap ${isActive("/add") ? "nav-icon-active" : ""}`}>
           <PlusCircle
             size={22}
             strokeWidth={isActive("/add") ? 2.2 : 1.8}

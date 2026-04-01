@@ -251,10 +251,12 @@ test("navbar styles live in shared CSS and week strip exposes accessible labels"
   const layoutStyles = read("app/styles/layout.css");
 
   assert.doesNotMatch(navbar, /style jsx/);
+  assert.doesNotMatch(navbar, /nav-item-primary/);
+  assert.doesNotMatch(navbar, /nav-icon-wrap-primary/);
   assert.match(layoutStyles, /\.navbar\s*\{/);
-  assert.match(layoutStyles, /\.nav-item-primary\s*\{/);
-  assert.match(layoutStyles, /\.nav-item-primary \.nav-label\s*\{/);
-  assert.match(layoutStyles, /translateY\(8px\)/);
+  assert.match(layoutStyles, /\.nav-icon-wrap\s*\{[\s\S]*width:\s*44px;[\s\S]*height:\s*36px;[\s\S]*border-radius:\s*12px;/);
+  assert.doesNotMatch(layoutStyles, /\.nav-item-primary\s*\{/);
+  assert.doesNotMatch(layoutStyles, /\.nav-icon-wrap-primary\s*\{/);
   assert.match(weekDateStrip, /aria-label=/);
   assert.match(weekDateStrip, /선택한 날짜/);
 });
