@@ -8,7 +8,7 @@ import { ChevronLeft, Images } from "lucide-react";
 import MealCard from "@/components/MealCard";
 import PageHeader from "@/components/PageHeader";
 import { useUser } from "@/context/UserContext";
-import { getMealById, getMealsForDate } from "@/lib/data";
+import { getMealById, getMealsForDate } from "@/lib/client/meals";
 import { createQaMockRecentMeals, getQaMockMealById, isQaMockMode } from "@/lib/qa";
 import type { Meal } from "@/lib/types";
 

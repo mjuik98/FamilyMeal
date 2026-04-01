@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { serverEnv } from "@/lib/config/server-env";
 import { adminStorage } from "@/lib/firebase-admin";
 import { getRouteErrorMessage, getRouteErrorStatus, RouteError } from "@/lib/route-errors";
 import { verifyRequestUser } from "@/lib/server-auth";
@@ -77,7 +78,7 @@ export async function POST(request: Request) {
     }
 
     const { contentType, buffer } = parseDataUri(parsed.data.imageData);
-    const bucketName = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET?.trim();
+    const bucketName = serverEnv.storageBucket?.trim();
     if (!bucketName) {
       throw new RouteError("Storage bucket is not configured", 503);
     }

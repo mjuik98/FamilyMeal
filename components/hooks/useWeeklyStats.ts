@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 
-import { getWeeklyStats } from "@/lib/data";
+import { getWeeklyStats } from "@/lib/client/meals";
 import { createQaMockWeeklyStats } from "@/lib/qa";
 import type { UserRole, WeeklyMealStat } from "@/lib/types";
 

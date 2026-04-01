@@ -1,13 +1,15 @@
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
 
+import { serverEnv } from "@/lib/config/server-env";
+import {
+  isMealType,
+  isUserRole,
+  MAX_MEAL_DESCRIPTION_LENGTH,
+  MAX_MEAL_IMAGE_URL_LENGTH,
+} from "@/lib/domain/meal-policy";
 import { adminDb, adminStorage } from "@/lib/firebase-admin";
 import { normalizeReactionMap } from "@/lib/reactions";
 import type { Meal, UserRole } from "@/lib/types";
-
-const VALID_ROLES: UserRole[] = ["아빠", "엄마", "딸", "아들"];
-const VALID_MEAL_TYPES: Meal["type"][] = ["아침", "점심", "저녁", "간식"];
-const MAX_MEAL_DESCRIPTION_LENGTH = 300;
-const MAX_IMAGE_URL_LENGTH = 2048;
 
 type StoredMealDoc = {
   ownerUid?: unknown;
@@ -48,9 +50,6 @@ export class MealRouteError extends Error {
   }
 }
 
-const validRoleSet = new Set<string>(VALID_ROLES);
-const validMealTypeSet = new Set<string>(VALID_MEAL_TYPES);
-
 const toMillis = (value: unknown, fallback: number): number => {
   if (typeof value === "number" && Number.isFinite(value)) return value;
   if (
@@ -79,10 +78,10 @@ const normalizeMealDescription = (description: unknown): string => {
 };
 
 const normalizeMealType = (type: unknown): Meal["type"] => {
-  if (typeof type !== "string" || !validMealTypeSet.has(type)) {
+  if (!isMealType(type)) {
     throw new MealRouteError("Invalid meal type", 400);
   }
-  return type as Meal["type"];
+  return type;
 };
 
 const normalizeMealParticipants = (userIds: unknown): UserRole[] => {
@@ -92,7 +91,7 @@ const normalizeMealParticipants = (userIds: unknown): UserRole[] => {
 
   const normalized = Array.from(
     new Set(
-      userIds.filter((value): value is UserRole => typeof value === "string" && validRoleSet.has(value))
+      userIds.filter((value): value is UserRole => isUserRole(value))
     )
   );
 
@@ -108,7 +107,7 @@ const normalizeImageUrl = (imageUrl: unknown): string => {
     throw new MealRouteError("Meal image URL is required", 400);
   }
   const trimmed = imageUrl.trim();
-  if (!trimmed || trimmed.length > MAX_IMAGE_URL_LENGTH || !/^https?:\/\//.test(trimmed)) {
+  if (!trimmed || trimmed.length > MAX_MEAL_IMAGE_URL_LENGTH || !/^https?:\/\//.test(trimmed)) {
     throw new MealRouteError("Invalid meal image URL", 400);
   }
   return trimmed;
@@ -132,7 +131,7 @@ const getTimestampMillis = (value: unknown, fallback = Date.now()): number => {
 
 export const serializeMealDocument = (id: string, data: StoredMealDoc): Meal => {
   const userIds = Array.isArray(data.userIds)
-    ? data.userIds.filter((value): value is UserRole => typeof value === "string" && validRoleSet.has(value))
+    ? data.userIds.filter((value): value is UserRole => isUserRole(value))
     : [];
   const timestamp = toMillis(data.timestamp, Date.now());
   const commentCount =
@@ -143,14 +142,14 @@ export const serializeMealDocument = (id: string, data: StoredMealDoc): Meal => 
   return {
     id,
     ownerUid: typeof data.ownerUid === "string" ? data.ownerUid : undefined,
-    userId: typeof data.userId === "string" && validRoleSet.has(data.userId) ? (data.userId as UserRole) : undefined,
+    userId: isUserRole(data.userId) ? data.userId : undefined,
     userIds,
     keywords: Array.isArray(data.keywords)
       ? data.keywords.filter((value): value is string => typeof value === "string" && value.trim().length > 0)
       : undefined,
     imageUrl: typeof data.imageUrl === "string" ? data.imageUrl : undefined,
     description: typeof data.description === "string" ? data.description : "",
-    type: typeof data.type === "string" && validMealTypeSet.has(data.type) ? (data.type as Meal["type"]) : "점심",
+    type: isMealType(data.type) ? data.type : "점심",
     timestamp,
     commentCount,
     reactions: normalizeReactionMap(data.reactions),
@@ -169,7 +168,7 @@ export const isLegacyParticipant = (meal: StoredMealDoc, role: string | null): b
 };
 
 const getStorageBucketName = (): string | null => {
-  const bucket = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET?.trim();
+  const bucket = serverEnv.storageBucket?.trim();
   return bucket && bucket.length > 0 ? bucket : null;
 };
 
@@ -277,11 +276,11 @@ export const updateMealDocument = async ({
     let nextDescription =
       typeof current.description === "string" ? current.description : "";
     let nextType =
-      typeof current.type === "string" && validMealTypeSet.has(current.type)
-        ? (current.type as Meal["type"])
+      isMealType(current.type)
+        ? current.type
         : "점심";
     let nextUserIds = Array.isArray(current.userIds)
-      ? current.userIds.filter((value): value is UserRole => typeof value === "string" && validRoleSet.has(value))
+      ? current.userIds.filter((value): value is UserRole => isUserRole(value))
       : [];
     let nextImageUrl = typeof current.imageUrl === "string" ? current.imageUrl : undefined;
     let nextOwnerUid = typeof current.ownerUid === "string" ? current.ownerUid : undefined;
@@ -338,8 +337,8 @@ export const updateMealDocument = async ({
         description: nextDescription,
         type: nextType,
         userIds: nextUserIds,
-        userId: typeof current.userId === "string" && validRoleSet.has(current.userId)
-          ? (current.userId as UserRole)
+        userId: isUserRole(current.userId)
+          ? current.userId
           : undefined,
       });
     }
@@ -361,8 +360,8 @@ export const updateMealDocument = async ({
               description: nextDescription,
               type: nextType,
               userIds: nextUserIds,
-              userId: typeof current.userId === "string" && validRoleSet.has(current.userId)
-                ? (current.userId as UserRole)
+              userId: isUserRole(current.userId)
+                ? current.userId
                 : undefined,
             }),
           }

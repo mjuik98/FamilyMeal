@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { useUser } from "@/context/UserContext";
-import { deleteMeal } from "@/lib/data";
+import { deleteMeal } from "@/lib/client/meals";
 import type { Meal } from "@/lib/types";
 import { useMealComments } from "@/components/hooks/useMealComments";
 import { useMealReactions } from "@/components/hooks/useMealReactions";
@@ -28,7 +28,7 @@ export default function MealCard({
   const router = useRouter();
   const { showToast } = useToast();
   const { showConfirm } = useConfirm();
-  const [commentsOpen, setCommentsOpen] = useState(false);
+  const [commentsOpen, setCommentsOpen] = useState(true);
 
   const {
     comments,
