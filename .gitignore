@@ -33,7 +33,11 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
+.next_dev*.log
+build_error.log
 firestore-debug.log
+.playwright-cli/
+*-desktop.png
 
 # env files (can opt-in for committing if needed)
 .env*

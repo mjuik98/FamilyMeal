@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { ChevronLeft, Search } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -38,6 +38,8 @@ export default function ArchivePage() {
   const [typeFilter, setTypeFilter] = useState<(typeof TYPE_OPTIONS)[number]>("전체");
   const [userFilter, setUserFilter] = useState<(typeof USER_OPTIONS)[number]>("전체");
   const [visibleCount, setVisibleCount] = useState(ARCHIVE_INITIAL_VISIBLE);
+  const deferredQuery = useDeferredValue(query.trim());
+  const requestSequenceRef = useRef(0);
 
   useEffect(() => {
     if (!loading && !userProfile?.role) {
@@ -49,27 +51,44 @@ export default function ArchivePage() {
     if (!userProfile?.role) return;
 
     const currentRole = userProfile.role;
+    let active = true;
+    const requestId = ++requestSequenceRef.current;
 
     const loadMeals = async () => {
       setLoadingMeals(true);
       try {
         if (isQaMockMode()) {
+          if (!active || requestId !== requestSequenceRef.current) {
+            return;
+          }
           setSourceMeals(createQaMockRecentMeals(currentRole));
           return;
         }
 
-        const nextMeals = query.trim() ? await searchMeals(query) : await getRecentMeals();
+        const nextMeals = deferredQuery ? await searchMeals(deferredQuery) : await getRecentMeals();
+        if (!active || requestId !== requestSequenceRef.current) {
+          return;
+        }
         setSourceMeals(nextMeals);
       } catch (error) {
+        if (!active || requestId !== requestSequenceRef.current) {
+          return;
+        }
         console.error("Failed to load archive meals", error);
         setSourceMeals([]);
       } finally {
-        setLoadingMeals(false);
+        if (active && requestId === requestSequenceRef.current) {
+          setLoadingMeals(false);
+        }
       }
     };
 
     void loadMeals();
-  }, [query, userProfile?.role]);
+
+    return () => {
+      active = false;
+    };
+  }, [deferredQuery, userProfile?.role]);
 
   useEffect(() => {
     setVisibleCount(ARCHIVE_INITIAL_VISIBLE);

@@ -11,7 +11,7 @@ test("server auth uses server-only allowlist and production fail-closed guard", 
   assert.match(serverAuth, /process\.env\.ALLOWED_EMAILS/);
   assert.match(serverAuth, /Server allowlist is not configured/);
   assert.match(serverAuth, /assertAllowlistConfigured/);
-  assert.doesNotMatch(serverAuth, /allowedEmailsRaw[\s\S]*NEXT_PUBLIC_ALLOWED_EMAILS/);
+  assert.doesNotMatch(serverAuth, /NEXT_PUBLIC_ALLOWED_EMAILS/);
 });
 
 test("comment creation route only requires authenticated role", () => {

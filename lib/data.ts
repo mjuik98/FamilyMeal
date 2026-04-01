@@ -220,6 +220,16 @@ const serializeMealSnapshot = (
 const convertMeal = (docSnap: QueryDocumentSnapshot<DocumentData>): Meal =>
     serializeMealSnapshot(docSnap.id, docSnap.data());
 
+const serializeWeeklyStatMealSnapshot = (
+    docSnap: QueryDocumentSnapshot<DocumentData>
+): { timestamp: number; imageUrl?: string } => {
+    const data = docSnap.data() as { timestamp?: unknown; imageUrl?: unknown };
+    return {
+        timestamp: toMillis(data.timestamp, Date.now()),
+        imageUrl: typeof data.imageUrl === 'string' && data.imageUrl.length > 0 ? data.imageUrl : undefined,
+    };
+};
+
 const getDayRange = (date: Date) => {
     const startOfDay = new Date(date);
     startOfDay.setHours(0, 0, 0, 0);
@@ -357,28 +367,6 @@ export const getMealComments = async (mealId: string): Promise<MealComment[]> =>
     return snapshot.docs
         .map(convertCommentDoc)
         .filter((comment): comment is MealComment => Boolean(comment));
-};
-
-export const subscribeMealComments = (
-    mealId: string,
-    onComments: (comments: MealComment[]) => void,
-    onError?: (error: Error) => void
-) => {
-    const q = query(mealCommentsRef(mealId), orderBy('createdAt', 'asc'));
-
-    return onSnapshot(
-        q,
-        (snapshot) => {
-            const comments = snapshot.docs
-                .map(convertCommentDoc)
-                .filter((comment): comment is MealComment => Boolean(comment));
-            onComments(comments);
-        },
-        (error) => {
-            console.error('Failed to subscribe to comments', error);
-            onError?.(error);
-        }
-    );
 };
 
 export const addMealComment = async (
@@ -551,7 +539,8 @@ export const getWeeklyStats = async (referenceDate: Date = new Date()): Promise<
     const q = query(
         mealsRef,
         where('timestamp', '>=', Timestamp.fromDate(firstRange.startOfDay)),
-        where('timestamp', '<=', Timestamp.fromDate(lastRange.endOfDay))
+        where('timestamp', '<=', Timestamp.fromDate(lastRange.endOfDay)),
+        orderBy('timestamp', 'desc')
     );
     const snapshot = await getDocs(q);
 
@@ -562,11 +551,11 @@ export const getWeeklyStats = async (referenceDate: Date = new Date()): Promise<
     });
 
     snapshot.docs.forEach((docSnap) => {
-        const meal = convertMeal(docSnap);
+        const meal = serializeWeeklyStatMealSnapshot(docSnap);
         const key = getDayKey(new Date(meal.timestamp));
         if (!countByDay.has(key)) return;
         countByDay.set(key, (countByDay.get(key) ?? 0) + 1);
-        if (!previewByDay.has(key) && typeof meal.imageUrl === 'string' && meal.imageUrl.length > 0) {
+        if (!previewByDay.has(key) && meal.imageUrl) {
             previewByDay.set(key, meal.imageUrl);
         }
     });
@@ -605,10 +594,28 @@ export const getMealCommentCount = (
     commentsByMeal?: Record<string, MealComment[]>
 ): number => commentsByMeal?.[meal.id]?.length ?? meal.commentCount ?? meal.comments?.length ?? 0;
 
-const getMealEngagementCount = (
+type DerivedMealMetrics = {
+    meal: Meal;
+    commentCount: number;
+    reactionCount: number;
+    engagementCount: number;
+};
+
+const deriveMealMetrics = (
     meal: Meal,
     commentsByMeal?: Record<string, MealComment[]>
-): number => countMealReactions(meal) + countCommentReactions(getMealCommentsSnapshot(meal, commentsByMeal));
+): DerivedMealMetrics => {
+    const comments = getMealCommentsSnapshot(meal, commentsByMeal);
+    const reactionCount = countMealReactions(meal);
+    const commentCount = commentsByMeal?.[meal.id]?.length ?? meal.commentCount ?? comments.length;
+
+    return {
+        meal,
+        commentCount,
+        reactionCount,
+        engagementCount: reactionCount + countCommentReactions(comments),
+    };
+};
 
 export const mapUserActivitiesToFeedItems = (activities: UserActivity[]): ActivityFeedItem[] =>
     activities.map(toActivityFeedItem);
@@ -629,7 +636,9 @@ export const filterAndSortMeals = (
     }
 ): Meal[] => {
     const normalizedQuery = options.query?.trim().toLowerCase() ?? '';
-    const filtered = meals.filter((meal) => {
+    const derivedMeals = meals.map((meal) => deriveMealMetrics(meal, options.commentsByMeal));
+    const filtered = derivedMeals.filter((entry) => {
+        const { meal } = entry;
         const matchesQuery =
             !normalizedQuery ||
             meal.description.toLowerCase().includes(normalizedQuery) ||
@@ -644,9 +653,9 @@ export const filterAndSortMeals = (
         const matchesMineOnly = !options.mineOnly || (Boolean(options.ownerUid) && meal.ownerUid === options.ownerUid);
         const minimumComments = options.minimumComments ?? 0;
         const minimumReactions = options.minimumReactions ?? 0;
-        const matchesCommentThreshold = minimumComments <= 0 || getMealCommentCount(meal, options.commentsByMeal) >= minimumComments;
-        const matchesEngagedOnly = !options.engagedOnly || getMealEngagementCount(meal, options.commentsByMeal) > 0;
-        const matchesReactionThreshold = minimumReactions <= 0 || getMealEngagementCount(meal, options.commentsByMeal) >= minimumReactions;
+        const matchesCommentThreshold = minimumComments <= 0 || entry.commentCount >= minimumComments;
+        const matchesEngagedOnly = !options.engagedOnly || entry.engagementCount > 0;
+        const matchesReactionThreshold = minimumReactions <= 0 || entry.engagementCount >= minimumReactions;
 
         return matchesQuery && matchesType && matchesParticipant && matchesMineOnly && matchesCommentThreshold && matchesEngagedOnly && matchesReactionThreshold;
     });
@@ -655,17 +664,17 @@ export const filterAndSortMeals = (
     const sort = options.sort ?? 'recent';
     sorted.sort((a, b) => {
         if (sort === 'comments') {
-            return (b.commentCount ?? 0) - (a.commentCount ?? 0) || b.timestamp - a.timestamp;
+            return b.commentCount - a.commentCount || b.meal.timestamp - a.meal.timestamp;
         }
         if (sort === 'reactions') {
-            return countMealReactions(b) - countMealReactions(a) || b.timestamp - a.timestamp;
+            return b.reactionCount - a.reactionCount || b.meal.timestamp - a.meal.timestamp;
         }
         if (sort === 'activity') {
-            return getMealEngagementCount(b, options.commentsByMeal) - getMealEngagementCount(a, options.commentsByMeal) || b.timestamp - a.timestamp;
+            return b.engagementCount - a.engagementCount || b.meal.timestamp - a.meal.timestamp;
         }
-        return b.timestamp - a.timestamp;
+        return b.meal.timestamp - a.meal.timestamp;
     });
-    return sorted;
+    return sorted.map((entry) => entry.meal);
 };
 
 export const searchMeals = async (keyword: string): Promise<Meal[]> => {

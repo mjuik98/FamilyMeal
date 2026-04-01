@@ -18,8 +18,6 @@ const withPWA = withPWAInit({
   },
 });
 
-const nextConfig: NextConfig = {
-  /* config options here */
-};
+const nextConfig: NextConfig = {};
 
 export default withPWA(nextConfig);

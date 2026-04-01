@@ -32,9 +32,7 @@ const parseAllowedEmails = (raw: string): string[] =>
     .map((email) => email.trim().toLowerCase())
     .filter(Boolean);
 
-const allowedEmails = parseAllowedEmails(
-  process.env.ALLOWED_EMAILS ?? process.env.NEXT_PUBLIC_ALLOWED_EMAILS ?? ""
-);
+const allowedEmails = parseAllowedEmails(process.env.ALLOWED_EMAILS ?? "");
 const isProduction = process.env.NODE_ENV === "production";
 
 const assertAllowlistConfigured = () => {

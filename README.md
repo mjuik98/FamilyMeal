@@ -1,161 +1,145 @@
-# 🍽️ Family Meal Tracker
+# Family Meal Tracker
 
-가족들과 함께 나누는 맛있는 추억을 기록하고 관리하는 Next.js 기반의 스마트 식사 기록 플랫폼입니다.
+가족 식사 사진, 댓글, 반응, 활동 알림을 기록하는 Next.js 16 + Firebase 기반 웹앱입니다.
 
-[![Next.js](https://img.shields.io/badge/Next.js-15-black?style=for-the-badge&logo=next.js)](https://nextjs.org/)
-[![Firebase](https://img.shields.io/badge/Firebase-12-orange?style=for-the-badge&logo=firebase)](https://firebase.google.com/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?style=for-the-badge&logo=typescript)](https://www.typescriptlang.org/)
-[![React](https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react)](https://react.dev/)
-[![PWA](https://img.shields.io/badge/PWA-Ready-009688?style=for-the-badge&logo=pwa)](https://web.dev/progressive-web-apps/)
-[![CI Status](https://github.com/mjuik98/FamilyMeal/actions/workflows/ci.yml/badge.svg)](https://github.com/mjuik98/FamilyMeal/actions/workflows/ci.yml)
+## 현재 상태
 
----
+- App Router 기반 클라이언트/서버 혼합 구조
+- Firebase Auth + Firestore + Storage 사용
+- 댓글/반응/프로필 설정은 서버 API 경유
+- 홈 화면은 주간 저널 중심 UI, 아카이브는 검색/필터 중심 UI
+- QA 전용 라우트는 운영 환경에서 토큰으로 차단
+- PWA 는 `NEXT_PUBLIC_ENABLE_PWA=true` 일 때만 활성화
 
-## 🎬 시연 영상
+## 기술 스택
 
-<div align="center">
-  <img src="./public/videos/demo.webp" width="100%" style="max-width: 600px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);" />
-  <p><i>실시간 댓글 구독 및 부드러운 식사 기록 흐름</i></p>
-</div>
+- Frontend: Next.js 16, React 19, TypeScript
+- UI: Lucide React, React Calendar
+- Backend: Firebase Client SDK, Firebase Admin SDK
+- Validation: Zod
+- Optional infra: Upstash Redis rate limit
+- Verification: Node test runner, Firestore Rules emulator, Playwright
 
----
-
-## ✨ 주요 기능
-
-| 기능 | 설명 |
-| :--- | :--- |
-| 📸 **식사 기록** | 사진과 함께 오늘의 메뉴를 추가, 수정, 삭제할 수 있습니다. |
-| 📊 **통계 및 검색** | 지난 식사 기록을 검색하고 주간 식사 통계를 한눈에 확인합니다. |
-| 💬 **실시간 소통** | 가족 구성원들과 댓글을 통해 실시간으로 소통할 수 있습니다. (Firebase 실시간 리스너 적용) |
-| 📱 **PWA 지원** | 앱처럼 화면에 추가하여 언제 어디서든 간편하게 접근 가능합니다. |
-
----
-
-## 🏗️ 시스템 아키텍처
-
-이 프로젝트는 현대적인 Serverless 아키텍처를 지향합니다.
-
-```mermaid
-graph TD
-    User([User Client]) <--> NextJS[Next.js App Router]
-    NextJS <--> Firebase[Firebase Cloud Services]
-    NextJS <--> Redis[Upstash Redis]
-    
-    subgraph "Backend Services"
-        Firebase --- Auth(Authentication)
-        Firebase --- FS(Firestore Database)
-        Firebase --- Storage(Cloud Storage)
-        Redis --- RL(Rate Limiting)
-    end
-    
-    subgraph "Client Side"
-        NextJS --- PWA(Service Worker / PWA)
-        NextJS --- RTL(Real-time Listener)
-    end
-```
-
----
-
-## 🛠️ 기술 스택
-
-- **Frontend**: Next.js (App Router), React 19, Lucide Icons, React Calendar
-- **Backend**: Firebase (Authentication, Firestore, Storage)
-- **Security & Optimization**:
-  - Upstash Redis (Rate Limiting)
-  - Zod (Schema Validation)
-  - Firebase Roles Management
-- **Verification**: Playwright (E2E), Firestore Rules Testing
-
----
-
-## 📁 프로젝트 구조
-
-```text
-FamilyMeal/
-├── app/             # UI 페이지 및 API 라우트
-├── components/      # 재사용 가능한 UI 컴포넌트
-├── context/         # 전역 상태 관리 (User, Toast 등)
-├── lib/             # 공통 유틸리티 및 클라이언트 설정
-├── scripts/         # 데이터 마이그레이션 및 자동화 스크립트
-├── tests/           # E2E 및 단위 테스트
-├── security/        # 보안 감사 정책 및 허용 목록
-└── public/          # 정적 자산 및 영상
-```
-
----
-
-## 🚀 빠른 시작
+## 빠른 시작
 
 ```bash
-# 1. 의존성 설치
 npm install
-
-# 2. 로컬 개발 서버 실행
+cp .env.example .env.local
 npm run dev
 ```
 
-> [!TIP]
-> 프로젝트 실행 전 `.env.example`을 참고하여 환경 변수 설정을 완료해 주세요.
+브라우저에서 `http://localhost:3000` 을 엽니다.
 
----
-
-## 🏗️ 개발 및 품질 관리
-
-<details>
-<summary><b>🔍 품질 확인 (Lint & Typecheck)</b></summary>
+## 주요 명령어
 
 ```bash
-npm run typecheck
+npm run dev
+npm run build
+npm run build:clean
+npm run start
 npm run lint
+npm run typecheck
+npm run test:ui
+npm run test:api
+npm run test:rules
+npm run test:e2e
+npm run test:smoke
+npm run ci:verify
 ```
-</details>
 
-<details>
-<summary><b>🧪 테스트 가이드 (Firestore Rules & Smoke Tests)</b></summary>
+### 마이그레이션
 
-- **Firestore Rules**: Emulator를 통한 자동 테스트
-  ```bash
-  npm run test:rules
-  ```
-- **Meal Mutation Smoke Check**: 이미지 업로드 및 CRUD 흐름 검증
-  ```bash
-  npm run test:smoke:meals
-  ```
-- **QA Gate Check**: 서비스 보안을 위한 QA 환경 토큰 동작 검증
-  ```bash
-  npm run test:smoke:qa-token-required
-  ```
-</details>
+```bash
+npm run migrate:comments:dry
+npm run migrate:comments
+npm run migrate:meals:dry
+npm run migrate:meals
+```
 
-<details>
-<summary><b>🛠️ 데이터 마이그레이션 가이드</b></summary>
+## 환경 변수
 
-- **댓글 구조 마이그레이션**: 메인 문서에서 서브컬렉션으로 이동
-  ```bash
-  npm run migrate:comments # 실행
-  npm run migrate:comments:dry # 드라이런
-  ```
-- **식사 스키마 보정**: 누락된 필드 자동 보정
-  ```bash
-  npm run migrate:meals # 실행
-  npm run migrate:meals:dry # 드라이런
-  ```
-</details>
+필수 공개 환경 변수:
 
-<details>
-<summary><b>🔐 보안 및 인프라 정책</b></summary>
+| 이름 | 설명 |
+| --- | --- |
+| `NEXT_PUBLIC_FIREBASE_API_KEY` | Firebase Web API key |
+| `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN` | Firebase Auth 도메인 |
+| `NEXT_PUBLIC_FIREBASE_PROJECT_ID` | Firebase 프로젝트 ID |
+| `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET` | Firebase Storage 버킷 |
+| `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID` | Firebase Messaging sender ID |
+| `NEXT_PUBLIC_FIREBASE_APP_ID` | Firebase App ID |
 
-- **Dependency Security**: [SECURITY_DEPENDENCIES.md](./SECURITY_DEPENDENCIES.md) 참고
-- **QA Operations**: 개발 모드(Default Enable), 운영 모드(`NEXT_PUBLIC_ENABLE_QA=true` 시 토큰 필요)
-- **Role Assignment**: `/api/profile/role`을 통한 역할 부여 (1회 제한)
-</details>
+선택 공개 환경 변수:
 
----
+| 이름 | 설명 |
+| --- | --- |
+| `NEXT_PUBLIC_ENABLE_PWA` | `true` 면 PWA/service worker 활성화 |
+| `NEXT_PUBLIC_ENABLE_QA` | 운영 환경에서 QA 라우트 허용 여부 |
+| `NEXT_PUBLIC_APP_VERSION` | `/api/version` fallback 버전 문자열 |
 
-## 📄 라이선스
-이 프로젝트는 개인용/가족용으로 개발되었습니다.
+필수 서버 환경 변수:
 
----
-<div align="center">
-  <b>Family Meal Tracker</b> - 함께 먹는 즐거움을 기록하세요
-</div>
+| 이름 | 설명 |
+| --- | --- |
+| `FIREBASE_ADMIN_PROJECT_ID` | Firebase Admin 프로젝트 ID |
+| `FIREBASE_ADMIN_CLIENT_EMAIL` | Firebase Admin 클라이언트 이메일 |
+| `FIREBASE_ADMIN_PRIVATE_KEY` | Firebase Admin 개인키 |
+| `ALLOWED_EMAILS` | 서버 allowlist 이메일 목록 |
+
+선택 서버 환경 변수:
+
+| 이름 | 설명 |
+| --- | --- |
+| `ALLOW_ROLE_REASSIGN` | 역할 재지정 허용 여부 |
+| `QA_ROUTE_TOKEN` | 운영 QA 라우트 접근 토큰 |
+| `UPSTASH_REDIS_REST_URL` | `/api/client-errors` 분산 rate limit |
+| `UPSTASH_REDIS_REST_TOKEN` | `/api/client-errors` 분산 rate limit |
+| `SMOKE_HOST` | 스모크 테스트 호스트 |
+| `SMOKE_PORT` | 스모크 테스트 포트 |
+| `SMOKE_ENV_PATH` | meal mutation smoke test 에서 읽을 env 파일 경로 |
+| `SMOKE_INCLUDE_QA` | 스모크 테스트에 QA 라우트 포함 |
+| `SMOKE_ASSERT_QA_BLOCKED` | QA 차단 상태를 검증할 때 사용 |
+| `AUDIT_ALLOWLIST_FILE` | 보안 감사 예외 파일 경로 |
+
+## 폴더 구조
+
+```text
+app/
+  api/                서버 API 라우트
+  add|archive|edit/   주요 페이지
+  meals/[id]/         식사 상세 화면
+  qa/                 QA 확인용 라우트
+components/
+  comments/           댓글 UI
+  hooks/              화면/MealCard 상태 훅
+  meal-detail/        식사 상세 표시 조각
+context/              사용자 컨텍스트
+lib/                  데이터 접근, 서버 유틸, 공통 타입
+public/               아이콘, 로고, PWA 자산, 데모 이미지
+scripts/              스모크 테스트/마이그레이션/보조 스크립트
+tests/                소스 구조 회귀 테스트와 Firestore rules 테스트
+docs/                 설계/계획 문서와 아키텍처 문서
+```
+
+## 아키텍처 문서
+
+- [docs/architecture.md](./docs/architecture.md)
+- [SECURITY_DEPENDENCIES.md](./SECURITY_DEPENDENCIES.md)
+
+## 운영 메모
+
+- QA 라우트는 개발 환경에서는 열려 있고, 운영 환경에서는 `NEXT_PUBLIC_ENABLE_QA=true` 와 `QA_ROUTE_TOKEN` 이 모두 필요합니다.
+- PWA 가 꺼져 있으면 레이아웃에서 기존 service worker 와 캐시를 정리합니다.
+- 클라이언트 오류 수집 엔드포인트 `/api/client-errors` 는 Upstash 가 없으면 메모리 rate limit 으로 동작합니다.
+
+## 검증
+
+기본 검증 순서:
+
+```bash
+npm run test:api
+npm run test:ui
+npm run lint
+npm run typecheck
+npm run build
+```

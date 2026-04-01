@@ -1,5 +1,3 @@
-import { Ratelimit } from "@upstash/ratelimit";
-import { Redis } from "@upstash/redis";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -19,17 +17,38 @@ const upstashUrl = process.env.UPSTASH_REDIS_REST_URL?.trim();
 const upstashToken = process.env.UPSTASH_REDIS_REST_TOKEN?.trim();
 const hasUpstash = Boolean(upstashUrl && upstashToken);
 
-const upstashLimiter = hasUpstash
-  ? new Ratelimit({
-      redis: new Redis({
-        url: upstashUrl as string,
-        token: upstashToken as string,
-      }),
-      limiter: Ratelimit.slidingWindow(RATE_LIMIT_MAX_REQUESTS, "1 m"),
-      analytics: true,
-      prefix: RATE_LIMIT_KEY_PREFIX,
-    })
-  : null;
+type UpstashLimiter = {
+  limit: (key: string) => Promise<{ success: boolean }>;
+};
+
+let upstashLimiterPromise: Promise<UpstashLimiter | null> | null = null;
+
+const getUpstashLimiter = async (): Promise<UpstashLimiter | null> => {
+  if (!hasUpstash) {
+    return null;
+  }
+
+  if (!upstashLimiterPromise) {
+    upstashLimiterPromise = (async () => {
+      const [{ Ratelimit }, { Redis }] = await Promise.all([
+        import("@upstash/ratelimit"),
+        import("@upstash/redis"),
+      ]);
+
+      return new Ratelimit({
+        redis: new Redis({
+          url: upstashUrl as string,
+          token: upstashToken as string,
+        }),
+        limiter: Ratelimit.slidingWindow(RATE_LIMIT_MAX_REQUESTS, "1 m"),
+        analytics: true,
+        prefix: RATE_LIMIT_KEY_PREFIX,
+      });
+    })();
+  }
+
+  return upstashLimiterPromise;
+};
 
 const ClientErrorSchema = z.object({
   type: z.string().trim().min(1).max(64),
@@ -86,6 +105,7 @@ const isMemoryRateLimited = (clientKey: string): boolean => {
 };
 
 const isRateLimited = async (clientKey: string): Promise<boolean> => {
+  const upstashLimiter = await getUpstashLimiter();
   if (upstashLimiter) {
     const result = await upstashLimiter.limit(clientKey);
     return !result.success;
@@ -95,16 +115,23 @@ const isRateLimited = async (clientKey: string): Promise<boolean> => {
   return isMemoryRateLimited(clientKey);
 };
 
-const validateBodySize = (request: Request, body: string): NextResponse | null => {
+const buildPayloadTooLargeResponse = (): NextResponse =>
+  NextResponse.json({ ok: false, error: "payload too large" }, { status: 413 });
+
+const validateContentLengthHeader = (request: Request): NextResponse | null => {
   const contentLengthHeader = request.headers.get("content-length");
   const contentLength = contentLengthHeader ? Number(contentLengthHeader) : 0;
   if (Number.isFinite(contentLength) && contentLength > MAX_REQUEST_BYTES) {
-    return NextResponse.json({ ok: false, error: "payload too large" }, { status: 413 });
+    return buildPayloadTooLargeResponse();
   }
 
+  return null;
+};
+
+const validateBodyByteLength = (body: string): NextResponse | null => {
   const bodyBytes = new TextEncoder().encode(body).length;
   if (bodyBytes > MAX_REQUEST_BYTES) {
-    return NextResponse.json({ ok: false, error: "payload too large" }, { status: 413 });
+    return buildPayloadTooLargeResponse();
   }
 
   return null;
@@ -112,14 +139,17 @@ const validateBodySize = (request: Request, body: string): NextResponse | null =
 
 export async function POST(request: Request) {
   try {
+    const tooLargeHeaderResponse = validateContentLengthHeader(request);
+    if (tooLargeHeaderResponse) return tooLargeHeaderResponse;
+
     const clientKey = getClientKey(request);
     if (await isRateLimited(clientKey)) {
       return NextResponse.json({ ok: false, error: "rate limit exceeded" }, { status: 429 });
     }
 
     const raw = await request.text();
-    const tooLargeResponse = validateBodySize(request, raw);
-    if (tooLargeResponse) return tooLargeResponse;
+    const tooLargeBodyResponse = validateBodyByteLength(raw);
+    if (tooLargeBodyResponse) return tooLargeBodyResponse;
 
     let json: unknown;
     try {

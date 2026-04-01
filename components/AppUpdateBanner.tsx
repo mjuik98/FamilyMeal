@@ -183,6 +183,7 @@ export default function AppUpdateBanner() {
     const checkForUpdate = async () => {
       if (!active) return;
       if (document.visibilityState !== "visible") return;
+      if (!registration) return;
 
       await runWithPollingLock(async () => {
         await checkDeployedVersion();
@@ -245,12 +246,15 @@ export default function AppUpdateBanner() {
     }
 
     document.addEventListener("visibilitychange", handleVisibilityChange);
-    void setupServiceWorker();
-    void checkForUpdate();
-
-    intervalId = window.setInterval(() => {
-      void checkForUpdate();
-    }, POLL_INTERVAL_MS);
+    void (async () => {
+      await setupServiceWorker();
+      if (registration) {
+        await checkForUpdate();
+        intervalId = window.setInterval(() => {
+          void checkForUpdate();
+        }, POLL_INTERVAL_MS);
+      }
+    })();
 
     return () => {
       active = false;

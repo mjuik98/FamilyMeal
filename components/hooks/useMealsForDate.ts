@@ -26,9 +26,7 @@ export const useMealsForDate = ({
   );
 
   useEffect(() => {
-    if (!role) return;
-
-    if (qaMode) {
+    if (!role || qaMode) {
       return;
     }
 
@@ -40,6 +38,7 @@ export const useMealsForDate = ({
       },
       (error) => {
         console.error("Failed to load meals", error);
+        setRemoteMeals([]);
         setLoadedDateKey(currentDateKey);
       }
     );
@@ -49,8 +48,10 @@ export const useMealsForDate = ({
     () =>
       qaMode && role
         ? createQaMockMeals(role, effectiveSelectedDate, qaAnchorDate)
-        : remoteMeals,
-    [effectiveSelectedDate, qaAnchorDate, qaMode, remoteMeals, role]
+        : loadedDateKey === currentDateKey && role
+          ? remoteMeals
+          : [],
+    [currentDateKey, effectiveSelectedDate, loadedDateKey, qaAnchorDate, qaMode, remoteMeals, role]
   );
 
   return {

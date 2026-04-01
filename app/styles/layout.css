@@ -388,6 +388,124 @@
   flex-wrap: wrap;
 }
 
+.confirm-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.confirm-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(17, 19, 14, 0.42);
+  backdrop-filter: blur(4px);
+}
+
+.confirm-dialog {
+  position: relative;
+  width: min(340px, 100%);
+  padding: 24px;
+  border-radius: 20px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+  animation: dialog-in 0.2s ease;
+}
+
+.confirm-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.confirm-message {
+  margin-top: 8px;
+  color: var(--muted-foreground);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.confirm-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 24px;
+}
+
+.confirm-button {
+  flex: 1;
+}
+
+.toast-viewport {
+  position: fixed;
+  left: 50%;
+  z-index: 10000;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: min(440px, 90%);
+  pointer-events: none;
+}
+
+.toast-viewport-top {
+  top: 16px;
+  transform: translateX(-50%);
+}
+
+.toast-viewport-center {
+  top: 50%;
+  transform: translate(-50%, -50%);
+  align-items: center;
+}
+
+.toast-item {
+  width: 100%;
+  border: none;
+  border-radius: 12px;
+  padding: 12px 16px;
+  color: white;
+  font-size: 0.9rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  pointer-events: auto;
+  cursor: pointer;
+  opacity: 0;
+  transform: translateY(-20px);
+  transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+.toast-item-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.toast-item-success {
+  background: #6b8e23;
+}
+
+.toast-item-error {
+  background: #dc2626;
+}
+
+.toast-item-info {
+  background: #1a1a1a;
+}
+
+.toast-icon {
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.2);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  flex-shrink: 0;
+}
+
 .meal-preview-card {
   overflow: hidden;
 }
@@ -1287,6 +1405,18 @@
 .empty-state-cta {
   width: fit-content;
   margin: 16px auto 0;
+}
+
+@keyframes dialog-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
 }
 
 @media (max-width: 360px) {

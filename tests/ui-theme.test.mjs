@@ -64,8 +64,26 @@ test("login view uses the refreshed onboarding layout and shared CSS hooks", () 
 
 test("update banner is wired into root layout", () => {
   const layout = read("app/layout.tsx");
-  assert.match(layout, /import AppUpdateBanner from "@\/components\/AppUpdateBanner"/);
-  assert.match(layout, /<AppUpdateBanner \/>/);
+  const cleanup = read("components/ServiceWorkerCleanup.tsx");
+  const errorMonitor = read("components/ClientErrorMonitor.tsx");
+  assert.match(layout, /import dynamic from "next\/dynamic"/);
+  assert.match(layout, /import ClientErrorMonitor from "@\/components\/ClientErrorMonitor"/);
+  assert.match(layout, /import ServiceWorkerCleanup from "@\/components\/ServiceWorkerCleanup"/);
+  assert.match(layout, /const AppUpdateBanner = dynamic\(\(\) => import\("@\/components\/AppUpdateBanner"\)\)/);
+  assert.match(layout, /publicEnv\.enablePwa && <AppUpdateBanner \/>/);
+  assert.match(layout, /shouldCleanupServiceWorker && <ServiceWorkerCleanup \/>/);
+  assert.match(layout, /<ClientErrorMonitor \/>/);
+  assert.doesNotMatch(layout, /import AppUpdateBanner from "@\/components\/AppUpdateBanner"/);
+  assert.doesNotMatch(layout, /id="cleanup-sw"/);
+  assert.doesNotMatch(layout, /id="client-error-monitor"/);
+  assert.doesNotMatch(layout, /import Script from "next\/script"/);
+
+  assert.match(cleanup, /localStorage\.getItem/);
+  assert.match(cleanup, /localStorage\.setItem/);
+  assert.match(cleanup, /navigator\.serviceWorker\.getRegistrations/);
+  assert.match(errorMonitor, /navigator\.sendBeacon/);
+  assert.match(errorMonitor, /window\.addEventListener\("error"/);
+  assert.match(errorMonitor, /window\.addEventListener\("unhandledrejection"/);
 });
 
 test("unused app page module stylesheet is removed", () => {
@@ -131,9 +149,9 @@ test("comment routes support replies and safe parent deletion guards", () => {
   const commentItem = read("components/comments/CommentItem.tsx");
   const commentComposer = read("components/comments/CommentComposer.tsx");
   const homePage = read("app/page.tsx");
-  const activitySummary = read("components/ActivitySummary.tsx");
   const filterChips = read("components/FilterChips.tsx");
   const archivePage = read("app/archive/page.tsx");
+  const activitySummaryPath = path.join(process.cwd(), "components", "ActivitySummary.tsx");
 
   assert.match(createRoute, /parentId/);
   assert.match(createRoute, /mentionedAuthor/);
@@ -144,7 +162,7 @@ test("comment routes support replies and safe parent deletion guards", () => {
   assert.match(commentItem, /comment-reply-button-/);
   assert.match(commentComposer, /comment-reply-target/);
   assert.match(filterChips, /data-testid=\{`\$\{testIdPrefix\}-\$\{option\}`\}/);
-  assert.match(activitySummary, /activity-summary-card-\$\{item\.key\}/);
+  assert.equal(fs.existsSync(activitySummaryPath), false);
   assert.match(homePage, /MealPreviewCard/);
   assert.match(archivePage, /archive-load-more/);
 });
@@ -238,6 +256,62 @@ test("navbar styles live in shared CSS and week strip exposes accessible labels"
   assert.match(weekDateStrip, /선택한 날짜/);
 });
 
+test("dialog and toast providers use shared CSS classes instead of inline layout styles", () => {
+  const confirmDialog = read("components/ConfirmDialog.tsx");
+  const toast = read("components/Toast.tsx");
+  const layoutStyles = read("app/styles/layout.css");
+
+  assert.match(confirmDialog, /confirm-overlay/);
+  assert.match(confirmDialog, /confirm-dialog/);
+  assert.match(confirmDialog, /confirm-actions/);
+  assert.doesNotMatch(confirmDialog, /style=\{\{/);
+
+  assert.match(toast, /toast-viewport/);
+  assert.match(toast, /toast-item/);
+  assert.doesNotMatch(toast, /style=\{\{/);
+
+  assert.match(layoutStyles, /\.confirm-overlay\s*\{/);
+  assert.match(layoutStyles, /\.toast-viewport\s*\{/);
+  assert.match(layoutStyles, /\.toast-item-visible\s*\{/);
+});
+
+test("next config is kept minimal and avoids placeholder comments", () => {
+  const nextConfig = read("next.config.ts");
+
+  assert.doesNotMatch(nextConfig, /config options here/);
+  assert.match(nextConfig, /withPWA\(nextConfig\)/);
+});
+
+test("default build script preserves cache and exposes explicit clean build", () => {
+  const packageJson = read("package.json");
+
+  assert.match(packageJson, /"build":\s*"next build --webpack"/);
+  assert.match(packageJson, /"build:clean":\s*"node scripts\/clean-next-dir\.mjs && next build --webpack"/);
+  assert.doesNotMatch(packageJson, /"build":\s*"node scripts\/clean-next-dir\.mjs/);
+});
+
+test("archive search defers remote querying until input settles", () => {
+  const archivePage = read("app/archive/page.tsx");
+
+  assert.match(archivePage, /useDeferredValue/);
+  assert.match(archivePage, /deferredQuery/);
+  assert.match(archivePage, /query\.trim\(\)/);
+  assert.match(archivePage, /searchMeals\(deferredQuery\)/);
+  assert.match(archivePage, /requestSequenceRef/);
+  assert.match(archivePage, /requestId !== requestSequenceRef\.current/);
+  assert.match(archivePage, /let active = true/);
+});
+
+test("client error route lazy-loads Upstash only when credentials exist", () => {
+  const clientErrorsRoute = read("app/api/client-errors/route.ts");
+
+  assert.doesNotMatch(clientErrorsRoute, /^import \{ Ratelimit \} from "@upstash\/ratelimit";/m);
+  assert.doesNotMatch(clientErrorsRoute, /^import \{ Redis \} from "@upstash\/redis";/m);
+  assert.match(clientErrorsRoute, /import\("@upstash\/ratelimit"\)/);
+  assert.match(clientErrorsRoute, /import\("@upstash\/redis"\)/);
+  assert.match(clientErrorsRoute, /getUpstashLimiter/);
+});
+
 test("qa fixtures use readable Korean literals in source", () => {
   const qa = read("lib/qa.ts");
 
@@ -251,10 +325,16 @@ test("home page delegates date, meals, and weekly stats state to focused hooks",
   const selectedDateHook = read("components/hooks/useSelectedDate.ts");
   const mealsHook = read("components/hooks/useMealsForDate.ts");
   const weeklyStatsHook = read("components/hooks/useWeeklyStats.ts");
+  const lazyCalendar = read("components/LazyCalendar.tsx");
 
+  assert.match(homePage, /import dynamic from "next\/dynamic"/);
   assert.match(homePage, /useSelectedDate/);
   assert.match(homePage, /useMealsForDate/);
   assert.match(homePage, /useWeeklyStats/);
+  assert.match(homePage, /const LazyCalendar = dynamic\(\(\) => import\("@\/components\/LazyCalendar"\)\)/);
+  assert.match(homePage, /<LazyCalendar onChange=\{onDateChange\} value=\{effectiveSelectedDate\} locale="ko-KR" \/>/);
+  assert.doesNotMatch(homePage, /import Calendar from "react-calendar"/);
+  assert.doesNotMatch(homePage, /react-calendar\/dist\/Calendar\.css/);
   assert.doesNotMatch(homePage, /const \[remoteMeals, setRemoteMeals\]/);
   assert.doesNotMatch(homePage, /const \[remoteWeeklyStats, setRemoteWeeklyStats\]/);
   assert.doesNotMatch(homePage, /const \[selectedDate, setSelectedDate\]/);
@@ -263,6 +343,52 @@ test("home page delegates date, meals, and weekly stats state to focused hooks",
   assert.match(mealsHook, /export const useMealsForDate =/);
   assert.match(weeklyStatsHook, /export const useWeeklyStats =/);
   assert.match(weeklyStatsHook, /getWeeklyStats/);
+  assert.match(lazyCalendar, /import Calendar from "react-calendar"/);
+  assert.match(lazyCalendar, /react-calendar\/dist\/Calendar\.css/);
+});
+
+test("date-driven hooks clear stale meal state and cache weekly stats by week", () => {
+  const mealsHook = read("components/hooks/useMealsForDate.ts");
+  const weeklyStatsHook = read("components/hooks/useWeeklyStats.ts");
+  const clientData = read("lib/data.ts");
+
+  assert.match(mealsHook, /setRemoteMeals\(\[\]\)/);
+  assert.match(mealsHook, /loadedDateKey === currentDateKey/);
+  assert.match(weeklyStatsHook, /weeklyStatsCache/);
+  assert.match(weeklyStatsHook, /weekKey/);
+  assert.match(weeklyStatsHook, /const cachedWeekStats = weeklyStatsCache\[weekKey\]/);
+  assert.match(weeklyStatsHook, /if \(cachedWeekStats\)/);
+  assert.doesNotMatch(weeklyStatsHook, /\[effectiveSelectedDate, qaMode, role, weekKey, weeklyStatsCache\]/);
+  assert.match(clientData, /const serializeWeeklyStatMealSnapshot =/);
+  assert.match(clientData, /serializeWeeklyStatMealSnapshot\(docSnap\)/);
+  assert.match(clientData, /type DerivedMealMetrics =/);
+  assert.match(clientData, /const derivedMeals = meals\.map\(\(meal\) =>/);
+  assert.match(clientData, /engagementCount:/);
+  assert.match(clientData, /reactionCount:/);
+  assert.match(clientData, /commentCount:/);
+  assert.match(clientData, /b\.engagementCount/);
+  assert.match(clientData, /b\.reactionCount/);
+  assert.match(clientData, /b\.commentCount/);
+});
+
+test("client error route rejects oversized content-length before reading the body", () => {
+  const clientErrorsRoute = read("app/api/client-errors/route.ts");
+
+  assert.match(clientErrorsRoute, /const validateContentLengthHeader = \(request: Request\): NextResponse \| null =>/);
+  assert.match(clientErrorsRoute, /const tooLargeHeaderResponse = validateContentLengthHeader\(request\);/);
+  assert.match(clientErrorsRoute, /if \(tooLargeHeaderResponse\) return tooLargeHeaderResponse;/);
+  assert.match(clientErrorsRoute, /const validateBodyByteLength = \(body: string\): NextResponse \| null =>/);
+  assert.match(clientErrorsRoute, /const tooLargeBodyResponse = validateBodyByteLength\(raw\);/);
+});
+
+test("update polling only runs when a service worker registration is available", () => {
+  const updateBanner = read("components/AppUpdateBanner.tsx");
+
+  assert.match(updateBanner, /if \(!registration\) return;/);
+  assert.match(updateBanner, /await setupServiceWorker\(\);/);
+  assert.match(updateBanner, /if \(registration\) \{/);
+  assert.match(updateBanner, /window\.setInterval/);
+  assert.doesNotMatch(updateBanner, /void checkForUpdate\(\);\s*\n\s*intervalId = window\.setInterval/);
 });
 
 test("persistent activity feed and profile notification settings are wired", () => {

@@ -1,10 +1,9 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { Suspense, useMemo, useState } from "react";
 import Link from "next/link";
 import { Calendar as CalendarIcon, Images, LogOut, Plus } from "lucide-react";
-import Calendar from "react-calendar";
-import "react-calendar/dist/Calendar.css";
 
 import LoginView from "@/components/LoginView";
 import MealPreviewCard from "@/components/MealPreviewCard";
@@ -42,6 +41,8 @@ const formatLongDate = (date: Date) =>
     day: "numeric",
     weekday: "long",
   });
+
+const LazyCalendar = dynamic(() => import("@/components/LazyCalendar"));
 
 function HomeContent() {
   const { user, userProfile, loading, signOut } = useUser();
@@ -171,7 +172,7 @@ function HomeContent() {
 
         {showCalendar && (
           <SurfaceSection bodyClassName="calendar-shell">
-            <Calendar onChange={onDateChange} value={effectiveSelectedDate} locale="ko-KR" />
+            <LazyCalendar onChange={onDateChange} value={effectiveSelectedDate} locale="ko-KR" />
           </SurfaceSection>
         )}
 
