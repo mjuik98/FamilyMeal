@@ -1,24 +1,4 @@
-import { auth } from "./firebase";
-
-const getAccessToken = async (forceRefresh = false): Promise<string> => {
-  const user = auth.currentUser;
-  if (!user) {
-    throw new Error("Not authenticated");
-  }
-  return user.getIdToken(forceRefresh);
-};
-
-const parseErrorMessage = async (response: Response, fallback: string): Promise<string> => {
-  try {
-    const payload = (await response.json()) as { error?: unknown };
-    if (typeof payload?.error === "string" && payload.error.trim().length > 0) {
-      return payload.error;
-    }
-  } catch {
-    // Ignore JSON parse errors and use fallback.
-  }
-  return fallback;
-};
+import { getAccessToken, parseErrorMessage } from "@/lib/client/auth-http";
 
 const compressImageDataUri = (dataUri: string, maxWidth = 1200, quality = 0.7): Promise<string> =>
   new Promise((resolve, reject) => {

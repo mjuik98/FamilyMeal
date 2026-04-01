@@ -326,8 +326,8 @@ test("qa fixtures use readable Korean literals in source", () => {
 test("home page delegates date, meals, and weekly stats state to focused hooks", () => {
   const homePage = read("app/page.tsx");
   const selectedDateHook = read("components/hooks/useSelectedDate.ts");
-  const mealsHook = read("components/hooks/useMealsForDate.ts");
-  const weeklyStatsHook = read("components/hooks/useWeeklyStats.ts");
+  const mealsHook = read("lib/features/meals/ui/useMealsForDateController.ts");
+  const weeklyStatsHook = read("lib/features/meals/ui/useWeeklyStatsController.ts");
   const lazyCalendar = read("components/LazyCalendar.tsx");
 
   assert.match(homePage, /import dynamic from "next\/dynamic"/);
@@ -343,16 +343,16 @@ test("home page delegates date, meals, and weekly stats state to focused hooks",
   assert.doesNotMatch(homePage, /const \[selectedDate, setSelectedDate\]/);
 
   assert.match(selectedDateHook, /export const useSelectedDate =/);
-  assert.match(mealsHook, /export const useMealsForDate =/);
-  assert.match(weeklyStatsHook, /export const useWeeklyStats =/);
+  assert.match(mealsHook, /export const useMealsForDateController =/);
+  assert.match(weeklyStatsHook, /export const useWeeklyStatsController =/);
   assert.match(weeklyStatsHook, /getWeeklyStats/);
   assert.match(lazyCalendar, /import Calendar from "react-calendar"/);
   assert.match(lazyCalendar, /react-calendar\/dist\/Calendar\.css/);
 });
 
 test("date-driven hooks clear stale meal state and cache weekly stats by week", () => {
-  const mealsHook = read("components/hooks/useMealsForDate.ts");
-  const weeklyStatsHook = read("components/hooks/useWeeklyStats.ts");
+  const mealsHook = read("lib/features/meals/ui/useMealsForDateController.ts");
+  const weeklyStatsHook = read("lib/features/meals/ui/useWeeklyStatsController.ts");
   const mealQueries = read("lib/client/meal-queries.ts");
   const mealFilters = read("lib/client/meal-filters.ts");
 
@@ -491,8 +491,8 @@ test("client data access is split into focused adapters and user context delegat
   const authHttp = read("lib/client/auth-http.ts");
   const mealCommentsHook = read("lib/features/comments/ui/useMealCommentsController.ts");
   const mealReactionsHook = read("lib/features/reactions/ui/useMealReactionsController.ts");
-  const mealsHook = read("components/hooks/useMealsForDate.ts");
-  const weeklyStatsHook = read("components/hooks/useWeeklyStats.ts");
+  const mealsHook = read("lib/features/meals/ui/useMealsForDateController.ts");
+  const weeklyStatsHook = read("lib/features/meals/ui/useWeeklyStatsController.ts");
   const archivePage = read("app/archive/page.tsx");
   const mealDetailPage = read("app/meals/[id]/page.tsx");
   const mealCard = read("components/MealCard.tsx");
@@ -533,6 +533,28 @@ test("client data access is split into focused adapters and user context delegat
   assert.match(userContext, /from "@\/lib\/client\/profile-session"/);
   assert.match(userContext, /from "@\/lib\/client\/activity"/);
   assert.doesNotMatch(userContext, /doc, getDoc/);
+});
+
+test("meal date hooks are routed through feature ui controllers and upload helper reuses shared auth http", () => {
+  const homePage = read("app/page.tsx");
+  const mealsHookCompat = read("components/hooks/useMealsForDate.ts");
+  const weeklyStatsHookCompat = read("components/hooks/useWeeklyStats.ts");
+  const mealsController = read("lib/features/meals/ui/useMealsForDateController.ts");
+  const weeklyStatsController = read("lib/features/meals/ui/useWeeklyStatsController.ts");
+  const uploadHelper = read("lib/uploadImage.ts");
+
+  assert.match(homePage, /from "@\/lib\/features\/meals\/ui\/useMealsForDateController"/);
+  assert.match(homePage, /from "@\/lib\/features\/meals\/ui\/useWeeklyStatsController"/);
+  assert.doesNotMatch(homePage, /@\/components\/hooks\/useMealsForDate/);
+  assert.doesNotMatch(homePage, /@\/components\/hooks\/useWeeklyStats/);
+  assert.match(mealsHookCompat, /useMealsForDateController as useMealsForDate/);
+  assert.match(weeklyStatsHookCompat, /useWeeklyStatsController as useWeeklyStats/);
+  assert.match(mealsController, /export const useMealsForDateController =/);
+  assert.match(weeklyStatsController, /export const useWeeklyStatsController =/);
+
+  assert.match(uploadHelper, /from "@\/lib\/client\/auth-http"/);
+  assert.doesNotMatch(uploadHelper, /const getAccessToken = async/);
+  assert.doesNotMatch(uploadHelper, /const parseErrorMessage = async/);
 });
 
 test("runtime pages avoid compat meal barrel and comment store reuses shared serializers", () => {

@@ -9,11 +9,11 @@ import LoginView from "@/components/LoginView";
 import MealPreviewCard from "@/components/MealPreviewCard";
 import SurfaceSection from "@/components/SurfaceSection";
 import WeekDateStrip from "@/components/WeekDateStrip";
-import { useMealsForDate } from "@/components/hooks/useMealsForDate";
 import { useSelectedDate } from "@/components/hooks/useSelectedDate";
-import { useWeeklyStats } from "@/components/hooks/useWeeklyStats";
 import { useUser } from "@/context/UserContext";
 import { formatDateKey } from "@/lib/date-utils";
+import { useMealsForDateController as useMealsForDate } from "@/lib/features/meals/ui/useMealsForDateController";
+import { useWeeklyStatsController as useWeeklyStats } from "@/lib/features/meals/ui/useWeeklyStatsController";
 import { isQaMockMode } from "@/lib/qa/mode";
 
 const roleEmoji: Record<string, string> = {
