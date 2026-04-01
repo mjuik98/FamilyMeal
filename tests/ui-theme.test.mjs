@@ -452,11 +452,15 @@ test("edit flow uses server mutation helper and specific failure copy", () => {
 
 test("meal delete route uses idempotent server cleanup flow", () => {
   const deleteRoute = read("app/api/meals/[id]/route.ts");
-  assert.match(deleteRoute, /_maintenanceDeleteJobs/);
-  assert.match(deleteRoute, /status:\s*"processing"/);
+  const mealUseCases = read("lib/server/meals/meal-use-cases.ts");
+  assert.match(deleteRoute, /planMealDeleteOperation/);
+  assert.match(deleteRoute, /deleteMealCommentsByMealId/);
+  assert.match(deleteRoute, /markMealDeleteJob/);
+  assert.match(mealUseCases, /_maintenanceDeleteJobs/);
+  assert.match(mealUseCases, /status:\s*"processing"/);
   assert.match(deleteRoute, /status:\s*"completed"/);
   assert.match(deleteRoute, /status:\s*"failed"/);
-  assert.match(deleteRoute, /deleteMealComments/);
+  assert.match(mealUseCases, /deleteMealCommentsByMealId/);
 });
 
 test("qa mock mode is disabled in production by env guard", () => {

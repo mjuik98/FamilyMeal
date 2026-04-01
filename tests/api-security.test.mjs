@@ -65,20 +65,38 @@ test("meal image uploads are handled by authenticated server route", () => {
   assert.doesNotMatch(uploadHelper, /firebase\/storage/);
 });
 
-test("meal create and update mutations are handled by authenticated server APIs", () => {
+test("meal routes delegate to extracted server meal modules", () => {
   const mealMutations = read("lib/client/meal-mutations.ts");
   const createRoute = read("app/api/meals/route.ts");
   const mealRoute = read("app/api/meals/[id]/route.ts");
-  const serverMeals = read("lib/server-meals.ts");
+  const serverMealsBarrel = read("lib/server-meals.ts");
+  const mealUseCases = read("lib/server/meals/meal-use-cases.ts");
+  const mealStorage = read("lib/server/meals/meal-storage.ts");
 
   assert.match(mealMutations, /fetchAuthedJson<\{ ok: true; meal: Meal \}>\("\/api\/meals"/);
   assert.match(mealMutations, /\/api\/meals\/\$\{encodedMealId\}/);
   assert.match(createRoute, /verifyRequestUser/);
+  assert.match(createRoute, /from "@\/lib\/server\/meals\/meal-use-cases"/);
   assert.match(createRoute, /createMealDocument/);
+  assert.doesNotMatch(createRoute, /@\/lib\/server-meals/);
   assert.match(mealRoute, /export async function PATCH/);
+  assert.match(mealRoute, /from "@\/lib\/server\/meals\/meal-use-cases"/);
+  assert.match(mealRoute, /from "@\/lib\/server\/meals\/meal-storage"/);
   assert.match(mealRoute, /updateMealDocument/);
-  assert.match(serverMeals, /deleteStorageObjectByUrl/);
-  assert.match(serverMeals, /buildMealKeywords/);
+  assert.match(mealRoute, /planMealDeleteOperation/);
+  assert.match(mealRoute, /deleteMealCommentsByMealId/);
+  assert.match(mealRoute, /markMealDeleteJob/);
+  assert.doesNotMatch(mealRoute, /const planDeleteOperation = async/);
+  assert.doesNotMatch(mealRoute, /const deleteMealComments = async/);
+  assert.match(serverMealsBarrel, /from "@\/lib\/server\/meals\/meal-use-cases"/);
+  assert.match(serverMealsBarrel, /from "@\/lib\/server\/meals\/meal-storage"/);
+  assert.match(mealUseCases, /export const createMealDocument = async/);
+  assert.match(mealUseCases, /export const updateMealDocument = async/);
+  assert.match(mealUseCases, /export const planMealDeleteOperation = async/);
+  assert.match(mealUseCases, /export const deleteMealCommentsByMealId = async/);
+  assert.match(mealUseCases, /export const markMealDeleteJob = async/);
+  assert.match(mealUseCases, /buildMealKeywords/);
+  assert.match(mealStorage, /export const deleteStorageObjectByUrl = async/);
   assert.doesNotMatch(mealMutations, /await addDoc\(mealsRef/);
   assert.doesNotMatch(mealMutations, /await updateDoc\(mealRef/);
 });
@@ -157,7 +175,9 @@ test("server config and meal policy are centralized in shared modules", () => {
   const mealPolicy = read("lib/domain/meal-policy.ts");
   const firebaseAdmin = read("lib/firebase-admin.ts");
   const serverAuth = read("lib/server-auth.ts");
-  const serverMeals = read("lib/server-meals.ts");
+  const serverMealsBarrel = read("lib/server-meals.ts");
+  const mealStorage = read("lib/server/meals/meal-storage.ts");
+  const mealTypes = read("lib/server/meals/meal-types.ts");
   const uploadRoute = read("app/api/uploads/meal-image/route.ts");
   const profilePage = read("app/profile/page.tsx");
 
@@ -170,14 +190,15 @@ test("server config and meal policy are centralized in shared modules", () => {
 
   assert.match(firebaseAdmin, /from "@\/lib\/config\/server-env"/);
   assert.match(serverAuth, /from "@\/lib\/config\/server-env"/);
-  assert.match(serverMeals, /from "@\/lib\/config\/server-env"/);
-  assert.match(serverMeals, /from "@\/lib\/domain\/meal-policy"/);
+  assert.match(mealStorage, /from "@\/lib\/config\/server-env"/);
+  assert.match(mealTypes, /from "@\/lib\/domain\/meal-policy"/);
+  assert.match(serverMealsBarrel, /from "@\/lib\/server\/meals\/meal-types"/);
   assert.match(uploadRoute, /from "@\/lib\/config\/server-env"/);
   assert.match(profilePage, /from "@\/lib\/client\/profile"/);
 
   assert.doesNotMatch(firebaseAdmin, /process\.env\.NEXT_PUBLIC_FIREBASE_PROJECT_ID/);
-  assert.doesNotMatch(serverMeals, /const VALID_MEAL_TYPES:/);
-  assert.doesNotMatch(serverMeals, /const VALID_ROLES:/);
+  assert.doesNotMatch(mealTypes, /const VALID_MEAL_TYPES:/);
+  assert.doesNotMatch(mealTypes, /const VALID_ROLES:/);
 });
 
 test("comment routes delegate to extracted server use cases", () => {

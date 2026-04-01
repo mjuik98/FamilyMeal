@@ -9,8 +9,9 @@ import {
   VALID_MEAL_TYPES,
 } from "@/lib/domain/meal-policy";
 import { getRouteErrorMessage, getRouteErrorStatus } from "@/lib/route-errors";
-import { createMealDocument, MealRouteError } from "@/lib/server-meals";
 import { getUserRole, verifyRequestUser } from "@/lib/server-auth";
+import { createMealDocument } from "@/lib/server/meals/meal-use-cases";
+import { MealRouteError } from "@/lib/server/meals/meal-types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
