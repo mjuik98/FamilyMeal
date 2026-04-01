@@ -9,7 +9,7 @@ import FilterChips from "@/components/FilterChips";
 import MealPreviewCard from "@/components/MealPreviewCard";
 import PageHeader from "@/components/PageHeader";
 import { useUser } from "@/context/UserContext";
-import { filterAndSortMeals, getRecentMeals, searchMeals } from "@/lib/data";
+import { filterAndSortMeals, getRecentMeals, searchMeals } from "@/lib/client/meals";
 import { createQaMockRecentMeals, isQaMockMode } from "@/lib/qa";
 import type { Meal, UserRole } from "@/lib/types";
 

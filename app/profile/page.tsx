@@ -8,7 +8,7 @@ import { DEFAULT_NOTIFICATION_PREFERENCES } from "@/lib/activity";
 import PageHeader from "@/components/PageHeader";
 import SurfaceSection from "@/components/SurfaceSection";
 import { useUser } from "@/context/UserContext";
-import { users } from "@/lib/data";
+import { users } from "@/lib/client/profile";
 
 const roleEmoji: Record<string, string> = {
   아빠: "👨",

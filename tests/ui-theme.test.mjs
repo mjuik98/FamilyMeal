@@ -115,26 +115,26 @@ test("qa proxy supports token-based protection", () => {
 });
 
 test("comment mutations are handled by server APIs and update parent commentCount", () => {
-  const clientData = read("lib/data.ts");
+  const clientComments = read("lib/client/comments.ts");
   const createRoute = read("app/api/meals/[id]/comments/route.ts");
   const deleteRoute = read("app/api/meals/[id]/comments/[commentId]/route.ts");
 
-  assert.match(clientData, /\/api\/meals\/\$\{encodedMealId\}\/comments/);
-  assert.match(clientData, /\/api\/meals\/\$\{encodedMealId\}\/comments\/\$\{encodedCommentId\}/);
-  assert.doesNotMatch(clientData, /runTransaction\(/);
-  assert.match(createRoute, /commentCount:\s*FieldValue\.increment\(1\)/);
-  assert.match(deleteRoute, /commentCount:\s*baseCount > 0 \? FieldValue\.increment\(-1\) : 0/);
+  assert.match(clientComments, /\/api\/meals\/\$\{encodedMealId\}\/comments/);
+  assert.match(clientComments, /\/api\/meals\/\$\{encodedMealId\}\/comments\/\$\{encodedCommentId\}/);
+  assert.doesNotMatch(clientComments, /runTransaction\(/);
+  assert.match(createRoute, /createMealComment/);
+  assert.match(deleteRoute, /deleteMealCommentById/);
 });
 
 test("reaction mutations are handled by dedicated APIs with shared validation", () => {
-  const clientData = read("lib/data.ts");
+  const clientReactions = read("lib/client/reactions.ts");
   const reactionBar = read("components/ReactionBar.tsx");
   const mealReactionRoute = read("app/api/meals/[id]/reactions/route.ts");
   const commentReactionRoute = read("app/api/meals/[id]/comments/[commentId]/reactions/route.ts");
   const reactionHelpers = read("lib/reactions.ts");
 
-  assert.match(clientData, /\/api\/meals\/\$\{encodedMealId\}\/reactions/);
-  assert.match(clientData, /\/api\/meals\/\$\{encodedMealId\}\/comments\/\$\{encodedCommentId\}\/reactions/);
+  assert.match(clientReactions, /\/api\/meals\/\$\{encodedMealId\}\/reactions/);
+  assert.match(clientReactions, /\/api\/meals\/\$\{encodedMealId\}\/comments\/\$\{encodedCommentId\}\/reactions/);
   assert.match(reactionBar, /data-testid=\{`\$\{scope\}-reaction-chip-\$\{option\.key\}`\}/);
   assert.match(mealReactionRoute, /ALLOWED_REACTION_EMOJIS/);
   assert.match(commentReactionRoute, /ALLOWED_REACTION_EMOJIS/);
@@ -143,7 +143,7 @@ test("reaction mutations are handled by dedicated APIs with shared validation", 
 
 test("comment routes support replies and safe parent deletion guards", () => {
   const createRoute = read("app/api/meals/[id]/comments/route.ts");
-  const updateDeleteRoute = read("app/api/meals/[id]/comments/[commentId]/route.ts");
+  const commentUseCases = read("lib/server/comments/comment-use-cases.ts");
   const mealCard = read("components/MealCard.tsx");
   const mealConversationPanel = read("components/meal-detail/MealConversationPanel.tsx");
   const commentItem = read("components/comments/CommentItem.tsx");
@@ -154,9 +154,9 @@ test("comment routes support replies and safe parent deletion guards", () => {
   const activitySummaryPath = path.join(process.cwd(), "components", "ActivitySummary.tsx");
 
   assert.match(createRoute, /parentId/);
-  assert.match(createRoute, /mentionedAuthor/);
-  assert.match(updateDeleteRoute, /where\("parentId", "==", commentId\)/);
-  assert.match(updateDeleteRoute, /Reply comments exist/);
+  assert.match(commentUseCases, /mentionedAuthor/);
+  assert.match(commentUseCases, /where\("parentId", "==", commentId\)/);
+  assert.match(commentUseCases, /Reply comments exist/);
   assert.match(mealCard, /MealConversationPanel/);
   assert.match(mealConversationPanel, /CommentThread/);
   assert.match(commentItem, /comment-reply-button-/);
@@ -228,6 +228,7 @@ test("meal card uses extracted hooks, shared comment subscription store, and sha
 
   assert.match(mealCard, /useMealComments/);
   assert.match(mealCard, /useMealReactions/);
+  assert.match(mealCard, /const \[commentsOpen, setCommentsOpen\] = useState\(true\)/);
   assert.doesNotMatch(mealCard, /subscribeMealComments/);
   assert.doesNotMatch(mealCard, /const formatRelativeTime =/);
 
@@ -252,6 +253,8 @@ test("navbar styles live in shared CSS and week strip exposes accessible labels"
   assert.doesNotMatch(navbar, /style jsx/);
   assert.match(layoutStyles, /\.navbar\s*\{/);
   assert.match(layoutStyles, /\.nav-item-primary\s*\{/);
+  assert.match(layoutStyles, /\.nav-item-primary \.nav-label\s*\{/);
+  assert.match(layoutStyles, /translateY\(8px\)/);
   assert.match(weekDateStrip, /aria-label=/);
   assert.match(weekDateStrip, /선택한 날짜/);
 });
@@ -350,7 +353,7 @@ test("home page delegates date, meals, and weekly stats state to focused hooks",
 test("date-driven hooks clear stale meal state and cache weekly stats by week", () => {
   const mealsHook = read("components/hooks/useMealsForDate.ts");
   const weeklyStatsHook = read("components/hooks/useWeeklyStats.ts");
-  const clientData = read("lib/data.ts");
+  const clientMeals = read("lib/client/meals.ts");
 
   assert.match(mealsHook, /setRemoteMeals\(\[\]\)/);
   assert.match(mealsHook, /loadedDateKey === currentDateKey/);
@@ -359,16 +362,15 @@ test("date-driven hooks clear stale meal state and cache weekly stats by week", 
   assert.match(weeklyStatsHook, /const cachedWeekStats = weeklyStatsCache\[weekKey\]/);
   assert.match(weeklyStatsHook, /if \(cachedWeekStats\)/);
   assert.doesNotMatch(weeklyStatsHook, /\[effectiveSelectedDate, qaMode, role, weekKey, weeklyStatsCache\]/);
-  assert.match(clientData, /const serializeWeeklyStatMealSnapshot =/);
-  assert.match(clientData, /serializeWeeklyStatMealSnapshot\(docSnap\)/);
-  assert.match(clientData, /type DerivedMealMetrics =/);
-  assert.match(clientData, /const derivedMeals = meals\.map\(\(meal\) =>/);
-  assert.match(clientData, /engagementCount:/);
-  assert.match(clientData, /reactionCount:/);
-  assert.match(clientData, /commentCount:/);
-  assert.match(clientData, /b\.engagementCount/);
-  assert.match(clientData, /b\.reactionCount/);
-  assert.match(clientData, /b\.commentCount/);
+  assert.match(clientMeals, /serializeWeeklyStatMealSnapshot/);
+  assert.match(clientMeals, /type DerivedMealMetrics =/);
+  assert.match(clientMeals, /const derivedMeals = meals\.map\(\(meal\) =>/);
+  assert.match(clientMeals, /engagementCount:/);
+  assert.match(clientMeals, /reactionCount:/);
+  assert.match(clientMeals, /commentCount:/);
+  assert.match(clientMeals, /b\.engagementCount/);
+  assert.match(clientMeals, /b\.reactionCount/);
+  assert.match(clientMeals, /b\.commentCount/);
 });
 
 test("client error route rejects oversized content-length before reading the body", () => {
@@ -393,16 +395,15 @@ test("update polling only runs when a service worker registration is available",
 
 test("persistent activity feed and profile notification settings are wired", () => {
   const types = read("lib/types.ts");
-  const data = read("lib/data.ts");
+  const clientActivity = read("lib/client/activity.ts");
   const activityFeed = read("components/ActivityFeed.tsx");
   const profilePage = read("app/profile/page.tsx");
   const userContext = read("context/UserContext.tsx");
 
   assert.match(types, /notificationPreferences/);
   assert.match(types, /ActivityFeedItem/);
-  assert.match(data, /subscribeUserActivity/);
-  assert.match(data, /markAllActivitiesRead/);
-  assert.match(data, /minimumReactions/);
+  assert.match(clientActivity, /subscribeUserActivity/);
+  assert.match(clientActivity, /markAllActivitiesRead/);
   assert.match(activityFeed, /activity-mark-all-read/);
   assert.match(profilePage, /profile-notification-toggle-browserEnabled/);
   assert.match(profilePage, /profile-notification-toggle-reactionAlerts/);
@@ -417,7 +418,7 @@ test("add flow remembers recent meal draft defaults", () => {
   const homePage = read("app/page.tsx");
   const selectedDateHook = read("components/hooks/useSelectedDate.ts");
   const uploadHelper = read("lib/uploadImage.ts");
-  const data = read("lib/data.ts");
+  const clientMeals = read("lib/client/meals.ts");
 
   assert.match(addPage, /getMealDraftDefaults/);
   assert.match(addPage, /saveMealDraftDefaults/);
@@ -436,7 +437,7 @@ test("add flow remembers recent meal draft defaults", () => {
   assert.match(mealCopy, /buildAutoMealDescription/);
   assert.match(uploadHelper, /Authorization/);
   assert.match(uploadHelper, /\/api\/uploads\/meal-image/);
-  assert.match(data, /\/api\/meals/);
+  assert.match(clientMeals, /\/api\/meals/);
 });
 
 test("edit flow uses server mutation helper and specific failure copy", () => {
@@ -473,4 +474,57 @@ test("critical UI files are UTF-8 clean", () => {
   for (const file of criticalFiles) {
     assert.doesNotMatch(read(file), /\uFFFD/);
   }
+});
+
+test("client data access is split into focused adapters and user context delegates profile I/O", () => {
+  const clientData = read("lib/data.ts");
+  const clientHttp = read("lib/client/http.ts");
+  const clientMeals = read("lib/client/meals.ts");
+  const clientComments = read("lib/client/comments.ts");
+  const clientReactions = read("lib/client/reactions.ts");
+  const clientActivity = read("lib/client/activity.ts");
+  const clientProfile = read("lib/client/profile.ts");
+  const profileSession = read("lib/client/profile-session.ts");
+  const authHttp = read("lib/client/auth-http.ts");
+  const mealCommentsHook = read("components/hooks/useMealComments.ts");
+  const mealReactionsHook = read("components/hooks/useMealReactions.ts");
+  const mealsHook = read("components/hooks/useMealsForDate.ts");
+  const weeklyStatsHook = read("components/hooks/useWeeklyStats.ts");
+  const archivePage = read("app/archive/page.tsx");
+  const mealDetailPage = read("app/meals/[id]/page.tsx");
+  const mealCard = read("components/MealCard.tsx");
+  const profilePage = read("app/profile/page.tsx");
+  const userContext = read("context/UserContext.tsx");
+
+  assert.match(clientHttp, /export const fetchAuthedJson = async/);
+  assert.match(clientMeals, /export const getMealsForDate = async/);
+  assert.match(clientMeals, /export const getMealById = async/);
+  assert.match(clientComments, /export const addMealComment = async/);
+  assert.match(clientComments, /export const updateMealComment = async/);
+  assert.match(clientComments, /export const deleteMealComment = async/);
+  assert.match(clientReactions, /export const toggleMealReaction = async/);
+  assert.match(clientReactions, /export const toggleMealCommentReaction = async/);
+  assert.match(clientActivity, /export const updateNotificationPreferences = async/);
+  assert.match(clientProfile, /export const users =/);
+  assert.match(profileSession, /export const loadUserProfile = async/);
+  assert.match(profileSession, /export const saveUserRole = async/);
+  assert.match(authHttp, /export const getAccessToken = async/);
+  assert.match(authHttp, /export const parseErrorMessage = async/);
+
+  assert.match(clientData, /from "@\/lib\/client\/meals"/);
+  assert.match(clientData, /from "@\/lib\/client\/comments"/);
+  assert.match(clientData, /from "@\/lib\/client\/reactions"/);
+  assert.match(clientData, /from "@\/lib\/client\/activity"/);
+
+  assert.match(mealCommentsHook, /from "@\/lib\/client\/comments"/);
+  assert.match(mealReactionsHook, /from "@\/lib\/client\/reactions"/);
+  assert.match(mealsHook, /from "@\/lib\/client\/meals"/);
+  assert.match(weeklyStatsHook, /from "@\/lib\/client\/meals"/);
+  assert.match(archivePage, /from "@\/lib\/client\/meals"/);
+  assert.match(mealDetailPage, /from "@\/lib\/client\/meals"/);
+  assert.match(mealCard, /from "@\/lib\/client\/meals"/);
+  assert.match(profilePage, /from "@\/lib\/client\/profile"/);
+  assert.match(userContext, /from "@\/lib\/client\/profile-session"/);
+  assert.match(userContext, /from "@\/lib\/client\/activity"/);
+  assert.doesNotMatch(userContext, /doc, getDoc/);
 });

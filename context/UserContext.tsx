@@ -9,10 +9,8 @@ import {
   signOut as firebaseSignOut,
   User,
 } from "firebase/auth";
-import { doc, getDoc } from "firebase/firestore";
 
-import { DEFAULT_NOTIFICATION_PREFERENCES, normalizeNotificationPreferences } from "@/lib/activity";
-import { auth, db } from "@/lib/firebase";
+import { auth } from "@/lib/firebase";
 import {
   getQaDefaultRole,
   getQaNotificationPreferences,
@@ -21,7 +19,8 @@ import {
   setQaNotificationPreferences,
 } from "@/lib/qa";
 import { NotificationPreferences, UserProfile, UserRole } from "@/lib/types";
-import { updateNotificationPreferences as saveNotificationPreferences } from "@/lib/data";
+import { updateNotificationPreferences as saveNotificationPreferences } from "@/lib/client/activity";
+import { buildFallbackUserProfile, loadUserProfile, saveUserRole } from "@/lib/client/profile-session";
 
 type UserContextType = {
   user: User | null;
@@ -48,29 +47,6 @@ const createQaProfile = (role: UserRole = getQaDefaultRole()): UserProfile => ({
   notificationPreferences: getQaNotificationPreferences(),
 });
 
-const getAccessToken = async (): Promise<string> => {
-  const current = auth.currentUser;
-  if (!current) {
-    throw new Error("Not authenticated");
-  }
-  return current.getIdToken();
-};
-
-const parseErrorMessage = async (
-  response: Response,
-  fallback: string
-): Promise<string> => {
-  try {
-    const payload = (await response.json()) as { error?: unknown };
-    if (typeof payload.error === "string" && payload.error.trim().length > 0) {
-      return payload.error;
-    }
-  } catch {
-    // Ignore JSON parse errors and use fallback.
-  }
-  return fallback;
-};
-
 export function UserProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
@@ -91,33 +67,11 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         setUser(firebaseUser);
         setAuthError(null);
 
-        const userDocRef = doc(db, "users", firebaseUser.uid);
         try {
-          const userDoc = await getDoc(userDocRef);
-          if (userDoc.exists()) {
-            const data = userDoc.data() as UserProfile;
-            setUserProfile({
-              ...data,
-              notificationPreferences: normalizeNotificationPreferences(data.notificationPreferences),
-            });
-          } else {
-            setUserProfile({
-              uid: firebaseUser.uid,
-              email: firebaseUser.email,
-              displayName: firebaseUser.displayName,
-              role: null,
-              notificationPreferences: { ...DEFAULT_NOTIFICATION_PREFERENCES },
-            });
-          }
+          setUserProfile(await loadUserProfile(firebaseUser));
         } catch (error) {
           console.error("Error fetching user profile", error);
-          setUserProfile({
-            uid: firebaseUser.uid,
-            email: firebaseUser.email,
-            displayName: firebaseUser.displayName,
-            role: null,
-            notificationPreferences: { ...DEFAULT_NOTIFICATION_PREFERENCES },
-          });
+          setUserProfile(buildFallbackUserProfile(firebaseUser));
           setAuthError(
             "\uB85C\uADF8\uC778 \uC815\uBCF4\uB97C \uBD88\uB7EC\uC624\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4. \uC7A0\uC2DC \uD6C4 \uB2E4\uC2DC \uC2DC\uB3C4\uD574 \uC8FC\uC138\uC694."
           );
@@ -210,30 +164,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     if (!user) return;
 
     try {
-      const token = await getAccessToken();
-      const response = await fetch("/api/profile/role", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        cache: "no-store",
-        body: JSON.stringify({ role }),
-      });
-
-      if (!response.ok) {
-        const message = await parseErrorMessage(response, "역할 저장에 실패했습니다.");
-        throw new Error(message);
-      }
-
-      const payload = (await response.json()) as { profile?: UserProfile };
-      if (!payload.profile) {
-        throw new Error("역할 저장 결과가 올바르지 않습니다.");
-      }
-      setUserProfile({
-        ...payload.profile,
-        notificationPreferences: normalizeNotificationPreferences(payload.profile.notificationPreferences),
-      });
+      setUserProfile(await saveUserRole(role));
       setAuthError(null);
     } catch (error) {
       console.error("Error saving user role", error);

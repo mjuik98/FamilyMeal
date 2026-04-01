@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { Clock, MessageSquare, Sparkles } from "lucide-react";
 
-import { countMealReactions } from "@/lib/data";
+import { countMealReactions } from "@/lib/client/meals";
 import type { Meal } from "@/lib/types";
 
 const roleEmoji: Record<string, string> = {

@@ -1,5 +1,6 @@
 import type { DecodedIdToken } from "firebase-admin/auth";
 
+import { serverEnv } from "@/lib/config/server-env";
 import { adminAuth, adminDb } from "@/lib/firebase-admin";
 
 export class AuthError extends Error {
@@ -26,14 +27,8 @@ const toVerifiedUser = (decoded: DecodedIdToken): VerifiedUser => ({
   email: typeof decoded.email === "string" ? decoded.email : null,
 });
 
-const parseAllowedEmails = (raw: string): string[] =>
-  raw
-    .split(",")
-    .map((email) => email.trim().toLowerCase())
-    .filter(Boolean);
-
-const allowedEmails = parseAllowedEmails(process.env.ALLOWED_EMAILS ?? "");
-const isProduction = process.env.NODE_ENV === "production";
+const allowedEmails = serverEnv.allowedEmails;
+const isProduction = serverEnv.isProduction;
 
 const assertAllowlistConfigured = () => {
   if (isProduction && allowedEmails.length === 0) {

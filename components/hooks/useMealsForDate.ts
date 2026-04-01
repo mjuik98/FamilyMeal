@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 
-import { subscribeMealsForDate } from "@/lib/data";
+import { subscribeMealsForDate } from "@/lib/client/meals";
 import { formatDateKey } from "@/lib/date-utils";
 import { createQaMockMeals } from "@/lib/qa";
 import type { Meal, UserRole } from "@/lib/types";

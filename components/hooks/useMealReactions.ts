@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import {
   toggleMealCommentReaction,
   toggleMealReaction,
-} from "@/lib/data";
+} from "@/lib/client/reactions";
 import { isQaMockMode } from "@/lib/qa";
 import { normalizeReactionMap, toggleReactionInMap } from "@/lib/reactions";
 import type { Meal, MealComment, ReactionEmoji } from "@/lib/types";

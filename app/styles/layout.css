@@ -1331,6 +1331,10 @@
   transform: translateY(-8px);
 }
 
+.nav-item-primary .nav-label {
+  transform: translateY(8px);
+}
+
 .nav-item:active {
   transform: scale(0.92);
 }

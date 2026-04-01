@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 import type { ReplyTarget } from "@/components/comments/CommentComposer";
-import { addMealComment, deleteMealComment, updateMealComment } from "@/lib/data";
+import { addMealComment, deleteMealComment, updateMealComment } from "@/lib/client/comments";
 import { subscribeToMealComments } from "@/lib/meal-comments-store";
 import { isQaMockMode } from "@/lib/qa";
 import type { Meal, MealComment, UserProfile } from "@/lib/types";
