@@ -54,6 +54,28 @@ const verifyAllowlistedEmail = (email: string | null) => {
   throw new AuthError("Email is not allowed", 403);
 };
 
+const decodeJwtPayload = (token: string): Record<string, unknown> | null => {
+  const parts = token.split(".");
+  if (parts.length < 2) return null;
+
+  try {
+    const payload = parts[1]
+      .replace(/-/g, "+")
+      .replace(/_/g, "/")
+      .padEnd(Math.ceil(parts[1].length / 4) * 4, "=");
+    const decoded = Buffer.from(payload, "base64").toString("utf8");
+    const parsed = JSON.parse(decoded);
+    return parsed && typeof parsed === "object" ? (parsed as Record<string, unknown>) : null;
+  } catch {
+    return null;
+  }
+};
+
+const getUnverifiedEmailFromToken = (token: string): string | null => {
+  const payload = decodeJwtPayload(token);
+  return typeof payload?.email === "string" ? payload.email : null;
+};
+
 const isAdminCredentialError = (error: unknown): boolean => {
   if (!error || typeof error !== "object") {
     return false;
@@ -104,6 +126,11 @@ export const verifyRequestUser = async (request: Request): Promise<VerifiedUser>
   const token = raw.slice("Bearer ".length).trim();
   if (!token) {
     throw new AuthError("Empty bearer token", 401);
+  }
+
+  const unverifiedEmail = getUnverifiedEmailFromToken(token);
+  if (unverifiedEmail && !isAllowedEmail(unverifiedEmail)) {
+    throw new AuthError("Email is not allowed", 403);
   }
 
   try {

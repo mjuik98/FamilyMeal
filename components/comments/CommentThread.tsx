@@ -19,7 +19,6 @@ export default function CommentThread({
   onSave,
   onCancelEdit,
   onToggleReaction,
-  formatRelativeTime,
 }: {
   parent: MealComment;
   replies: MealComment[];
@@ -35,7 +34,6 @@ export default function CommentThread({
   onSave: (commentId: string) => void;
   onCancelEdit: () => void;
   onToggleReaction: (commentId: string, emoji: ReactionEmoji) => void;
-  formatRelativeTime: (timestamp: number) => string;
 }) {
   return (
     <div className="comment-thread">
@@ -53,7 +51,6 @@ export default function CommentThread({
         onSave={() => onSave(parent.id)}
         onCancelEdit={onCancelEdit}
         onToggleReaction={(emoji) => onToggleReaction(parent.id, emoji)}
-        formatRelativeTime={formatRelativeTime}
       />
 
       {replies.map((reply) => (
@@ -72,7 +69,6 @@ export default function CommentThread({
             onSave={() => onSave(reply.id)}
             onCancelEdit={onCancelEdit}
             onToggleReaction={(emoji) => onToggleReaction(reply.id, emoji)}
-            formatRelativeTime={formatRelativeTime}
           />
         </div>
       ))}

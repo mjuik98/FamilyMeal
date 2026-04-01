@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { adminDb } from "@/lib/firebase-admin";
-import { AuthError, verifyRequestUser } from "@/lib/server-auth";
+import { getRouteErrorMessage, getRouteErrorStatus, RouteError } from "@/lib/route-errors";
+import { verifyRequestUser } from "@/lib/server-auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -17,26 +18,6 @@ const NotificationPreferencesSchema = z.object({
 const SettingsSchema = z.object({
   notificationPreferences: NotificationPreferencesSchema,
 });
-
-class RouteError extends Error {
-  status: number;
-
-  constructor(message: string, status = 400) {
-    super(message);
-    this.name = "RouteError";
-    this.status = status;
-  }
-}
-
-const getErrorStatus = (error: unknown): number =>
-  error instanceof AuthError
-    ? error.status
-    : error instanceof RouteError
-      ? error.status
-      : 500;
-
-const getErrorMessage = (error: unknown): string =>
-  error instanceof AuthError || error instanceof RouteError ? error.message : "internal error";
 
 export async function POST(request: Request) {
   try {
@@ -70,8 +51,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true, profile: snapshot.data() ?? {} });
   } catch (error) {
     return NextResponse.json(
-      { ok: false, error: getErrorMessage(error) },
-      { status: getErrorStatus(error) }
+      { ok: false, error: getRouteErrorMessage(error) },
+      { status: getRouteErrorStatus(error) }
     );
   }
 }

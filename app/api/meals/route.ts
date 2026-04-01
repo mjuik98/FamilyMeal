@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { getRouteErrorMessage, getRouteErrorStatus } from "@/lib/route-errors";
 import { createMealDocument, MealRouteError } from "@/lib/server-meals";
-import { AuthError, getUserRole, verifyRequestUser } from "@/lib/server-auth";
+import { getUserRole, verifyRequestUser } from "@/lib/server-auth";
 import type { UserRole } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -18,16 +19,6 @@ const MealCreateSchema = z.object({
   imageUrl: z.string().trim().url().max(2048),
   timestamp: z.number().int().positive().optional(),
 });
-
-const getErrorStatus = (error: unknown): number =>
-  error instanceof AuthError
-    ? error.status
-    : error instanceof MealRouteError
-      ? error.status
-      : 500;
-
-const getErrorMessage = (error: unknown): string =>
-  error instanceof AuthError || error instanceof MealRouteError ? error.message : "internal error";
 
 export async function POST(request: Request) {
   try {
@@ -58,8 +49,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true, meal }, { status: 201 });
   } catch (error) {
     return NextResponse.json(
-      { ok: false, error: getErrorMessage(error) },
-      { status: getErrorStatus(error) }
+      { ok: false, error: getRouteErrorMessage(error) },
+      { status: getRouteErrorStatus(error) }
     );
   }
 }

@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
-import { Timestamp } from "firebase-admin/firestore";
+import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import { z } from "zod";
 
 import { adminDb } from "@/lib/firebase-admin";
 import { createCommentActivities } from "@/lib/activity-log";
 import { normalizeReactionMap } from "@/lib/reactions";
-import { AuthError, getUserRole, verifyRequestUser } from "@/lib/server-auth";
+import { getRouteErrorMessage, getRouteErrorStatus, RouteError } from "@/lib/route-errors";
+import { getUserRole, verifyRequestUser } from "@/lib/server-auth";
 import type { UserRole } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -19,7 +20,6 @@ type Params = {
 };
 
 type MealDoc = {
-  commentCount?: unknown;
   ownerUid?: unknown;
 };
 
@@ -28,16 +28,6 @@ type CommentDoc = {
   authorUid?: unknown;
   parentId?: unknown;
 };
-
-class RouteError extends Error {
-  status: number;
-
-  constructor(message: string, status = 400) {
-    super(message);
-    this.name = "RouteError";
-    this.status = status;
-  }
-}
 
 const CommentCreateSchema = z.object({
   text: z.string().trim().min(1).max(MAX_COMMENT_LENGTH),
@@ -57,16 +47,6 @@ const getMealId = async (params: Promise<Params>): Promise<string> => {
   }
   return mealId;
 };
-
-const getErrorStatus = (error: unknown): number =>
-  error instanceof AuthError
-    ? error.status
-    : error instanceof RouteError
-      ? error.status
-      : 500;
-
-const getErrorMessage = (error: unknown): string =>
-  error instanceof AuthError || error instanceof RouteError ? error.message : "internal error";
 
 export async function POST(
   request: Request,
@@ -105,10 +85,6 @@ export async function POST(
       }
 
       const mealData = mealSnap.data() as MealDoc;
-      const baseCount =
-        typeof mealData.commentCount === "number" && Number.isFinite(mealData.commentCount)
-          ? Math.max(0, Math.floor(mealData.commentCount))
-          : 0;
 
       const now = Date.now();
       const nowTs = Timestamp.fromMillis(now);
@@ -145,7 +121,7 @@ export async function POST(
       });
 
       tx.update(mealRef, {
-        commentCount: baseCount + 1,
+        commentCount: FieldValue.increment(1),
       });
 
       createCommentActivities({
@@ -177,8 +153,8 @@ export async function POST(
     return NextResponse.json({ ok: true, comment: created });
   } catch (error) {
     return NextResponse.json(
-      { ok: false, error: getErrorMessage(error) },
-      { status: getErrorStatus(error) }
+      { ok: false, error: getRouteErrorMessage(error) },
+      { status: getRouteErrorStatus(error) }
     );
   }
 }

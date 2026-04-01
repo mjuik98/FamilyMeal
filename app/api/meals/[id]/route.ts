@@ -3,6 +3,7 @@ import type { QueryDocumentSnapshot } from "firebase-admin/firestore";
 import { z } from "zod";
 
 import { adminDb } from "@/lib/firebase-admin";
+import { getRouteErrorMessage, getRouteErrorStatus } from "@/lib/route-errors";
 import {
   deleteStorageObjectByUrl,
   isLegacyParticipant,
@@ -52,16 +53,6 @@ const MealUpdateSchema = z.object({
   type: z.enum(VALID_MEAL_TYPES).optional(),
   imageUrl: z.string().trim().url().max(2048).nullable().optional(),
 });
-
-const getErrorStatus = (error: unknown): number =>
-  error instanceof AuthError
-    ? error.status
-    : error instanceof MealRouteError
-      ? error.status
-      : 500;
-
-const getErrorMessage = (error: unknown): string =>
-  error instanceof AuthError || error instanceof MealRouteError ? error.message : "internal error";
 
 const decodeMealId = async (params: Promise<Params>): Promise<string> => {
   const { id } = await params;
@@ -189,9 +180,11 @@ export async function DELETE(
   request: Request,
   context: { params: Promise<Params> }
 ) {
+  let mealId: string | null = null;
+
   try {
     const user = await verifyRequestUser(request);
-    const mealId = await decodeMealId(context.params);
+    mealId = await decodeMealId(context.params);
     const role = await getUserRole(user.uid);
 
     const plan = await planDeleteOperation(mealId, user.uid, role);
@@ -223,12 +216,11 @@ export async function DELETE(
 
     return NextResponse.json({ ok: true, deleted: true, status: "completed" });
   } catch (error) {
-    const status = getErrorStatus(error);
-    const message = getErrorMessage(error);
+    const status = getRouteErrorStatus(error);
+    const message = getRouteErrorMessage(error);
 
-    if (!(error instanceof AuthError)) {
+    if (!(error instanceof AuthError) && mealId) {
       try {
-        const mealId = await decodeMealId(context.params);
         await markDeleteJob(mealId, {
           status: "failed",
           lastError: message,
@@ -276,8 +268,8 @@ export async function PATCH(
     return NextResponse.json({ ok: true, meal });
   } catch (error) {
     return NextResponse.json(
-      { ok: false, error: getErrorMessage(error) },
-      { status: getErrorStatus(error) }
+      { ok: false, error: getRouteErrorMessage(error) },
+      { status: getRouteErrorStatus(error) }
     );
   }
 }

@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
-import { Timestamp } from "firebase-admin/firestore";
+import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import { z } from "zod";
 
 import { adminDb } from "@/lib/firebase-admin";
+import { getRouteErrorMessage, getRouteErrorStatus, RouteError } from "@/lib/route-errors";
 import { normalizeReactionMap } from "@/lib/reactions";
-import { AuthError, getUserRole, verifyRequestUser } from "@/lib/server-auth";
+import { verifyRequestUser } from "@/lib/server-auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -27,29 +28,9 @@ type CommentDoc = {
   updatedAt?: { toMillis?: () => number } | number | null;
 };
 
-class RouteError extends Error {
-  status: number;
-
-  constructor(message: string, status = 400) {
-    super(message);
-    this.name = "RouteError";
-    this.status = status;
-  }
-}
-
 const CommentUpdateSchema = z.object({
   text: z.string().trim().min(1).max(MAX_COMMENT_LENGTH),
 });
-
-const getErrorStatus = (error: unknown): number =>
-  error instanceof AuthError
-    ? error.status
-    : error instanceof RouteError
-      ? error.status
-      : 500;
-
-const getErrorMessage = (error: unknown): string =>
-  error instanceof AuthError || error instanceof RouteError ? error.message : "internal error";
 
 const toMillis = (value: unknown, fallback: number): number => {
   if (typeof value === "number" && Number.isFinite(value)) return value;
@@ -92,17 +73,6 @@ const ensureCommentAuthor = (comment: CommentDoc, uid: string) => {
   if (typeof comment.authorUid !== "string" || comment.authorUid !== uid) {
     throw new RouteError("Not allowed", 403);
   }
-};
-
-const isLegacyParticipant = (meal: { ownerUid?: unknown; userIds?: unknown; userId?: unknown }, role: string | null) => {
-  if (typeof meal.ownerUid === "string" && meal.ownerUid) return false;
-  if (!role) return false;
-
-  if (Array.isArray(meal.userIds)) {
-    return meal.userIds.some((participant) => participant === role);
-  }
-
-  return typeof meal.userId === "string" && meal.userId === role;
 };
 
 export async function PATCH(
@@ -159,8 +129,8 @@ export async function PATCH(
     return NextResponse.json({ ok: true, comment: updated });
   } catch (error) {
     return NextResponse.json(
-      { ok: false, error: getErrorMessage(error) },
-      { status: getErrorStatus(error) }
+      { ok: false, error: getRouteErrorMessage(error) },
+      { status: getRouteErrorStatus(error) }
     );
   }
 }
@@ -172,7 +142,6 @@ export async function DELETE(
   try {
     const user = await verifyRequestUser(request);
     const { mealId, commentId } = await getRouteParams(context.params);
-    const role = await getUserRole(user.uid);
 
     const mealRef = adminDb.collection("meals").doc(mealId);
     const commentRef = mealRef.collection("comments").doc(commentId);
@@ -193,9 +162,8 @@ export async function DELETE(
 
       const isOwner = typeof meal.ownerUid === "string" && meal.ownerUid === user.uid;
       const isAuthor = typeof comment.authorUid === "string" && comment.authorUid === user.uid;
-      const isLegacyAllowed = isLegacyParticipant(meal, role);
 
-      if (!isAuthor && !isOwner && !isLegacyAllowed) {
+      if (!isAuthor && !isOwner) {
         throw new RouteError("Not allowed", 403);
       }
 
@@ -212,15 +180,15 @@ export async function DELETE(
 
       tx.delete(commentRef);
       tx.update(mealRef, {
-        commentCount: Math.max(0, baseCount - 1),
+        commentCount: baseCount > 0 ? FieldValue.increment(-1) : 0,
       });
     });
 
     return NextResponse.json({ ok: true });
   } catch (error) {
     return NextResponse.json(
-      { ok: false, error: getErrorMessage(error) },
-      { status: getErrorStatus(error) }
+      { ok: false, error: getRouteErrorMessage(error) },
+      { status: getRouteErrorStatus(error) }
     );
   }
 }

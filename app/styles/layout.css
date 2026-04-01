@@ -882,63 +882,388 @@
   cursor: not-allowed;
 }
 
-.role-btn {
-  position: relative;
+.login-screen {
+  min-height: 100dvh;
+  padding: 28px 24px 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.role-selection-screen {
+  min-height: 100dvh;
+  padding: 28px 24px 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.login-panel,
+.role-selection-panel {
+  width: 100%;
+  max-width: 380px;
+  display: flex;
+  flex-direction: column;
+}
+
+.login-panel {
+  align-items: center;
+  text-align: center;
+  gap: 20px;
+}
+
+.login-brand {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 0.9rem;
-  min-height: 156px;
-  padding: 1.5rem 0.8rem;
-  border-radius: 24px;
-  border: 2px solid transparent;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  background: rgba(255, 255, 255, 0.95);
-  box-shadow: var(--shadow);
-  overflow: hidden;
+  gap: 10px;
 }
 
-.role-btn:hover {
-  transform: translateY(-8px) scale(1.02);
-  box-shadow: var(--shadow-lg);
-  border-color: var(--role-color);
+.login-brand-mark {
+  width: 80px;
+  height: 80px;
+  border-radius: 22px;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(145deg, #6b8e23, #87aa35);
+  box-shadow: 0 10px 28px rgba(107, 142, 35, 0.28);
 }
 
-.role-btn:active {
-  transform: translateY(-2px) scale(0.98);
+.login-brand-image {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+  border-radius: 8px;
 }
 
-.role-btn .emoji-wrapper {
-  font-size: 3.6rem;
-  transition: transform 0.3s ease;
-  filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.1));
-}
-
-.role-btn:hover .emoji-wrapper {
-  transform: scale(1.2) rotate(5deg);
-}
-
-.role-btn .label-wrapper {
-  font-size: 1.2rem;
+.login-brand-title {
+  font-size: 1.9rem;
   font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 1;
+}
+
+.login-brand-tagline {
+  font-size: 0.95rem;
+  color: var(--muted-foreground);
+}
+
+.login-divider {
+  width: 40px;
+  height: 2px;
+  border-radius: 999px;
+  background: var(--border);
+}
+
+.login-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.login-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.login-description {
+  font-size: 0.93rem;
+  line-height: 1.65;
+  color: var(--muted-foreground);
+}
+
+.login-error {
+  width: 100%;
+  padding: 12px 16px;
+  border-radius: 14px;
+  border: 1px solid #fecaca;
+  background: #fef2f2;
+  color: #dc2626;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.login-google-button {
+  width: 100%;
+  min-height: 54px;
+  padding: 0 18px;
+  border: 1.5px solid var(--border);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.95);
   color: var(--foreground);
+  box-shadow: 0 4px 14px rgba(35, 37, 28, 0.06);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  font-size: 0.96rem;
+  font-weight: 700;
+}
+
+.login-google-button:hover {
+  transform: translateY(-1px);
+  background: #fff;
+  box-shadow: var(--shadow);
+}
+
+.login-google-button:active {
+  transform: translateY(0);
+}
+
+.login-google-icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+.login-security-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--primary);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.login-security-badge svg {
+  width: 14px;
+  height: 14px;
+}
+
+.role-selection-panel {
+  gap: 18px;
+}
+
+.role-selection-header {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.role-selection-eyebrow {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--primary);
+}
+
+.role-selection-title {
+  font-size: 1.45rem;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 1.15;
+}
+
+.role-selection-description {
+  font-size: 0.9rem;
+  color: var(--muted-foreground);
+}
+
+.role-selection-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.role-selection-card {
+  width: 100%;
+  padding: 14px 16px;
+  border-radius: 18px;
+  border: 1.5px solid var(--role-border);
+  background: var(--role-soft);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  text-align: left;
+  box-shadow: 0 8px 20px rgba(35, 37, 28, 0.05);
+}
+
+.role-selection-card:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow);
+}
+
+.role-selection-card:active {
+  transform: translateY(0);
+}
+
+.role-selection-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  font-size: 1.4rem;
+  flex-shrink: 0;
+  background: var(--role-color);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+}
+
+.role-selection-copy {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.role-selection-label {
+  font-size: 0.96rem;
+  font-weight: 800;
+  color: var(--role-title);
+}
+
+.role-selection-sublabel {
+  font-size: 0.75rem;
+  color: var(--role-sub);
+}
+
+.role-selection-radio {
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  border: 1.5px solid var(--role-color);
+  flex-shrink: 0;
+  position: relative;
+}
+
+.role-selection-card:hover .role-selection-radio::after {
+  content: "";
+  position: absolute;
+  inset: 4px;
+  border-radius: 999px;
+  background: var(--role-color);
+  opacity: 0.16;
 }
 
 .role-dad {
   --role-color: #2563eb;
+  --role-soft: #eff6ff;
+  --role-border: #bfdbfe;
+  --role-title: #1e40af;
+  --role-sub: #3b82f6;
 }
 
 .role-mom {
   --role-color: #db2777;
+  --role-soft: #fdf2f8;
+  --role-border: #f9a8d4;
+  --role-title: #9d174d;
+  --role-sub: #ec4899;
 }
 
 .role-daughter {
   --role-color: #7c3aed;
+  --role-soft: #f5f3ff;
+  --role-border: #c4b5fd;
+  --role-title: #4c1d95;
+  --role-sub: #7c3aed;
 }
 
 .role-son {
   --role-color: #d97706;
+  --role-soft: #fffbeb;
+  --role-border: #fcd34d;
+  --role-title: #92400e;
+  --role-sub: #d97706;
+}
+
+.navbar {
+  position: fixed;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: calc(100% - 20px);
+  max-width: 448px;
+  min-height: 78px;
+  padding: 8px 10px calc(8px + env(safe-area-inset-bottom));
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border: 1px solid rgba(232, 232, 224, 0.94);
+  border-radius: 26px;
+  box-shadow: 0 20px 44px rgba(35, 37, 28, 0.16);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  z-index: 80;
+}
+
+.nav-item {
+  display: grid;
+  grid-template-rows: 38px 16px;
+  justify-items: center;
+  align-content: center;
+  color: var(--muted-foreground);
+  font-size: 0.7rem;
+  font-weight: 600;
+  row-gap: 4px;
+  flex: 1;
+  height: 100%;
+  min-height: 60px;
+  padding: 6px 0;
+  transition: color 0.2s, transform 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.nav-item-primary {
+  transform: translateY(-8px);
+}
+
+.nav-item:active {
+  transform: scale(0.92);
+}
+
+.nav-item-primary:active {
+  transform: translateY(-8px) scale(0.92);
+}
+
+.nav-item.active {
+  color: var(--foreground);
+  font-weight: 700;
+}
+
+.nav-icon-wrap {
+  width: 44px;
+  height: 36px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  color: inherit;
+}
+
+.nav-icon-wrap-primary {
+  width: 54px;
+  height: 54px;
+  border-radius: 18px;
+  background: linear-gradient(140deg, #5f7d21 0%, #87aa35 100%);
+  color: white;
+  box-shadow: 0 16px 28px rgba(107, 142, 35, 0.3);
+}
+
+.nav-icon-active {
+  background: linear-gradient(135deg, var(--primary-light) 0%, var(--primary) 100%);
+  color: white;
+  box-shadow: 0 8px 20px rgba(107, 142, 35, 0.22);
+}
+
+.nav-item-primary.active .nav-icon-wrap-primary {
+  box-shadow: 0 18px 32px rgba(107, 142, 35, 0.36);
+}
+
+.nav-label {
+  min-width: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  line-height: 1.1;
+  white-space: nowrap;
 }
 
 .react-calendar {

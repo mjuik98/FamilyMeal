@@ -3,6 +3,7 @@
 import { Check, Pencil, Reply, Trash2, X } from "lucide-react";
 
 import ReactionBar from "@/components/ReactionBar";
+import { formatRelativeTime } from "@/lib/time";
 import type { MealComment, ReactionEmoji } from "@/lib/types";
 
 const roleEmoji: Record<string, string> = {
@@ -27,7 +28,6 @@ export default function CommentItem({
   onSave,
   onCancelEdit,
   onToggleReaction,
-  formatRelativeTime,
 }: {
   comment: MealComment;
   currentUid?: string;
@@ -43,7 +43,6 @@ export default function CommentItem({
   onSave: () => void;
   onCancelEdit: () => void;
   onToggleReaction: (emoji: ReactionEmoji) => void;
-  formatRelativeTime: (timestamp: number) => string;
 }) {
   const timeBase = comment.updatedAt ?? comment.createdAt ?? comment.timestamp ?? 0;
   const canManage = Boolean(currentUid && comment.authorUid === currentUid);

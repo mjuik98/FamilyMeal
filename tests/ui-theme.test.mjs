@@ -42,6 +42,26 @@ test("comment and form inputs use shared input classes", () => {
   assert.match(editPage, /className="input-base textarea-base[^"]*"/);
 });
 
+test("login view uses the refreshed onboarding layout and shared CSS hooks", () => {
+  const loginView = read("components/LoginView.tsx");
+  const layoutStyles = read("app/styles/layout.css");
+
+  assert.match(loginView, /login-screen/);
+  assert.match(loginView, /login-brand-mark/);
+  assert.match(loginView, /login-divider/);
+  assert.match(loginView, /login-google-button/);
+  assert.match(loginView, /login-security-badge/);
+  assert.match(loginView, /계속하려면 로그인하세요/);
+  assert.match(loginView, /role-selection-screen/);
+  assert.match(loginView, /role-selection-list/);
+  assert.match(loginView, /role-selection-card/);
+  assert.match(loginView, /한 번만 선택하면 됩니다/);
+
+  assert.match(layoutStyles, /\.login-screen\s*\{/);
+  assert.match(layoutStyles, /\.login-google-button\s*\{/);
+  assert.match(layoutStyles, /\.role-selection-card\s*\{/);
+});
+
 test("update banner is wired into root layout", () => {
   const layout = read("app/layout.tsx");
   assert.match(layout, /import AppUpdateBanner from "@\/components\/AppUpdateBanner"/);
@@ -84,8 +104,8 @@ test("comment mutations are handled by server APIs and update parent commentCoun
   assert.match(clientData, /\/api\/meals\/\$\{encodedMealId\}\/comments/);
   assert.match(clientData, /\/api\/meals\/\$\{encodedMealId\}\/comments\/\$\{encodedCommentId\}/);
   assert.doesNotMatch(clientData, /runTransaction\(/);
-  assert.match(createRoute, /commentCount:\s*baseCount \+ 1/);
-  assert.match(deleteRoute, /commentCount:\s*Math\.max\(0,\s*baseCount - 1\)/);
+  assert.match(createRoute, /commentCount:\s*FieldValue\.increment\(1\)/);
+  assert.match(deleteRoute, /commentCount:\s*baseCount > 0 \? FieldValue\.increment\(-1\) : 0/);
 });
 
 test("reaction mutations are handled by dedicated APIs with shared validation", () => {
@@ -178,6 +198,73 @@ test("home is rewritten as a weekly photo journal with a persistent bottom dock"
   assert.match(commentComposer, /comment-reply-target/);
 });
 
+test("meal card uses extracted hooks, shared comment subscription store, and shared time formatting", () => {
+  const mealCard = read("components/MealCard.tsx");
+  const mealCommentsHook = read("components/hooks/useMealComments.ts");
+  const mealReactionsHook = read("components/hooks/useMealReactions.ts");
+  const commentsStore = read("lib/meal-comments-store.ts");
+  const timeUtils = read("lib/time.ts");
+  const commentItem = read("components/comments/CommentItem.tsx");
+  const commentThread = read("components/comments/CommentThread.tsx");
+  const conversationPanel = read("components/meal-detail/MealConversationPanel.tsx");
+
+  assert.match(mealCard, /useMealComments/);
+  assert.match(mealCard, /useMealReactions/);
+  assert.doesNotMatch(mealCard, /subscribeMealComments/);
+  assert.doesNotMatch(mealCard, /const formatRelativeTime =/);
+
+  assert.match(mealCommentsHook, /subscribeToMealComments/);
+  assert.match(mealCommentsHook, /useMealComments/);
+  assert.match(mealReactionsHook, /useMealReactions/);
+  assert.match(commentsStore, /const commentEntries = new Map/);
+  assert.match(commentsStore, /refCount/);
+  assert.match(timeUtils, /export const formatRelativeTime =/);
+
+  assert.match(commentItem, /from "@\/lib\/time"/);
+  assert.match(commentThread, /from "@\/lib\/types"/);
+  assert.doesNotMatch(commentItem, /formatRelativeTime:/);
+  assert.doesNotMatch(conversationPanel, /formatRelativeTime:/);
+});
+
+test("navbar styles live in shared CSS and week strip exposes accessible labels", () => {
+  const navbar = read("components/Navbar.tsx");
+  const weekDateStrip = read("components/WeekDateStrip.tsx");
+  const layoutStyles = read("app/styles/layout.css");
+
+  assert.doesNotMatch(navbar, /style jsx/);
+  assert.match(layoutStyles, /\.navbar\s*\{/);
+  assert.match(layoutStyles, /\.nav-item-primary\s*\{/);
+  assert.match(weekDateStrip, /aria-label=/);
+  assert.match(weekDateStrip, /선택한 날짜/);
+});
+
+test("qa fixtures use readable Korean literals in source", () => {
+  const qa = read("lib/qa.ts");
+
+  assert.match(qa, /테스트용 식사 기록입니다\./);
+  assert.match(qa, /댓글 입력 가독성 테스트/);
+  assert.doesNotMatch(qa, /\\uD14C\\uC2A4\\uD2B8/);
+});
+
+test("home page delegates date, meals, and weekly stats state to focused hooks", () => {
+  const homePage = read("app/page.tsx");
+  const selectedDateHook = read("components/hooks/useSelectedDate.ts");
+  const mealsHook = read("components/hooks/useMealsForDate.ts");
+  const weeklyStatsHook = read("components/hooks/useWeeklyStats.ts");
+
+  assert.match(homePage, /useSelectedDate/);
+  assert.match(homePage, /useMealsForDate/);
+  assert.match(homePage, /useWeeklyStats/);
+  assert.doesNotMatch(homePage, /const \[remoteMeals, setRemoteMeals\]/);
+  assert.doesNotMatch(homePage, /const \[remoteWeeklyStats, setRemoteWeeklyStats\]/);
+  assert.doesNotMatch(homePage, /const \[selectedDate, setSelectedDate\]/);
+
+  assert.match(selectedDateHook, /export const useSelectedDate =/);
+  assert.match(mealsHook, /export const useMealsForDate =/);
+  assert.match(weeklyStatsHook, /export const useWeeklyStats =/);
+  assert.match(weeklyStatsHook, /getWeeklyStats/);
+});
+
 test("persistent activity feed and profile notification settings are wired", () => {
   const types = read("lib/types.ts");
   const data = read("lib/data.ts");
@@ -202,6 +289,7 @@ test("add flow remembers recent meal draft defaults", () => {
   const mealCopy = read("lib/meal-copy.ts");
   const mealErrors = read("lib/meal-errors.ts");
   const homePage = read("app/page.tsx");
+  const selectedDateHook = read("components/hooks/useSelectedDate.ts");
   const uploadHelper = read("lib/uploadImage.ts");
   const data = read("lib/data.ts");
 
@@ -214,7 +302,8 @@ test("add flow remembers recent meal draft defaults", () => {
   assert.match(addPage, /toMealCreateErrorMessage/);
   assert.match(mealErrors, /사진 업로드에 실패했습니다\./);
   assert.match(mealErrors, /식사 기록 저장에 실패했습니다\./);
-  assert.match(homePage, /useSearchParams/);
+  assert.match(homePage, /useSelectedDate/);
+  assert.match(selectedDateHook, /useSearchParams/);
   assert.match(mealDraft, /localStorage/);
   assert.match(mealDraft, /mealType/);
   assert.match(mealDraft, /participantIds/);

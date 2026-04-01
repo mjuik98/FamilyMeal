@@ -79,3 +79,70 @@ test("meal create and update mutations are handled by authenticated server APIs"
   assert.doesNotMatch(clientData, /await addDoc\(mealsRef/);
   assert.doesNotMatch(clientData, /await updateDoc\(mealRef/);
 });
+
+test("route handlers share common route error helpers", () => {
+  const routeErrors = read("lib/route-errors.ts");
+  const settingsRoute = read("app/api/profile/settings/route.ts");
+  const roleRoute = read("app/api/profile/role/route.ts");
+  const uploadRoute = read("app/api/uploads/meal-image/route.ts");
+  const mealCommentsRoute = read("app/api/meals/[id]/comments/route.ts");
+  const mealReactionsRoute = read("app/api/meals/[id]/reactions/route.ts");
+  const commentRoute = read("app/api/meals/[id]/comments/[commentId]/route.ts");
+  const commentReactionsRoute = read("app/api/meals/[id]/comments/[commentId]/reactions/route.ts");
+
+  assert.match(routeErrors, /export class RouteError extends Error/);
+  assert.match(routeErrors, /export const getRouteErrorStatus/);
+  assert.match(routeErrors, /export const getRouteErrorMessage/);
+
+  for (const source of [
+    settingsRoute,
+    roleRoute,
+    uploadRoute,
+    mealCommentsRoute,
+    mealReactionsRoute,
+    commentRoute,
+    commentReactionsRoute,
+  ]) {
+    assert.match(source, /@\/lib\/route-errors/);
+    assert.doesNotMatch(source, /class RouteError extends Error/);
+    assert.doesNotMatch(source, /const getErrorStatus =/);
+    assert.doesNotMatch(source, /const getErrorMessage =/);
+  }
+});
+
+test("comment delete route no longer allows role-only legacy participant deletes", () => {
+  const commentRoute = read("app/api/meals/[id]/comments/[commentId]/route.ts");
+
+  assert.match(commentRoute, /const isOwner =/);
+  assert.match(commentRoute, /const isAuthor =/);
+  assert.doesNotMatch(commentRoute, /const isLegacyParticipant =/);
+  assert.doesNotMatch(commentRoute, /isLegacyAllowed/);
+});
+
+test("client meal readers use explicit serialization and remove unused activity-feed builder", () => {
+  const clientData = read("lib/data.ts");
+
+  assert.match(clientData, /const serializeMealSnapshot =/);
+  assert.doesNotMatch(clientData, /return\s*\{\s*id:\s*docSnap\.id,\s*\.\.\.data[\s\S]*\}\s*as Meal/);
+  assert.doesNotMatch(clientData, /return\s*\{\s*id:\s*snapshot\.id,\s*\.\.\.data[\s\S]*\}\s*as Meal/);
+  assert.doesNotMatch(clientData, /export const buildActivityFeed =/);
+});
+
+test("comment count updates use atomic increments on create and guarded decrements on delete", () => {
+  const createRoute = read("app/api/meals/[id]/comments/route.ts");
+  const deleteRoute = read("app/api/meals/[id]/comments/[commentId]/route.ts");
+
+  assert.match(createRoute, /FieldValue\.increment\(1\)/);
+  assert.doesNotMatch(createRoute, /commentCount:\s*baseCount \+ 1/);
+  assert.match(deleteRoute, /commentCount:/);
+});
+
+test("server auth can reject non-allowlisted emails before full token verification", () => {
+  const serverAuth = read("lib/server-auth.ts");
+
+  assert.match(serverAuth, /decodeJwtPayload/);
+  assert.match(serverAuth, /getUnverifiedEmailFromToken/);
+  assert.match(serverAuth, /const unverifiedEmail = getUnverifiedEmailFromToken\(token\)/);
+  assert.match(serverAuth, /if \(unverifiedEmail && !isAllowedEmail\(unverifiedEmail\)\)/);
+  assert.match(serverAuth, /const decoded = await adminAuth\.verifyIdToken\(token, true\)/);
+});

@@ -54,12 +54,20 @@ export default function WeekDateStrip({
         const hasMeals = day.count > 0;
         const isToday = isSameDay(day.date, today);
         const status = active ? "selected" : hasMeals ? "filled" : isToday ? "today-empty" : "empty";
+        const dayDescription = `${day.date.toLocaleDateString("ko-KR", {
+          month: "long",
+          day: "numeric",
+          weekday: "long",
+        })}, ${hasMeals ? `${day.count}개 식사` : isToday ? "오늘 비었어요" : "기록 없음"}${
+          active ? ", 선택한 날짜" : ""
+        }`;
 
         return (
           <button
             key={dayKey}
             type="button"
             onClick={() => onSelectDate(day.date)}
+            aria-label={dayDescription}
             className={`week-date-button week-date-button-${status}${active ? " week-date-button-active" : ""}`}
             data-testid={`week-date-button-${dayKey}`}
             data-active={active ? "true" : "false"}

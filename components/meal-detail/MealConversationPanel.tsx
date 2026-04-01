@@ -33,7 +33,6 @@ export default function MealConversationPanel({
   onCommentTextChange,
   onSubmitComment,
   onClearReplyTarget,
-  formatRelativeTime,
 }: {
   mealReactions: ReactionMap;
   currentUid?: string;
@@ -60,7 +59,6 @@ export default function MealConversationPanel({
   onCommentTextChange: (value: string) => void;
   onSubmitComment: () => void;
   onClearReplyTarget: () => void;
-  formatRelativeTime: (timestamp: number) => string;
 }) {
   return (
     <section className="meal-conversation-panel surface-card" data-testid="meal-conversation-panel">
@@ -111,7 +109,6 @@ export default function MealConversationPanel({
                       onSave={onSave}
                       onCancelEdit={onCancelEdit}
                       onToggleReaction={onToggleReaction}
-                      formatRelativeTime={formatRelativeTime}
                     />
                   ))}
                 </div>

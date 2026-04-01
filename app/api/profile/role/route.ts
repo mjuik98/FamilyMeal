@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { adminAuth, adminDb } from "@/lib/firebase-admin";
-import { AuthError, verifyRequestUser } from "@/lib/server-auth";
+import { getRouteErrorMessage, getRouteErrorStatus, RouteError } from "@/lib/route-errors";
+import { verifyRequestUser } from "@/lib/server-auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -24,29 +25,9 @@ type UserProfileDoc = {
   notificationPreferences?: unknown;
 };
 
-class RouteError extends Error {
-  status: number;
-
-  constructor(message: string, status = 400) {
-    super(message);
-    this.name = "RouteError";
-    this.status = status;
-  }
-}
-
 const RoleUpdateSchema = z.object({
   role: z.enum(VALID_ROLES),
 });
-
-const getErrorStatus = (error: unknown): number =>
-  error instanceof AuthError
-    ? error.status
-    : error instanceof RouteError
-      ? error.status
-      : 500;
-
-const getErrorMessage = (error: unknown): string =>
-  error instanceof AuthError || error instanceof RouteError ? error.message : "internal error";
 
 const toStringOrNull = (value: unknown): string | null =>
   typeof value === "string" && value.trim().length > 0 ? value : null;
@@ -108,8 +89,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true, profile: updatedProfile });
   } catch (error) {
     return NextResponse.json(
-      { ok: false, error: getErrorMessage(error) },
-      { status: getErrorStatus(error) }
+      { ok: false, error: getRouteErrorMessage(error) },
+      { status: getRouteErrorStatus(error) }
     );
   }
 }

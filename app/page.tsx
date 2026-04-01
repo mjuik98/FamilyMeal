@@ -1,21 +1,21 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useMemo, useState } from "react";
 import Link from "next/link";
 import { Calendar as CalendarIcon, Images, LogOut, Plus } from "lucide-react";
 import Calendar from "react-calendar";
-import { useSearchParams } from "next/navigation";
 import "react-calendar/dist/Calendar.css";
 
 import LoginView from "@/components/LoginView";
 import MealPreviewCard from "@/components/MealPreviewCard";
 import SurfaceSection from "@/components/SurfaceSection";
 import WeekDateStrip from "@/components/WeekDateStrip";
+import { useMealsForDate } from "@/components/hooks/useMealsForDate";
+import { useSelectedDate } from "@/components/hooks/useSelectedDate";
+import { useWeeklyStats } from "@/components/hooks/useWeeklyStats";
 import { useUser } from "@/context/UserContext";
-import { formatDateKey, parseDateKey } from "@/lib/date-utils";
-import { getWeeklyStats, subscribeMealsForDate } from "@/lib/data";
-import { createQaMockMeals, createQaMockWeeklyStats, isQaMockMode } from "@/lib/qa";
-import { Meal, WeeklyMealStat } from "@/lib/types";
+import { formatDateKey } from "@/lib/date-utils";
+import { isQaMockMode } from "@/lib/qa";
 
 const roleEmoji: Record<string, string> = {
   아빠: "👨",
@@ -45,85 +45,27 @@ const formatLongDate = (date: Date) =>
 
 function HomeContent() {
   const { user, userProfile, loading, signOut } = useUser();
-  const searchParams = useSearchParams();
   const qaMode = isQaMockMode();
   const [qaAnchorDate] = useState(getQaAnchorDate);
-  const [remoteMeals, setRemoteMeals] = useState<Meal[]>([]);
-  const [loadingMeals, setLoadingMeals] = useState(true);
-  const [selectedDate, setSelectedDate] = useState(new Date());
-  const [hasExplicitDateSelection, setHasExplicitDateSelection] = useState(false);
-  const [showCalendar, setShowCalendar] = useState(false);
-  const [remoteWeeklyStats, setRemoteWeeklyStats] = useState<WeeklyMealStat[]>([]);
-  const routeSelectedDate = useMemo(
-    () => parseDateKey(searchParams.get("date")),
-    [searchParams]
-  );
-  const effectiveSelectedDate = useMemo(() => {
-    if (hasExplicitDateSelection) return selectedDate;
-    if (routeSelectedDate) return routeSelectedDate;
-    if (qaMode) return qaAnchorDate;
-    return selectedDate;
-  }, [hasExplicitDateSelection, qaAnchorDate, qaMode, routeSelectedDate, selectedDate]);
-
-  const selectDate = (nextDate: Date) => {
-    setHasExplicitDateSelection(true);
-    if (!qaMode) {
-      setLoadingMeals(true);
-    }
-    setSelectedDate(nextDate);
-  };
-
-  useEffect(() => {
-    if (!userProfile?.role) return;
-
-    if (qaMode) return;
-
-    const unsubscribe = subscribeMealsForDate(
-      effectiveSelectedDate,
-      (data) => {
-        setRemoteMeals(data);
-        setLoadingMeals(false);
-      },
-      (error) => {
-        console.error("Failed to load meals", error);
-        setLoadingMeals(false);
-      }
-    );
-
-    return () => unsubscribe();
-  }, [effectiveSelectedDate, qaMode, userProfile?.role]);
-
-  useEffect(() => {
-    if (!userProfile?.role) return;
-
-    if (qaMode) return;
-
-    getWeeklyStats()
-      .then((stats) => setRemoteWeeklyStats(stats))
-      .catch((error) => {
-        console.error("Failed to load weekly stats", error);
-        setRemoteWeeklyStats([]);
-      });
-  }, [qaMode, userProfile?.role]);
-
-  const onDateChange = (value: Date | null | [Date | null, Date | null]) => {
-    if (value instanceof Date) {
-      selectDate(value);
-    } else if (Array.isArray(value) && value[0] instanceof Date) {
-      selectDate(value[0]);
-    }
-    setShowCalendar(false);
-  };
+  const { effectiveSelectedDate, showCalendar, setShowCalendar, selectDate, onDateChange } =
+    useSelectedDate({
+      qaMode,
+      qaAnchorDate,
+    });
+  const { meals, loadingMeals } = useMealsForDate({
+    effectiveSelectedDate,
+    qaMode,
+    qaAnchorDate,
+    role: userProfile?.role,
+  });
+  const weeklyStats = useWeeklyStats({
+    effectiveSelectedDate,
+    qaMode,
+    qaAnchorDate,
+    role: userProfile?.role,
+  });
 
   const selectedDateLabel = useMemo(() => formatLongDate(effectiveSelectedDate), [effectiveSelectedDate]);
-  const meals =
-    qaMode && userProfile?.role
-      ? createQaMockMeals(userProfile.role, effectiveSelectedDate, qaAnchorDate)
-      : remoteMeals;
-  const weeklyStats = qaMode && userProfile?.role
-    ? createQaMockWeeklyStats(effectiveSelectedDate, userProfile.role, qaAnchorDate)
-    : remoteWeeklyStats;
-  const effectiveLoadingMeals = qaMode ? false : loadingMeals;
   const weeklyTotal = useMemo(
     () => weeklyStats.reduce((sum, day) => sum + day.count, 0),
     [weeklyStats]
@@ -178,7 +120,7 @@ function HomeContent() {
             <p className="home-journal-kicker">이번 주 식사 저널</p>
             <h1 className="home-journal-title">{selectedDateLabel}</h1>
             <p className="home-journal-summary">
-              {effectiveLoadingMeals
+              {loadingMeals
                 ? "기록을 불러오는 중입니다."
                 : hasMeals
                   ? `${meals.length}개의 식사 사진이 남아 있어요.`
@@ -213,7 +155,7 @@ function HomeContent() {
             </div>
             <div className="home-weekly-chip">
               <span className="home-weekly-chip-label">선택한 날</span>
-              <strong>{effectiveLoadingMeals ? "..." : `${meals.length}개`}</strong>
+              <strong>{loadingMeals ? "..." : `${meals.length}개`}</strong>
             </div>
           </div>
 
@@ -248,7 +190,7 @@ function HomeContent() {
           </div>
         </section>
 
-        {effectiveLoadingMeals ? (
+        {loadingMeals ? (
           <div className="surface-card empty-state">
             <div className="spinner" style={{ margin: "0 auto" }} />
           </div>

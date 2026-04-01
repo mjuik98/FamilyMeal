@@ -13,7 +13,7 @@ export const isQaMockEnabledByEnv = (
   env: Partial<Pick<NodeJS.ProcessEnv, "NODE_ENV">> = process.env
 ) => env.NODE_ENV !== "production";
 
-export const getQaDefaultRole = (): UserRole => "\uC544\uBE60" as UserRole;
+export const getQaDefaultRole = (): UserRole => "아빠" as UserRole;
 
 export const isQaMockMode = () =>
   isQaMockEnabledByEnv() &&
@@ -198,8 +198,8 @@ const createQaTodayMeals = (
       ownerUid: "qa-user",
       userIds: [role],
       imageUrl: createQaImage("🍛", "오늘의 점심", "#d97706", "#facc15"),
-      description: "\uD14C\uC2A4\uD2B8\uC6A9 \uC2DD\uC0AC \uAE30\uB85D\uC785\uB2C8\uB2E4.",
-      type: "\uC810\uC2EC" as Meal["type"],
+      description: "테스트용 식사 기록입니다.",
+      type: "점심" as Meal["type"],
       timestamp: noon,
       commentCount: 1,
       reactions: {
@@ -209,9 +209,9 @@ const createQaTodayMeals = (
       comments: [
         {
           id: "qa-home-comment",
-          author: "\uC544\uBE60" as UserRole,
+          author: "아빠" as UserRole,
           authorUid: "qa-user",
-          text: "\uB313\uAE00 \uC785\uB825 \uAC00\uB3C5\uC131 \uD14C\uC2A4\uD2B8",
+          text: "댓글 입력 가독성 테스트",
           createdAt: noon - 60_000,
           updatedAt: noon - 60_000,
           timestamp: noon - 60_000,
@@ -226,8 +226,8 @@ const createQaTodayMeals = (
       ownerUid: "qa-sibling",
       userIds: [role],
       imageUrl: createQaImage("🍞", "아침 토스트", "#f59e0b", "#ef4444"),
-      description: "\uD1A0\uC2A4\uD2B8\uC640 \uACC4\uB780 \uC544\uCE68",
-      type: "\uC544\uCE68" as Meal["type"],
+      description: "토스트와 계란 아침",
+      type: "아침" as Meal["type"],
       timestamp: breakfast,
       commentCount: 1,
       reactions: {
@@ -238,7 +238,7 @@ const createQaTodayMeals = (
           id: "qa-breakfast-comment",
           author: role,
           authorUid: "qa-user",
-          text: "\uC544\uCE68 \uC2DD\uB2E8 \uC131\uACF5",
+          text: "아침 식단 성공",
           createdAt: breakfast + 60_000,
           updatedAt: breakfast + 60_000,
           timestamp: breakfast + 60_000,
@@ -251,10 +251,10 @@ const createQaTodayMeals = (
     {
       id: "qa-shared-meal",
       ownerUid: "qa-mom",
-      userIds: ["\uC5C4\uB9C8" as UserRole],
+      userIds: ["엄마" as UserRole],
       imageUrl: createQaImage("🍲", "엄마의 저녁", "#0ea5e9", "#2563eb"),
-      description: "\uC5C4\uB9C8\uAC00 \uB9CC\uB4E0 \uC800\uB141 \uC2DD\uC0AC",
-      type: "\uC800\uB141" as Meal["type"],
+      description: "엄마가 만든 저녁 식사",
+      type: "저녁" as Meal["type"],
       timestamp: dinner,
       commentCount: 2,
       reactions: {
@@ -263,9 +263,9 @@ const createQaTodayMeals = (
       comments: [
         {
           id: "qa-shared-comment-1",
-          author: "\uC5C4\uB9C8" as UserRole,
+          author: "엄마" as UserRole,
           authorUid: "qa-mom",
-          text: "\uB0A8\uAE40\uC5C6\uC774 \uBA39\uC5C8\uC5B4\uC694",
+          text: "남김없이 먹었어요",
           createdAt: dinner + 60_000,
           updatedAt: dinner + 60_000,
           timestamp: dinner + 60_000,
@@ -275,9 +275,9 @@ const createQaTodayMeals = (
         },
         {
           id: "qa-shared-comment-2",
-          author: "\uC5C4\uB9C8" as UserRole,
+          author: "엄마" as UserRole,
           authorUid: "qa-mom",
-          text: "\uB2E4\uC74C\uC5D0 \uB610 \uD574\uC694",
+          text: "다음에 또 해요",
           createdAt: dinner + 120_000,
           updatedAt: dinner + 120_000,
           timestamp: dinner + 120_000,
@@ -289,8 +289,8 @@ const createQaTodayMeals = (
       ownerUid: "qa-daughter",
       userIds: ["딸" as UserRole, role],
       imageUrl: createQaImage("🍎", "오늘의 간식", "#22c55e", "#16a34a"),
-      description: "\uAC04\uB2E8\uD55C \uAC04\uC2DD \uC2DC\uAC04",
-      type: "\uAC04\uC2DD" as Meal["type"],
+      description: "간단한 간식 시간",
+      type: "간식" as Meal["type"],
       timestamp: dinner + 2 * 60 * 60 * 1000,
       commentCount: 3,
       reactions: {
@@ -302,7 +302,7 @@ const createQaTodayMeals = (
           id: "qa-snack-comment-1",
           author: "딸" as UserRole,
           authorUid: "qa-daughter",
-          text: "\uB2E4\uC74C \uAC04\uC2DD\uB3C4 \uC900\uBE44\uD560\uAC8C\uC694",
+          text: "다음 간식도 준비할게요",
           createdAt: dinner + 2 * 60 * 60 * 1000 + 30_000,
           updatedAt: dinner + 2 * 60 * 60 * 1000 + 30_000,
           reactions: {
@@ -313,7 +313,7 @@ const createQaTodayMeals = (
           id: "qa-snack-comment-2",
           author: role,
           authorUid: "qa-user",
-          text: "\uC0AC\uACFC \uCE69 \uC870\uD569 \uC88B\uC544\uC694",
+          text: "사과 칩 조합 좋아요",
           parentId: "qa-snack-comment-1",
           mentionedAuthor: "딸" as UserRole,
           createdAt: dinner + 2 * 60 * 60 * 1000 + 60_000,
@@ -323,7 +323,7 @@ const createQaTodayMeals = (
           id: "qa-snack-comment-3",
           author: "엄마" as UserRole,
           authorUid: "qa-mom",
-          text: "\uB2E4\uC74C\uC5D0\uB294 \uACFC\uC77C \uCD94\uAC00\uD574\uC694",
+          text: "다음에는 과일 추가해요",
           createdAt: dinner + 2 * 60 * 60 * 1000 + 90_000,
           updatedAt: dinner + 2 * 60 * 60 * 1000 + 90_000,
         },
@@ -392,7 +392,7 @@ export const createQaMockActivities = (
       actorUid: "qa-mom",
       actorRole: "엄마" as UserRole,
       mealId: "qa-home-meal",
-      preview: "\uAD6D\uBB3C\uB3C4 \uB9DB\uC788\uC5C8\uC5B4\uC694",
+      preview: "국물도 맛있었어요",
       createdAt: now - 3 * 60_000,
     }),
     withReadState({
@@ -402,7 +402,7 @@ export const createQaMockActivities = (
       actorRole: "아들" as UserRole,
       mealId: "qa-home-meal",
       commentId: "qa-home-comment",
-      preview: "\uC800\uB3C4 \uAC19\uC740 \uC0DD\uAC01\uC774\uC5D0\uC694",
+      preview: "저도 같은 생각이에요",
       createdAt: now - 2 * 60_000,
     }),
     withReadState({
@@ -412,7 +412,7 @@ export const createQaMockActivities = (
       actorRole: "엄마" as UserRole,
       mealId: "qa-home-meal",
       reactionEmoji: "❤️",
-      preview: "\uD14C\uC2A4\uD2B8\uC6A9 \uC2DD\uC0AC \uAE30\uB85D\uC785\uB2C8\uB2E4.",
+      preview: "테스트용 식사 기록입니다.",
       createdAt: now - 90_000,
     }),
     withReadState({
@@ -423,7 +423,7 @@ export const createQaMockActivities = (
       mealId: "qa-breakfast-meal",
       commentId: "qa-breakfast-comment",
       reactionEmoji: "👏",
-      preview: "\uC544\uCE68 \uC2DD\uB2E8 \uC131\uACF5",
+      preview: "아침 식단 성공",
       createdAt: now - 30_000,
     }),
     withReadState({
@@ -432,7 +432,7 @@ export const createQaMockActivities = (
       actorUid: "qa-mom",
       actorRole: "엄마" as UserRole,
       mealId: "qa-shared-meal",
-      preview: "\uC774 \uD56D\uBAA9\uC740 \uC774\uBBF8 \uC77D\uC74C\uCC98\uB9AC \uB300\uC0C1\uC785\uB2C8\uB2E4",
+      preview: "이 항목은 이미 읽음처리 대상입니다",
       createdAt: now - 24 * 60 * 60_000,
     }),
   ].map((activity, index) =>

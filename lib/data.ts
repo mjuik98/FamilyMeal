@@ -27,6 +27,7 @@ export type MealUpdateInput = Partial<Omit<Meal, 'id' | 'imageUrl'>> & {
 const MAX_MEAL_DESCRIPTION_LENGTH = 300;
 const SEARCH_INDEX_LIMIT = 300;
 const SEARCH_FALLBACK_LIMIT = 300;
+const VALID_MEAL_TYPES: Meal['type'][] = ['아침', '점심', '저녁', '간식'];
 
 const getAccessToken = async (forceRefresh = false): Promise<string> => {
     const user = auth.currentUser;
@@ -139,6 +140,26 @@ const mealParticipants = (mealData: Partial<Meal> & { userIds?: unknown; userId?
     return [];
 };
 
+const normalizeKeywords = (rawKeywords: unknown): string[] | undefined => {
+    if (!Array.isArray(rawKeywords)) return undefined;
+
+    const keywords = rawKeywords
+        .filter((keyword): keyword is string => typeof keyword === 'string' && keyword.trim().length > 0)
+        .map((keyword) => keyword.trim());
+
+    return keywords.length > 0 ? keywords : undefined;
+};
+
+const normalizeMealType = (value: unknown): Meal['type'] =>
+    typeof value === 'string' && VALID_MEAL_TYPES.includes(value as Meal['type'])
+        ? value as Meal['type']
+        : '점심';
+
+const normalizeCommentCount = (value: unknown, fallback: number): number =>
+    typeof value === 'number' && Number.isFinite(value)
+        ? Math.max(0, Math.floor(value))
+        : fallback;
+
 const normalizeMealDescription = (description: string): string => {
     const trimmed = description.trim();
     if (!trimmed) {
@@ -158,23 +179,46 @@ const matchesKeyword = (meal: Meal, keyword: string): boolean => {
         Boolean(meal.keywords?.some((k) => k.includes(lower)));
 };
 
-const convertMeal = (docSnap: QueryDocumentSnapshot<DocumentData>): Meal => {
-    const data = docSnap.data();
+const serializeMealSnapshot = (
+    id: string,
+    data: Partial<Meal> & {
+        ownerUid?: unknown;
+        userId?: unknown;
+        userIds?: unknown;
+        keywords?: unknown;
+        imageUrl?: unknown;
+        description?: unknown;
+        type?: unknown;
+        timestamp?: unknown;
+        commentCount?: unknown;
+        comments?: unknown;
+        reactions?: unknown;
+    }
+): Meal => {
     const userIds = mealParticipants(data);
     const comments = normalizeComments(data.comments);
-    const commentCount = typeof data.commentCount === 'number' ? data.commentCount : comments.length;
+    const commentCount = normalizeCommentCount(data.commentCount, comments.length);
 
     return {
-        id: docSnap.id,
-        ...data,
+        id,
         ownerUid: typeof data.ownerUid === 'string' ? data.ownerUid : undefined,
+        userId: typeof data.userId === 'string' && users.includes(data.userId as UserRole)
+            ? data.userId as UserRole
+            : undefined,
         userIds,
+        keywords: normalizeKeywords(data.keywords),
+        imageUrl: typeof data.imageUrl === 'string' ? data.imageUrl : undefined,
+        description: typeof data.description === 'string' ? data.description : '',
+        type: normalizeMealType(data.type),
+        timestamp: toMillis(data.timestamp, Date.now()),
         comments,
         commentCount,
         reactions: normalizeReactionMap(data.reactions),
-        timestamp: data.timestamp?.toMillis ? data.timestamp.toMillis() : Date.now(),
-    } as Meal;
+    };
 };
+
+const convertMeal = (docSnap: QueryDocumentSnapshot<DocumentData>): Meal =>
+    serializeMealSnapshot(docSnap.id, docSnap.data());
 
 const getDayRange = (date: Date) => {
     const startOfDay = new Date(date);
@@ -272,21 +316,7 @@ export const getMealById = async (id: string): Promise<Meal | null> => {
     const snapshot = await getDoc(mealRef);
     if (!snapshot.exists()) return null;
 
-    const data = snapshot.data();
-    const userIds = mealParticipants(data);
-    const comments = normalizeComments(data.comments);
-    const commentCount = typeof data.commentCount === 'number' ? data.commentCount : comments.length;
-
-    return {
-        id: snapshot.id,
-        ...data,
-        ownerUid: typeof data.ownerUid === 'string' ? data.ownerUid : undefined,
-        userIds,
-        comments,
-        commentCount,
-        reactions: normalizeReactionMap(data.reactions),
-        timestamp: data.timestamp?.toMillis ? data.timestamp.toMillis() : Date.now(),
-    } as Meal;
+    return serializeMealSnapshot(snapshot.id, snapshot.data());
 };
 
 export const updateMeal = async (id: string, updates: MealUpdateInput): Promise<Meal> => {
@@ -500,12 +530,17 @@ export const toggleMealCommentReaction = async (
     return normalizeReactionMap(response.reactions);
 };
 
-export const getWeeklyStats = async (): Promise<WeeklyMealStat[]> => {
-    const now = new Date();
+export const getWeeklyStats = async (referenceDate: Date = new Date()): Promise<WeeklyMealStat[]> => {
+    const now = new Date(referenceDate);
+    now.setHours(12, 0, 0, 0);
     const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
+    const startOfWeek = new Date(now);
+    startOfWeek.setDate(now.getDate() - now.getDay());
+    startOfWeek.setHours(0, 0, 0, 0);
+
     const dates = Array.from({ length: 7 }, (_, idx) => {
-        const d = new Date(now);
-        d.setDate(d.getDate() - (6 - idx));
+        const d = new Date(startOfWeek);
+        d.setDate(startOfWeek.getDate() + idx);
         return d;
     });
 
@@ -574,115 +609,6 @@ const getMealEngagementCount = (
     meal: Meal,
     commentsByMeal?: Record<string, MealComment[]>
 ): number => countMealReactions(meal) + countCommentReactions(getMealCommentsSnapshot(meal, commentsByMeal));
-
-const shortenPreview = (text: string, maxLength = 34): string => {
-    const trimmed = text.trim();
-    if (trimmed.length <= maxLength) return trimmed;
-    return `${trimmed.slice(0, maxLength).trimEnd()}...`;
-};
-
-const buildKnownRoleByUid = (
-    meals: Meal[],
-    commentsByMeal: Record<string, MealComment[]>
-): Map<string, UserRole> => {
-    const knownRoles = new Map<string, UserRole>();
-
-    meals.forEach((meal) => {
-        if (meal.ownerUid && meal.userIds?.length === 1) {
-            knownRoles.set(meal.ownerUid, meal.userIds[0]);
-        }
-
-        getMealCommentsSnapshot(meal, commentsByMeal).forEach((comment) => {
-            if (comment.authorUid) {
-                knownRoles.set(comment.authorUid, comment.author);
-            }
-        });
-    });
-
-    return knownRoles;
-};
-
-export const buildActivityFeed = (
-    meals: Meal[],
-    commentsByMeal: Record<string, MealComment[]>,
-    currentUid?: string
-): ActivityFeedItem[] => {
-    if (!currentUid) return [];
-
-    const knownRoles = buildKnownRoleByUid(meals, commentsByMeal);
-    const items: ActivityFeedItem[] = [];
-
-    meals.forEach((meal) => {
-        const comments = getMealCommentsSnapshot(meal, commentsByMeal);
-        const commentById = new Map(comments.map((comment) => [comment.id, comment]));
-
-        comments.forEach((comment) => {
-            if (comment.authorUid === currentUid) return;
-
-            const isReplyToMe =
-                typeof comment.parentId === 'string' &&
-                commentById.get(comment.parentId)?.authorUid === currentUid;
-
-            if (meal.ownerUid === currentUid && !comment.parentId) {
-                items.push({
-                    id: `meal-comment:${meal.id}:${comment.id}`,
-                    kind: 'meal-comment',
-                    actorLabel: comment.author,
-                    actionLabel: '내 식사에 댓글을 남겼어요',
-                    preview: shortenPreview(comment.text),
-                    timestamp: comment.updatedAt ?? comment.createdAt ?? comment.timestamp ?? meal.timestamp,
-                });
-            }
-
-            if (isReplyToMe) {
-                items.push({
-                    id: `comment-reply:${meal.id}:${comment.id}`,
-                    kind: 'comment-reply',
-                    actorLabel: comment.author,
-                    actionLabel: '내 댓글에 답글을 남겼어요',
-                    preview: shortenPreview(comment.text),
-                    timestamp: comment.updatedAt ?? comment.createdAt ?? comment.timestamp ?? meal.timestamp,
-                });
-            }
-        });
-
-        Object.entries(normalizeReactionMap(meal.reactions)).forEach(([emoji, uids]) => {
-            if (meal.ownerUid !== currentUid) return;
-
-            uids.forEach((uid, index) => {
-                if (uid === currentUid) return;
-                items.push({
-                    id: `meal-reaction:${meal.id}:${emoji}:${uid}:${index}`,
-                    kind: 'meal-reaction',
-                    actorLabel: knownRoles.get(uid) ?? '가족',
-                    actionLabel: `내 식사에 ${emoji} 반응을 남겼어요`,
-                    preview: shortenPreview(meal.description),
-                    timestamp: meal.timestamp,
-                });
-            });
-        });
-
-        comments.forEach((comment) => {
-            if (comment.authorUid !== currentUid) return;
-
-            Object.entries(normalizeReactionMap(comment.reactions)).forEach(([emoji, uids]) => {
-                uids.forEach((uid, index) => {
-                    if (uid === currentUid) return;
-                    items.push({
-                        id: `comment-reaction:${meal.id}:${comment.id}:${emoji}:${uid}:${index}`,
-                        kind: 'comment-reaction',
-                        actorLabel: knownRoles.get(uid) ?? '가족',
-                        actionLabel: `내 댓글에 ${emoji} 반응을 남겼어요`,
-                        preview: shortenPreview(comment.text),
-                        timestamp: comment.updatedAt ?? comment.createdAt ?? comment.timestamp ?? meal.timestamp,
-                    });
-                });
-            });
-        });
-    });
-
-    return items.sort((a, b) => b.timestamp - a.timestamp);
-};
 
 export const mapUserActivitiesToFeedItems = (activities: UserActivity[]): ActivityFeedItem[] =>
     activities.map(toActivityFeedItem);
