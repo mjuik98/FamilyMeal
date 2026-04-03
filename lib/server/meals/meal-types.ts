@@ -105,7 +105,9 @@ export const normalizeImageUrl = (imageUrl: unknown): string => {
 };
 
 export const buildMealKeywords = (meal: Pick<Meal, "description" | "type" | "userIds" | "userId">): string[] => {
-  const raw = `${meal.description} ${meal.type} ${(meal.userIds || (meal.userId ? [meal.userId] : [])).join(" ")}`.toLowerCase();
+  const participantRoles =
+    meal.userIds?.length ? meal.userIds : meal.userId ? [meal.userId] : [];
+  const raw = `${meal.description} ${meal.type} ${participantRoles.join(" ")}`.toLowerCase();
   const tokens = raw
     .split(/[\s,./!?()[\]{}"'`~:;|\\-]+/g)
     .map((token) => token.trim())
@@ -121,9 +123,10 @@ export const getTimestampMillis = (value: unknown, fallback = Date.now()): numbe
 };
 
 export const serializeMealDocument = (id: string, data: StoredMealDoc): Meal => {
-  const userIds = Array.isArray(data.userIds)
+  const normalizedUserIds = Array.isArray(data.userIds)
     ? data.userIds.filter((value): value is UserRole => isUserRole(value))
     : [];
+  const userIds = normalizedUserIds.length > 0 ? normalizedUserIds : isUserRole(data.userId) ? [data.userId] : [];
   const timestamp = toMillis(data.timestamp, Date.now());
   const commentCount =
     typeof data.commentCount === "number" && Number.isFinite(data.commentCount)
@@ -145,15 +148,4 @@ export const serializeMealDocument = (id: string, data: StoredMealDoc): Meal => 
     commentCount,
     reactions: normalizeReactionMap(data.reactions),
   };
-};
-
-export const isLegacyParticipant = (meal: StoredMealDoc, role: string | null): boolean => {
-  if (!role) return false;
-  if (typeof meal.ownerUid === "string" && meal.ownerUid) return false;
-
-  if (Array.isArray(meal.userIds)) {
-    return meal.userIds.some((participant) => participant === role);
-  }
-
-  return typeof meal.userId === "string" && meal.userId === role;
 };

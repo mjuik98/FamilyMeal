@@ -11,6 +11,7 @@ import {
   where,
 } from "firebase/firestore";
 
+import { fetchAuthedJson } from "@/lib/client/auth-http";
 import { db } from "@/lib/firebase";
 import {
   SEARCH_FALLBACK_LIMIT,
@@ -24,6 +25,7 @@ import {
   serializeMealSnapshot,
   serializeWeeklyStatMealSnapshot,
 } from "@/lib/client/serializers";
+import type { UserRole } from "@/lib/types";
 
 const getDayRange = (date: Date) => {
   const startOfDay = new Date(date);
@@ -44,10 +46,11 @@ const getDayKey = (date: Date): string => {
 
 const matchesKeyword = (meal: Meal, keyword: string): boolean => {
   const lower = keyword.toLowerCase();
+  const participantRoles = meal.userIds?.length ? meal.userIds : meal.userId ? [meal.userId] : [];
   return (
     meal.description.toLowerCase().includes(lower) ||
     meal.type.toLowerCase().includes(lower) ||
-    Boolean(meal.userIds?.some((u) => u.toLowerCase().includes(lower))) ||
+    participantRoles.some((u) => u.toLowerCase().includes(lower)) ||
     Boolean(meal.keywords?.some((k) => k.includes(lower)))
   );
 };
@@ -201,4 +204,45 @@ export const searchMeals = async (keyword: string): Promise<Meal[]> => {
   return fallbackSnapshot.docs
     .map(convertMeal)
     .filter((meal) => matchesKeyword(meal, normalized));
+};
+
+export const listArchiveMeals = async (options: {
+  query?: string;
+  type?: Meal["type"] | "전체";
+  participant?: UserRole | "전체";
+  cursor?: string | null;
+  limit?: number;
+}): Promise<{ meals: Meal[]; nextCursor: string | null; hasMore: boolean; isPartial: boolean }> => {
+  const searchParams = new URLSearchParams();
+
+  if (options.query?.trim()) {
+    searchParams.set("q", options.query.trim());
+  }
+  if (options.type && options.type !== "전체") {
+    searchParams.set("type", options.type);
+  }
+  if (options.participant && options.participant !== "전체") {
+    searchParams.set("participant", options.participant);
+  }
+  if (typeof options.limit === "number" && Number.isFinite(options.limit)) {
+    searchParams.set("limit", String(Math.max(1, Math.floor(options.limit))));
+  }
+  if (options.cursor) {
+    searchParams.set("cursor", options.cursor);
+  }
+
+  const response = await fetchAuthedJson<{
+    ok: true;
+    meals: Meal[];
+    nextCursor?: string | null;
+    hasMore?: boolean;
+    isPartial?: boolean;
+  }>(`/api/archive?${searchParams.toString()}`);
+
+  return {
+    meals: Array.isArray(response.meals) ? response.meals : [],
+    nextCursor: typeof response.nextCursor === "string" ? response.nextCursor : null,
+    hasMore: response.hasMore === true,
+    isPartial: response.isPartial === true,
+  };
 };

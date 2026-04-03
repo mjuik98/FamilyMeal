@@ -3,6 +3,7 @@ export {
   getMealsForDate,
   getRecentMeals,
   getWeeklyStats,
+  listArchiveMeals,
   searchMeals,
   subscribeMealsForDate,
 } from "@/lib/client/meal-queries";

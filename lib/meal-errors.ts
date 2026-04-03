@@ -44,6 +44,9 @@ const toUpdateFailureMessage = (message: string): string => {
   if (message.includes("Meal not found")) {
     return "수정할 식사 기록을 찾지 못했습니다.";
   }
+  if (message.includes("Legacy meals must be migrated before mutation")) {
+    return "기존 기록이라 아직 수정할 수 없습니다. 소유자 이전 작업 후 다시 시도해 주세요.";
+  }
   if (message.includes("Not allowed")) {
     return "작성자만 수정할 수 있습니다.";
   }
@@ -51,6 +54,26 @@ const toUpdateFailureMessage = (message: string): string => {
     return "프로필에서 가족 역할을 먼저 선택해 주세요.";
   }
   return "식사 기록 수정에 실패했습니다. 잠시 후 다시 시도해 주세요.";
+};
+
+export const toMealDeleteErrorMessage = (error: unknown): string => {
+  const message = getMessage(error);
+  if (isAuthError(message)) {
+    return "로그인이 만료되었습니다. 다시 로그인해 주세요.";
+  }
+  if (message.includes("Legacy meals must be migrated before mutation")) {
+    return "기존 기록이라 아직 삭제할 수 없습니다. 소유자 이전 작업 후 다시 시도해 주세요.";
+  }
+  if (message.includes("Not allowed")) {
+    return "작성자만 삭제할 수 있습니다.";
+  }
+  if (message.includes("Meal not found")) {
+    return "삭제할 식사 기록을 찾지 못했습니다.";
+  }
+  if (message.includes("Unexpected delete status")) {
+    return "삭제 상태를 확인하지 못했습니다.";
+  }
+  return "삭제에 실패했습니다.";
 };
 
 export const toMealCreateErrorMessage = (

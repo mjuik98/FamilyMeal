@@ -16,7 +16,7 @@ const roleEmoji: Record<string, string> = {
 export default function MealPreviewCard({ meal }: { meal: Meal }) {
   const date = new Date(meal.timestamp);
   const timeString = date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-  const participants = meal.userIds ?? [];
+  const participants = meal.userIds?.length ? meal.userIds : meal.userId ? [meal.userId] : [];
   const reactionCount = countMealReactions(meal);
   const commentCount = meal.commentCount ?? 0;
 

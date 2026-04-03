@@ -620,6 +620,11 @@
   gap: 8px;
 }
 
+.archive-partial-note {
+  padding-top: 18px;
+  padding-bottom: 18px;
+}
+
 .calendar-shell {
   padding: 16px;
 }

@@ -41,6 +41,7 @@ function AddMealPageContent() {
   const [draftReady, setDraftReady] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const imagePreviewRequestSequenceRef = useRef(0);
   const recordDate = useMemo(
     () => parseDateKey(searchParams.get("date")) ?? (isQaMockMode() ? getQaAnchorDate() : new Date()),
     [searchParams]
@@ -87,10 +88,19 @@ function AddMealPageContent() {
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    const requestId = ++imagePreviewRequestSequenceRef.current;
 
     void readMealImagePreview(file)
-      .then(setImagePreview)
+      .then((preview) => {
+        if (requestId !== imagePreviewRequestSequenceRef.current) {
+          return;
+        }
+        setImagePreview(preview);
+      })
       .catch((error) => {
+        if (requestId !== imagePreviewRequestSequenceRef.current) {
+          return;
+        }
         console.error("Failed to read meal image preview", error);
       });
   };
@@ -183,6 +193,7 @@ function AddMealPageContent() {
                 <button
                   type="button"
                   onClick={() => {
+                    imagePreviewRequestSequenceRef.current += 1;
                     setImagePreview(null);
                     if (fileInputRef.current) fileInputRef.current.value = "";
                   }}

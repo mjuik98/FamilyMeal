@@ -17,7 +17,6 @@ const DEFAULT_CONTENT_TYPE = "image/jpeg";
 
 const UploadImageSchema = z.object({
   imageData: z.string().trim().min(1),
-  path: z.string().trim().min(1).max(256).optional(),
 });
 
 const parseDataUri = (imageData: string): { contentType: string; buffer: Buffer } => {
@@ -50,10 +49,7 @@ const getFileExtension = (contentType: string): string => {
   return "jpg";
 };
 
-const buildStoragePath = (uid: string, contentType: string, requestedPath?: string): string => {
-  if (requestedPath) {
-    return requestedPath.replace(/^\/+/, "");
-  }
+const buildStoragePath = (uid: string, contentType: string): string => {
   const extension = getFileExtension(contentType);
   return `meals/${uid}/${Date.now()}_${randomUUID()}.${extension}`;
 };
@@ -83,7 +79,7 @@ export async function POST(request: Request) {
       throw new RouteError("Storage bucket is not configured", 503);
     }
 
-    const objectPath = buildStoragePath(user.uid, contentType, parsed.data.path);
+    const objectPath = buildStoragePath(user.uid, contentType);
     const downloadToken = randomUUID();
     const file = adminStorage.bucket(bucketName).file(objectPath);
 

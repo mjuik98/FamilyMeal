@@ -33,6 +33,8 @@ const OWNER_UID = "owner-uid";
 const MOM_UID = "mom-uid";
 const OUTSIDER_UID = "outsider-uid";
 const MEAL_ID = "meal-1";
+const LEGACY_MEAL_ID = "legacy-meal-1";
+const MODERN_USER_ID_MEAL_ID = "modern-userid-meal-1";
 const COMMENT_ID = "comment-1";
 const ACTIVITY_ID = "activity-1";
 
@@ -85,6 +87,25 @@ test.beforeEach(async () => {
       commentCount: 1,
     });
 
+    await setDoc(doc(db, "meals", LEGACY_MEAL_ID), {
+      userId: ROLE_MOM,
+      userIds: [],
+      description: "\uB808\uAC70\uC2DC \uC2DD\uC0AC",
+      type: TYPE_LUNCH,
+      timestamp: Timestamp.fromMillis(Date.now()),
+      commentCount: 0,
+    });
+
+    await setDoc(doc(db, "meals", MODERN_USER_ID_MEAL_ID), {
+      ownerUid: OWNER_UID,
+      userId: ROLE_MOM,
+      userIds: [ROLE_DAD],
+      description: "\uD604\uB300 \uBB38\uC11C userId \uD63C\uC7AC",
+      type: TYPE_BREAKFAST,
+      timestamp: Timestamp.fromMillis(Date.now()),
+      commentCount: 0,
+    });
+
     await setDoc(doc(db, "meals", MEAL_ID, "comments", COMMENT_ID), {
       author: ROLE_DAD,
       authorUid: OWNER_UID,
@@ -130,6 +151,22 @@ test("owner can create meal, mismatched ownerUid is denied", async () => {
   );
 });
 
+test("modern meal creation rejects deprecated userId field", async () => {
+  const ownerDb = testEnv.authenticatedContext(OWNER_UID).firestore();
+
+  await assertFails(
+    setDoc(doc(ownerDb, "meals", "new-meal-with-legacy-userid"), {
+      ownerUid: OWNER_UID,
+      userId: ROLE_DAD,
+      userIds: [ROLE_DAD],
+      description: "\uD604\uB300 \uBB38\uC11C userId \uAE08\uC9C0",
+      type: TYPE_BREAKFAST,
+      timestamp: Timestamp.fromMillis(Date.now()),
+      commentCount: 0,
+    })
+  );
+});
+
 test("non-owner cannot edit meal body or commentCount", async () => {
   const momDb = testEnv.authenticatedContext(MOM_UID).firestore();
   const outsiderDb = testEnv.authenticatedContext(OUTSIDER_UID).firestore();
@@ -156,6 +193,18 @@ test("non-owner cannot edit meal body or commentCount", async () => {
   await assertFails(
     updateDoc(doc(ownerDb, "meals", MEAL_ID), {
       commentCount: 4,
+    })
+  );
+});
+
+test("legacy meal participants cannot mutate meal documents directly", async () => {
+  const momDb = testEnv.authenticatedContext(MOM_UID).firestore();
+
+  await assertFails(
+    updateDoc(doc(momDb, "meals", LEGACY_MEAL_ID), {
+      ownerUid: MOM_UID,
+      description: "\uB808\uAC70\uC2DC \uAE30\uB85D \uC784\uC758 \uC218\uC815",
+      userIds: [ROLE_MOM],
     })
   );
 });
@@ -210,6 +259,14 @@ test("meal participants can read meal", async () => {
   const momDb = testEnv.authenticatedContext(MOM_UID).firestore();
   await assertSucceeds(getDoc(doc(ownerDb, "meals", MEAL_ID)));
   await assertSucceeds(getDoc(doc(momDb, "meals", MEAL_ID)));
+});
+
+test("modern meals ignore legacy userId fallback for read access", async () => {
+  const ownerDb = testEnv.authenticatedContext(OWNER_UID).firestore();
+  const momDb = testEnv.authenticatedContext(MOM_UID).firestore();
+
+  await assertSucceeds(getDoc(doc(ownerDb, "meals", MODERN_USER_ID_MEAL_ID)));
+  await assertFails(getDoc(doc(momDb, "meals", MODERN_USER_ID_MEAL_ID)));
 });
 
 test("non-participant with profile cannot read meal", async () => {

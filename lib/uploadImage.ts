@@ -41,7 +41,7 @@ const fileToDataUri = (file: File): Promise<string> =>
     reader.readAsDataURL(file);
   });
 
-const uploadViaServer = async (imageData: string, path?: string): Promise<string> => {
+const uploadViaServer = async (imageData: string): Promise<string> => {
   const requestUpload = async (forceRefresh = false): Promise<Response> => {
     const token = await getAccessToken(forceRefresh);
     return fetch("/api/uploads/meal-image", {
@@ -51,7 +51,7 @@ const uploadViaServer = async (imageData: string, path?: string): Promise<string
         "Content-Type": "application/json",
       },
       cache: "no-store",
-      body: JSON.stringify({ imageData, path }),
+      body: JSON.stringify({ imageData }),
     });
   };
 
@@ -72,10 +72,7 @@ const uploadViaServer = async (imageData: string, path?: string): Promise<string
   return payload.imageUrl;
 };
 
-export const uploadImage = async (
-  imageData: string | File,
-  path?: string
-): Promise<string> => {
+export const uploadImage = async (imageData: string | File): Promise<string> => {
   const dataUri =
     typeof imageData === "string"
       ? imageData
@@ -86,5 +83,5 @@ export const uploadImage = async (
   }
 
   const compressedData = await compressImageDataUri(dataUri);
-  return uploadViaServer(compressedData, path);
+  return uploadViaServer(compressedData);
 };

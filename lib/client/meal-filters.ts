@@ -76,20 +76,19 @@ export const filterAndSortMeals = (
   );
   const filtered = derivedMeals.filter((entry) => {
     const { meal } = entry;
+    const participantRoles = meal.userIds?.length ? meal.userIds : meal.userId ? [meal.userId] : [];
     const matchesQuery =
       !normalizedQuery ||
       meal.description.toLowerCase().includes(normalizedQuery) ||
       meal.type.toLowerCase().includes(normalizedQuery) ||
-      Boolean(
-        meal.userIds?.some((uid) => uid.toLowerCase().includes(normalizedQuery))
-      );
+      Boolean(participantRoles.some((uid) => uid.toLowerCase().includes(normalizedQuery)));
 
     const matchesType =
       !options.type || options.type === "전체" || meal.type === options.type;
     const matchesParticipant =
       !options.participant ||
       options.participant === "전체" ||
-      Boolean(meal.userIds?.includes(options.participant));
+      Boolean(participantRoles.includes(options.participant));
     const matchesMineOnly =
       !options.mineOnly ||
       (Boolean(options.ownerUid) && meal.ownerUid === options.ownerUid);

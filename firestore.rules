@@ -82,12 +82,13 @@ service cloud.firestore {
       return hasUserProfile()
         && (
           (mealData.userIds is list && mealData.userIds.hasAny([currentUserRole()]))
-          || (mealData.userId is string && mealData.userId == currentUserRole())
+          || (isLegacyMeal(mealData) && mealData.userId is string && mealData.userId == currentUserRole())
         );
     }
 
     function isMealOwner(mealData) {
-      return signedIn() && mealData.ownerUid is string && mealData.ownerUid == request.auth.uid;
+      let ownerUid = mealData.ownerUid;
+      return signedIn() && ownerUid is string && ownerUid == request.auth.uid;
     }
 
     function isLegacyMeal(mealData) {
@@ -117,16 +118,12 @@ service cloud.firestore {
     }
 
     function canEditMealBody() {
-      return validMealDocument(request.resource.data)
-        && (
-          isMealOwner(resource.data)
-          || (isLegacyMeal(resource.data) && isMealParticipant(resource.data))
-        )
-        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['commentCount', 'reactions'])
-        && (
-          request.resource.data.ownerUid == resource.data.ownerUid
-          || (isLegacyMeal(resource.data) && request.resource.data.ownerUid == request.auth.uid)
-        );
+      let changedKeys = request.resource.data.diff(resource.data).affectedKeys();
+      return !isLegacyMeal(resource.data)
+        && validMealDocument(request.resource.data)
+        && resource.data.ownerUid is string
+        && isMealOwner(resource.data)
+        && !changedKeys.hasAny(['ownerUid', 'commentCount', 'reactions', 'userId']);
     }
 
     function validStoredCommentDocument(commentData) {
@@ -221,6 +218,7 @@ service cloud.firestore {
 
       allow create: if hasUserProfile()
         && validMealDocument(request.resource.data)
+        && !('userId' in request.resource.data)
         && request.resource.data.ownerUid == request.auth.uid
         && hasNoSeedReactions(request.resource.data)
         && request.resource.data.userIds.hasAny([currentUserRole()]);

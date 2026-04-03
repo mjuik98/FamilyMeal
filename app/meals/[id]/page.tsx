@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { ChevronLeft, Images } from "lucide-react";
@@ -25,6 +25,8 @@ export default function MealDetailPage() {
   const [meal, setMeal] = useState<Meal | null>(null);
   const [sameDayMeals, setSameDayMeals] = useState<Meal[]>([]);
   const [loadingMeal, setLoadingMeal] = useState(true);
+  const mealRequestSequenceRef = useRef(0);
+  const sameDayRequestSequenceRef = useRef(0);
 
   useEffect(() => {
     if (!loading && !userProfile?.role) {
@@ -36,27 +38,44 @@ export default function MealDetailPage() {
     if (!userProfile?.role) return;
 
     const currentRole = userProfile.role;
+    let active = true;
+    const requestId = ++mealRequestSequenceRef.current;
     setLoadingMeal(true);
     setSameDayMeals([]);
 
     const loadMeal = async () => {
       try {
         if (isQaMockMode()) {
+          if (!active || requestId !== mealRequestSequenceRef.current) {
+            return;
+          }
           setMeal(getQaMockMealById(currentRole, mealId));
           return;
         }
 
         const nextMeal = await getMealById(mealId);
+        if (!active || requestId !== mealRequestSequenceRef.current) {
+          return;
+        }
         setMeal(nextMeal);
       } catch (error) {
+        if (!active || requestId !== mealRequestSequenceRef.current) {
+          return;
+        }
         console.error("Failed to load meal detail", error);
         setMeal(null);
       } finally {
-        setLoadingMeal(false);
+        if (active && requestId === mealRequestSequenceRef.current) {
+          setLoadingMeal(false);
+        }
       }
     };
 
     void loadMeal();
+
+    return () => {
+      active = false;
+    };
   }, [mealId, userProfile?.role]);
 
   useEffect(() => {
@@ -64,10 +83,15 @@ export default function MealDetailPage() {
 
     const currentRole = userProfile.role;
     const mealDate = new Date(meal.timestamp);
+    let active = true;
+    const requestId = ++sameDayRequestSequenceRef.current;
 
     const loadSameDayMeals = async () => {
       try {
         if (isQaMockMode()) {
+          if (!active || requestId !== sameDayRequestSequenceRef.current) {
+            return;
+          }
           setSameDayMeals(
             createQaMockRecentMeals(currentRole, mealDate, mealDate).filter((item) => {
               const itemDate = new Date(item.timestamp);
@@ -82,14 +106,24 @@ export default function MealDetailPage() {
         }
 
         const nextMeals = await getMealsForDate(mealDate);
+        if (!active || requestId !== sameDayRequestSequenceRef.current) {
+          return;
+        }
         setSameDayMeals(nextMeals);
       } catch (error) {
+        if (!active || requestId !== sameDayRequestSequenceRef.current) {
+          return;
+        }
         console.error("Failed to load same-day meals", error);
         setSameDayMeals([meal]);
       }
     };
 
     void loadSameDayMeals();
+
+    return () => {
+      active = false;
+    };
   }, [meal, userProfile?.role]);
 
   if (loading) {
@@ -157,6 +191,11 @@ export default function MealDetailPage() {
           key={meal.id}
           meal={meal}
           sameDayMeals={sameDayMeals}
+          onDeleted={(result) => {
+            if (result.status === "completed" || result.status === "already_deleted") {
+              router.replace("/archive");
+            }
+          }}
           onSelectMeal={(nextMealId) => {
             if (nextMealId === meal.id) return;
             router.replace(`/meals/${nextMealId}`);

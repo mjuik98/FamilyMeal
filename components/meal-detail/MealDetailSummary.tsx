@@ -14,11 +14,13 @@ const roleEmoji: Record<string, string> = {
 export default function MealDetailSummary({
   meal,
   isOwner,
+  deleteDisabled = false,
   onEdit,
   onDelete,
 }: {
   meal: Meal;
   isOwner: boolean;
+  deleteDisabled?: boolean;
   onEdit: () => void;
   onDelete: () => void;
 }) {
@@ -29,7 +31,7 @@ export default function MealDetailSummary({
     day: "numeric",
     weekday: "long",
   });
-  const participants = meal.userIds ?? [];
+  const participants = meal.userIds?.length ? meal.userIds : meal.userId ? [meal.userId] : [];
 
   return (
     <section className="meal-detail-summary surface-card" data-testid="meal-detail-summary">
@@ -47,7 +49,13 @@ export default function MealDetailSummary({
             <button type="button" onClick={onEdit} title="수정" className="icon-button">
               <Pencil size={15} />
             </button>
-            <button type="button" onClick={onDelete} title="삭제" className="icon-button">
+            <button
+              type="button"
+              onClick={onDelete}
+              title="삭제"
+              className="icon-button"
+              disabled={deleteDisabled}
+            >
               <Trash2 size={15} />
             </button>
           </div>

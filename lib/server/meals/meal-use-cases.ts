@@ -6,7 +6,6 @@ import { deleteStorageObjectByUrl } from "@/lib/server/meals/meal-storage";
 import {
   buildMealKeywords,
   getTimestampMillis,
-  isLegacyParticipant,
   MealRouteError,
   normalizeImageUrl,
   normalizeMealDescription,
@@ -89,12 +88,10 @@ export const createMealDocument = async ({
 export const updateMealDocument = async ({
   mealId,
   uid,
-  role,
   input,
 }: {
   mealId: string;
   uid: string;
-  role: string | null;
   input: UpdateMealInput;
 }): Promise<Meal> => {
   const mealRef = adminDb.collection("meals").doc(mealId);
@@ -107,9 +104,11 @@ export const updateMealDocument = async ({
     }
 
     const current = snapshot.data() as StoredMealDoc;
+    if (typeof current.ownerUid !== "string" || current.ownerUid.trim().length === 0) {
+      throw new MealRouteError("Legacy meals must be migrated before mutation", 409);
+    }
     const isOwner = typeof current.ownerUid === "string" && current.ownerUid === uid;
-    const legacyAllowed = isLegacyParticipant(current, role);
-    if (!isOwner && !legacyAllowed) {
+    if (!isOwner) {
       throw new MealRouteError("Not allowed", 403);
     }
 
@@ -119,6 +118,10 @@ export const updateMealDocument = async ({
     let nextUserIds = Array.isArray(current.userIds) ? current.userIds.filter(isUserRole) : [];
     let nextImageUrl = typeof current.imageUrl === "string" ? current.imageUrl : undefined;
     let nextOwnerUid = typeof current.ownerUid === "string" ? current.ownerUid : undefined;
+
+    if ("userId" in current) {
+      dataToUpdate.userId = FieldValue.delete();
+    }
 
     if ("ownerUid" in input && input.ownerUid !== undefined) {
       if (typeof input.ownerUid !== "string" || input.ownerUid !== uid) {
@@ -168,7 +171,7 @@ export const updateMealDocument = async ({
         description: nextDescription,
         type: nextType,
         userIds: nextUserIds,
-        userId: isUserRole(current.userId) ? current.userId : undefined,
+        userId: undefined,
       });
     }
 
@@ -183,13 +186,14 @@ export const updateMealDocument = async ({
       ...("userIds" in dataToUpdate ? { userIds: nextUserIds } : {}),
       ...("imageUrl" in input ? { imageUrl: nextImageUrl } : {}),
       ...("ownerUid" in dataToUpdate ? { ownerUid: nextOwnerUid } : {}),
+      ...("userId" in dataToUpdate ? { userId: undefined } : {}),
       ...("keywords" in dataToUpdate
         ? {
             keywords: buildMealKeywords({
               description: nextDescription,
               type: nextType,
               userIds: nextUserIds,
-              userId: isUserRole(current.userId) ? current.userId : undefined,
+              userId: undefined,
             }),
           }
         : {}),
@@ -209,8 +213,7 @@ export const updateMealDocument = async ({
 
 export const planMealDeleteOperation = async (
   mealId: string,
-  uid: string,
-  role: string | null
+  uid: string
 ): Promise<MealDeletePlan> => {
   const mealRef = adminDb.collection("meals").doc(mealId);
   const jobRef = adminDb.collection(DELETE_JOB_COLLECTION).doc(mealId);
@@ -224,9 +227,11 @@ export const planMealDeleteOperation = async (
     }
 
     const meal = mealSnap.data() as StoredMealDoc;
+    if (typeof meal.ownerUid !== "string" || meal.ownerUid.trim().length === 0) {
+      throw new MealRouteError("Legacy meals must be migrated before mutation", 409);
+    }
     const isOwner = typeof meal.ownerUid === "string" && meal.ownerUid === uid;
-    const legacyAllowed = isLegacyParticipant(meal, role);
-    if (!isOwner && !legacyAllowed) {
+    if (!isOwner) {
       throw new MealRouteError("Not allowed", 403);
     }
 

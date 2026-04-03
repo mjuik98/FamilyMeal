@@ -71,8 +71,11 @@ const normalizeCommentCount = (value: unknown, fallback: number): number =>
   typeof value === "number" && Number.isFinite(value) ? Math.max(0, Math.floor(value)) : fallback;
 
 const mealParticipants = (mealData: Partial<Meal> & { userIds?: unknown; userId?: unknown }): UserRole[] => {
-  if (Array.isArray(mealData.userIds)) {
-    return mealData.userIds.filter((role): role is UserRole => isUserRole(role));
+  const normalizedUserIds = Array.isArray(mealData.userIds)
+    ? mealData.userIds.filter((role): role is UserRole => isUserRole(role))
+    : [];
+  if (normalizedUserIds.length > 0) {
+    return normalizedUserIds;
   }
   if (isUserRole(mealData.userId)) {
     return [mealData.userId];

@@ -7,7 +7,7 @@
 - App Router 기반 클라이언트/서버 혼합 구조
 - Firebase Auth + Firestore + Storage 사용
 - 댓글/반응/프로필 설정은 서버 API 경유
-- 홈 화면은 주간 저널 중심 UI, 아카이브는 검색/필터 중심 UI
+- 홈 화면은 주간 저널 중심 UI, 아카이브는 서버 API 기반 검색/필터/페이지네이션 UI
 - QA 전용 라우트는 운영 환경에서 토큰으로 차단
 - PWA 는 `NEXT_PUBLIC_ENABLE_PWA=true` 일 때만 활성화
 
@@ -54,6 +54,8 @@ npm run migrate:comments:dry
 npm run migrate:comments
 npm run migrate:meals:dry
 npm run migrate:meals
+npm run migrate:owners:dry
+npm run migrate:owners
 ```
 
 ## 환경 변수
@@ -142,4 +144,5 @@ npm run test:ui
 npm run lint
 npm run typecheck
 npm run build
+npm run test:e2e
 ```

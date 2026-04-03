@@ -9,15 +9,15 @@ import FilterChips from "@/components/FilterChips";
 import MealPreviewCard from "@/components/MealPreviewCard";
 import PageHeader from "@/components/PageHeader";
 import { useUser } from "@/context/UserContext";
-import { filterAndSortMeals, getRecentMeals, searchMeals } from "@/lib/client/meals";
+import { listArchiveMeals } from "@/lib/client/meals";
 import { createQaMockRecentMeals } from "@/lib/qa/fixtures";
 import { isQaMockMode } from "@/lib/qa/mode";
+import { filterAndSortMeals } from "@/lib/client/meal-filters";
 import type { Meal, UserRole } from "@/lib/types";
 
 const TYPE_OPTIONS = ["전체", "아침", "점심", "저녁", "간식"] as const;
 const USER_OPTIONS = ["전체", "아빠", "엄마", "딸", "아들"] as const;
-const ARCHIVE_INITIAL_VISIBLE = 8;
-const ARCHIVE_PAGE_SIZE = 4;
+const ARCHIVE_PAGE_SIZE = 24;
 
 const getArchiveMonthKey = (timestamp: number) => {
   const date = new Date(timestamp);
@@ -35,10 +35,13 @@ export default function ArchivePage() {
 
   const [sourceMeals, setSourceMeals] = useState<Meal[]>([]);
   const [loadingMeals, setLoadingMeals] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [query, setQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState<(typeof TYPE_OPTIONS)[number]>("전체");
   const [userFilter, setUserFilter] = useState<(typeof USER_OPTIONS)[number]>("전체");
-  const [visibleCount, setVisibleCount] = useState(ARCHIVE_INITIAL_VISIBLE);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [hasMore, setHasMore] = useState(false);
+  const [isPartial, setIsPartial] = useState(false);
   const deferredQuery = useDeferredValue(query.trim());
   const requestSequenceRef = useRef(0);
 
@@ -57,26 +60,47 @@ export default function ArchivePage() {
 
     const loadMeals = async () => {
       setLoadingMeals(true);
+      setLoadingMore(false);
       try {
         if (isQaMockMode()) {
           if (!active || requestId !== requestSequenceRef.current) {
             return;
           }
-          setSourceMeals(createQaMockRecentMeals(currentRole));
+          const qaMeals = filterAndSortMeals(createQaMockRecentMeals(currentRole), {
+            query: deferredQuery,
+            type: typeFilter,
+            participant: userFilter === "전체" ? "전체" : (userFilter as UserRole),
+            sort: "recent",
+          });
+          setSourceMeals(qaMeals);
+          setNextCursor(null);
+          setHasMore(false);
+          setIsPartial(false);
           return;
         }
 
-        const nextMeals = deferredQuery ? await searchMeals(deferredQuery) : await getRecentMeals();
+        const response = await listArchiveMeals({
+          query: deferredQuery,
+          type: typeFilter,
+          participant: userFilter,
+          limit: ARCHIVE_PAGE_SIZE,
+        });
         if (!active || requestId !== requestSequenceRef.current) {
           return;
         }
-        setSourceMeals(nextMeals);
+        setSourceMeals(response.meals);
+        setNextCursor(response.nextCursor);
+        setHasMore(response.hasMore);
+        setIsPartial(response.isPartial);
       } catch (error) {
         if (!active || requestId !== requestSequenceRef.current) {
           return;
         }
         console.error("Failed to load archive meals", error);
         setSourceMeals([]);
+        setNextCursor(null);
+        setHasMore(false);
+        setIsPartial(false);
       } finally {
         if (active && requestId === requestSequenceRef.current) {
           setLoadingMeals(false);
@@ -89,44 +113,25 @@ export default function ArchivePage() {
     return () => {
       active = false;
     };
-  }, [deferredQuery, userProfile?.role]);
-
-  useEffect(() => {
-    setVisibleCount(ARCHIVE_INITIAL_VISIBLE);
-  }, [query, typeFilter, userFilter]);
-
-  const displayedMeals = useMemo(
-    () =>
-      filterAndSortMeals(sourceMeals, {
-        query,
-        type: typeFilter,
-        participant: userFilter === "전체" ? "전체" : (userFilter as UserRole),
-        sort: "recent",
-      }),
-    [query, sourceMeals, typeFilter, userFilter]
-  );
-
-  const visibleMeals = useMemo(
-    () => displayedMeals.slice(0, visibleCount),
-    [displayedMeals, visibleCount]
-  );
+  }, [deferredQuery, typeFilter, userFilter, userProfile?.role]);
 
   const groupedMeals = useMemo(() => {
     const groups = new Map<string, Meal[]>();
-    visibleMeals.forEach((meal) => {
+    sourceMeals.forEach((meal) => {
       const monthKey = getArchiveMonthKey(meal.timestamp);
       const bucket = groups.get(monthKey) ?? [];
       bucket.push(meal);
       groups.set(monthKey, bucket);
     });
     return Array.from(groups.entries());
-  }, [visibleMeals]);
+  }, [sourceMeals]);
 
   const suggestedUsers = useMemo(() => {
     const counts = new Map<UserRole, number>();
 
-    displayedMeals.forEach((meal) => {
-      meal.userIds?.forEach((role) => {
+    sourceMeals.forEach((meal) => {
+      const participantRoles = meal.userIds?.length ? meal.userIds : meal.userId ? [meal.userId] : [];
+      participantRoles.forEach((role) => {
         counts.set(role, (counts.get(role) ?? 0) + 1);
       });
     });
@@ -136,7 +141,48 @@ export default function ArchivePage() {
       .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "ko"))
       .slice(0, 3)
       .map(([role]) => role);
-  }, [displayedMeals, userFilter]);
+  }, [sourceMeals, userFilter]);
+
+  const loadMoreMeals = async () => {
+    if (!hasMore || !nextCursor || loadingMore || isQaMockMode()) {
+      return;
+    }
+
+    const requestId = requestSequenceRef.current;
+    setLoadingMore(true);
+    try {
+      const response = await listArchiveMeals({
+        query: deferredQuery,
+        type: typeFilter,
+        participant: userFilter,
+        cursor: nextCursor,
+        limit: ARCHIVE_PAGE_SIZE,
+      });
+
+      if (requestId !== requestSequenceRef.current) {
+        return;
+      }
+
+      setSourceMeals((prev) => {
+        const merged = new Map<string, Meal>();
+        prev.forEach((meal) => merged.set(meal.id, meal));
+        response.meals.forEach((meal) => merged.set(meal.id, meal));
+        return Array.from(merged.values()).sort((left, right) => right.timestamp - left.timestamp);
+      });
+      setNextCursor(response.nextCursor);
+      setHasMore(response.hasMore);
+      setIsPartial(response.isPartial);
+    } catch (error) {
+      if (requestId !== requestSequenceRef.current) {
+        return;
+      }
+      console.error("Failed to load more archive meals", error);
+    } finally {
+      if (requestId === requestSequenceRef.current) {
+        setLoadingMore(false);
+      }
+    }
+  };
 
   if (loading) {
     return (
@@ -205,11 +251,19 @@ export default function ArchivePage() {
           </div>
         </section>
 
+        {isPartial && (
+          <div className="surface-card empty-state archive-partial-note" data-testid="archive-partial-note">
+            <p className="empty-state-copy">
+              검색 범위가 넓어 일부 오래된 기록은 다음 페이지에서 이어서 불러옵니다.
+            </p>
+          </div>
+        )}
+
         {loadingMeals ? (
           <div className="surface-card empty-state">
             <div className="spinner" style={{ margin: "0 auto" }} />
           </div>
-        ) : displayedMeals.length > 0 ? (
+        ) : sourceMeals.length > 0 ? (
           <div className="page-stack">
             {groupedMeals.map(([monthKey, meals]) => (
               <section
@@ -229,14 +283,15 @@ export default function ArchivePage() {
               </section>
             ))}
 
-            {displayedMeals.length > visibleCount && (
+            {hasMore && (
               <button
                 type="button"
                 className="secondary-button"
-                onClick={() => setVisibleCount((prev) => prev + ARCHIVE_PAGE_SIZE)}
+                onClick={() => void loadMoreMeals()}
                 data-testid="archive-load-more"
+                disabled={loadingMore}
               >
-                기록 더 보기
+                {loadingMore ? "기록을 더 불러오는 중..." : "기록 더 보기"}
               </button>
             )}
           </div>
@@ -244,7 +299,22 @@ export default function ArchivePage() {
           <section className="surface-card empty-state">
             <div className="empty-state-icon">🔎</div>
             <h2 className="empty-state-title">맞는 기록이 없어요</h2>
-            <p className="empty-state-copy">검색어를 지우거나 필터를 바꾸면 다른 기록을 볼 수 있습니다.</p>
+            <p className="empty-state-copy">
+              {hasMore
+                ? "검색 범위를 더 불러오면 오래된 기록에서 일치 항목이 나올 수 있습니다."
+                : "검색어를 지우거나 필터를 바꾸면 다른 기록을 볼 수 있습니다."}
+            </p>
+            {hasMore && (
+              <button
+                type="button"
+                className="secondary-button empty-state-cta"
+                onClick={() => void loadMoreMeals()}
+                data-testid="archive-load-more"
+                disabled={loadingMore}
+              >
+                {loadingMore ? "기록을 더 불러오는 중..." : "기록 더 보기"}
+              </button>
+            )}
           </section>
         )}
       </div>

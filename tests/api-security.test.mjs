@@ -37,6 +37,11 @@ test("firestore rules lock client-side role changes and validate optional fields
   assert.match(rules, /request\.resource\.data\.role == resource\.data\.role/);
   assert.match(rules, /function validImageUrl/);
   assert.match(rules, /function validKeywords/);
+  assert.doesNotMatch(rules, /isLegacyMeal\(resource\.data\) && isMealParticipant\(resource\.data\)/);
+  assert.match(rules, /isLegacyMeal\(mealData\) && mealData\.userId is string && mealData\.userId == currentUserRole\(\)/);
+  assert.match(rules, /resource\.data\.ownerUid is string/);
+  assert.match(rules, /!\('userId' in request\.resource\.data\)/);
+  assert.match(rules, /!changedKeys\.hasAny\(\['ownerUid', 'commentCount', 'reactions', 'userId'\]\)/);
 });
 
 test("profile settings and activity logging stay on the server side", () => {
@@ -63,6 +68,17 @@ test("meal image uploads are handled by authenticated server route", () => {
   assert.match(uploadRoute, /serverEnv\.storageBucket/);
   assert.match(uploadHelper, /\/api\/uploads\/meal-image/);
   assert.doesNotMatch(uploadHelper, /firebase\/storage/);
+});
+
+test("meal image uploads no longer accept caller-controlled storage paths", () => {
+  const uploadRoute = read("app/api/uploads/meal-image/route.ts");
+  const uploadHelper = read("lib/uploadImage.ts");
+
+  assert.doesNotMatch(uploadRoute, /path:\s*z\.string/);
+  assert.match(uploadRoute, /return `meals\/\$\{uid\}\/\$\{Date\.now\(\)\}_\$\{randomUUID\(\)\}\.\$\{extension\}`/);
+  assert.doesNotMatch(uploadRoute, /requestedPath/);
+  assert.doesNotMatch(uploadHelper, /path\?: string/);
+  assert.doesNotMatch(uploadHelper, /JSON\.stringify\(\{ imageData, path \}\)/);
 });
 
 test("meal routes delegate to extracted server meal modules", () => {
@@ -99,6 +115,89 @@ test("meal routes delegate to extracted server meal modules", () => {
   assert.match(mealStorage, /export const deleteStorageObjectByUrl = async/);
   assert.doesNotMatch(mealMutations, /await addDoc\(mealsRef/);
   assert.doesNotMatch(mealMutations, /await updateDoc\(mealRef/);
+});
+
+test("meal mutations fail closed for legacy records without ownerUid", () => {
+  const serverMealsBarrel = read("lib/server-meals.ts");
+  const mealUseCases = read("lib/server/meals/meal-use-cases.ts");
+  const mealTypes = read("lib/server/meals/meal-types.ts");
+
+  assert.match(mealUseCases, /Legacy meals must be migrated before mutation/);
+  assert.doesNotMatch(mealUseCases, /legacyAllowed/);
+  assert.doesNotMatch(mealUseCases, /isLegacyParticipant/);
+  assert.doesNotMatch(mealTypes, /export const isLegacyParticipant =/);
+  assert.doesNotMatch(serverMealsBarrel, /isLegacyParticipant/);
+});
+
+test("owner backfill migration script exists for legacy meals", () => {
+  const scriptPath = path.join(process.cwd(), "scripts", "backfill-meal-owners.mjs");
+  assert.equal(fs.existsSync(scriptPath), true);
+
+  const source = fs.readFileSync(scriptPath, "utf8");
+  assert.match(source, /--dry-run/);
+  assert.match(source, /ownerUid/);
+  assert.match(source, /resolveLegacyMealOwnerUid/);
+});
+
+test("archive queries are handled by authenticated server route and server meal helpers", () => {
+  const archiveRoute = read("app/api/archive/route.ts");
+  const archiveUseCases = read("lib/server/meals/archive-use-cases.ts");
+  const archiveTypes = read("lib/server/meals/archive-types.ts");
+  const serverMealsBarrel = read("lib/server-meals.ts");
+
+  assert.match(archiveRoute, /verifyRequestUser/);
+  assert.match(archiveRoute, /listArchiveMeals/);
+  assert.match(archiveUseCases, /export const listArchiveMeals = async/);
+  assert.match(archiveTypes, /export const parseArchiveQueryParams =/);
+  assert.match(archiveTypes, /export const encodeArchiveCursor =/);
+  assert.match(serverMealsBarrel, /from "@\/lib\/server\/meals\/archive-use-cases"/);
+  assert.match(serverMealsBarrel, /from "@\/lib\/server\/meals\/archive-types"/);
+});
+
+test("client delete mutations preserve structured route status for callers", () => {
+  const mealMutations = read("lib/client/meal-mutations.ts");
+
+  assert.match(mealMutations, /export type MealDeleteResult = \{/);
+  assert.match(mealMutations, /deleted: boolean;/);
+  assert.match(mealMutations, /export type MealDeleteStatus =/);
+  assert.match(mealMutations, /status: MealDeleteStatus;/);
+  assert.match(mealMutations, /const isMealDeleteStatus = \(value: unknown\): value is MealDeleteStatus =>/);
+  assert.match(mealMutations, /if \(!isMealDeleteStatus\(response\.status\)\) \{/);
+  assert.match(mealMutations, /throw new Error\("Unexpected delete status"\)/);
+  assert.match(mealMutations, /export const deleteMeal = async \(id: string\): Promise<MealDeleteResult> => \{/);
+  assert.match(mealMutations, /const response = await fetchAuthedJson<\{ ok: true; deleted: boolean; status: string \}>\(/);
+});
+
+test("server meal serialization normalizes legacy userId into userIds", () => {
+  const mealTypes = read("lib/server/meals/meal-types.ts");
+  const serializers = read("lib/client/serializers.ts");
+
+  assert.match(
+    mealTypes,
+    /const normalizedUserIds = Array\.isArray\(data\.userIds\)\s*\?\s*data\.userIds\.filter\(\(value\): value is UserRole => isUserRole\(value\)\)\s*:\s*\[\];/s
+  );
+  assert.match(
+    mealTypes,
+    /const userIds = normalizedUserIds\.length > 0 \? normalizedUserIds : isUserRole\(data\.userId\) \? \[data\.userId\] : \[\];/
+  );
+  assert.match(
+    serializers,
+    /const normalizedUserIds = Array\.isArray\(mealData\.userIds\)\s*\?\s*mealData\.userIds\.filter\(\(role\): role is UserRole => isUserRole\(role\)\)\s*:\s*\[\];/s
+  );
+  assert.match(
+    serializers,
+    /if \(normalizedUserIds\.length > 0\) \{\s*return normalizedUserIds;\s*\}\s*if \(isUserRole\(mealData\.userId\)\) \{/s
+  );
+});
+
+test("server meal updates remove deprecated userId from modern write paths", () => {
+  const mealUseCases = read("lib/server/meals/meal-use-cases.ts");
+
+  assert.match(mealUseCases, /dataToUpdate\.userId = FieldValue\.delete\(\);/);
+  assert.doesNotMatch(
+    mealUseCases,
+    /userId: isUserRole\(current\.userId\) \? current\.userId : undefined/
+  );
 });
 
 test("route handlers share common route error helpers", () => {

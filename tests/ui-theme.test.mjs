@@ -216,6 +216,23 @@ test("home is rewritten as a weekly photo journal with a persistent bottom dock"
   assert.match(commentComposer, /comment-reply-target/);
 });
 
+test("archive page uses server-backed pagination instead of fixed recent client snapshots", () => {
+  const archivePage = read("app/archive/page.tsx");
+  const mealQueries = read("lib/client/meal-queries.ts");
+
+  assert.match(archivePage, /nextCursor/);
+  assert.match(archivePage, /loadMoreMeals/);
+  assert.match(archivePage, /hasMore/);
+  assert.doesNotMatch(archivePage, /visibleCount/);
+  assert.doesNotMatch(archivePage, /getRecentMeals\(/);
+  assert.doesNotMatch(archivePage, /searchMeals\(/);
+
+  assert.match(mealQueries, /export const listArchiveMeals = async/);
+  assert.match(mealQueries, /\/api\/archive\?/);
+  assert.match(archivePage, /archive-partial-note/);
+  assert.match(mealQueries, /isPartial\?: boolean/);
+});
+
 test("meal card uses extracted hooks, shared comment subscription store, and shared time formatting", () => {
   const mealCard = read("components/MealCard.tsx");
   const mealCommentsHook = read("lib/features/comments/ui/useMealCommentsController.ts");
@@ -243,6 +260,18 @@ test("meal card uses extracted hooks, shared comment subscription store, and sha
   assert.match(commentThread, /from "@\/lib\/types"/);
   assert.doesNotMatch(commentItem, /formatRelativeTime:/);
   assert.doesNotMatch(conversationPanel, /formatRelativeTime:/);
+});
+
+test("edit page blocks legacy meal mutation locally and maps migration-required errors", () => {
+  const editPage = read("app/edit/[id]/page.tsx");
+  const mealErrors = read("lib/meal-errors.ts");
+
+  assert.match(editPage, /legacy meals require owner migration/i);
+  assert.match(editPage, /등록 이전 기록은 소유자 이전 작업 후 수정할 수 있습니다\./);
+  assert.doesNotMatch(editPage, /needsOwnerAdoption/);
+  assert.doesNotMatch(editPage, /ownerUid: userProfile\.uid/);
+  assert.match(mealErrors, /Legacy meals must be migrated before mutation/);
+  assert.match(mealErrors, /기존 기록이라 아직 수정할 수 없습니다\./);
 });
 
 test("navbar styles live in shared CSS and week strip exposes accessible labels", () => {
@@ -293,6 +322,8 @@ test("default build script preserves cache and exposes explicit clean build", ()
   assert.match(packageJson, /"build":\s*"next build --webpack"/);
   assert.match(packageJson, /"build:clean":\s*"node scripts\/clean-next-dir\.mjs && next build --webpack"/);
   assert.doesNotMatch(packageJson, /"build":\s*"node scripts\/clean-next-dir\.mjs/);
+  assert.match(packageJson, /"test:api":\s*"node --test tests\/api-security\.test\.mjs tests\/archive-query\.test\.mjs"/);
+  assert.match(packageJson, /"ci:verify":\s*"[^"]*npm run test:e2e"/);
 });
 
 test("archive search defers remote querying until input settles", () => {
@@ -301,7 +332,8 @@ test("archive search defers remote querying until input settles", () => {
   assert.match(archivePage, /useDeferredValue/);
   assert.match(archivePage, /deferredQuery/);
   assert.match(archivePage, /query\.trim\(\)/);
-  assert.match(archivePage, /searchMeals\(deferredQuery\)/);
+  assert.match(archivePage, /listArchiveMeals\(\{/);
+  assert.match(archivePage, /query: deferredQuery/);
   assert.match(archivePage, /requestSequenceRef/);
   assert.match(archivePage, /requestId !== requestSequenceRef\.current/);
   assert.match(archivePage, /let active = true/);
@@ -452,6 +484,78 @@ test("edit flow uses server mutation helper and specific failure copy", () => {
   assert.match(mealErrors, /식사 기록 수정에 실패했습니다\./);
 });
 
+test("detail actions fail closed for legacy meals and preserve delete status handling", () => {
+  const mealCard = read("components/MealCard.tsx");
+  const mealMutations = read("lib/client/meal-mutations.ts");
+  const mealErrors = read("lib/meal-errors.ts");
+  const mealDetailSummary = read("components/meal-detail/MealDetailSummary.tsx");
+
+  assert.match(mealCard, /const isOwner = useMemo\(\(\) => \{\s*if \(!userProfile\) return false;\s*return Boolean\(meal\.ownerUid && meal\.ownerUid === userProfile\.uid\);/s);
+  assert.doesNotMatch(mealCard, /uids\[0\] === userProfile\.role/);
+  assert.match(mealMutations, /type MealDeleteStatus =/);
+  assert.match(mealMutations, /type MealDeleteResult = \{\s*deleted: boolean;\s*status: MealDeleteStatus;\s*\}/s);
+  assert.match(mealCard, /switch \(result\.status\)/);
+  assert.match(mealCard, /const \[isDeleting, setIsDeleting\] = useState\(false\);/);
+  assert.match(mealCard, /if \(isDeleting\) return;/);
+  assert.match(mealCard, /case "already_processing":/);
+  assert.match(mealCard, /삭제 작업이 이미 진행 중입니다\./);
+  assert.match(mealCard, /"info"/);
+  assert.match(mealErrors, /기존 기록이라 아직 삭제할 수 없습니다\./);
+  assert.match(mealCard, /case "already_deleted":/);
+  assert.match(mealCard, /이미 삭제된 기록입니다\./);
+  assert.match(mealErrors, /Unexpected delete status/);
+  assert.match(mealErrors, /삭제 상태를 확인하지 못했습니다\./);
+  assert.doesNotMatch(mealCard, /showToast\("삭제 상태를 확인하지 못했습니다\.", "error"\)/);
+  assert.match(mealDetailSummary, /deleteDisabled\?: boolean;/);
+  assert.match(mealDetailSummary, /disabled=\{deleteDisabled\}/);
+});
+
+test("legacy participant fallback is shared across archive cards and detail summary", () => {
+  const archivePage = read("app/archive/page.tsx");
+  const mealPreviewCard = read("components/MealPreviewCard.tsx");
+  const mealDetailSummary = read("components/meal-detail/MealDetailSummary.tsx");
+  const mealFilters = read("lib/client/meal-filters.ts");
+
+  assert.match(mealPreviewCard, /meal\.userIds\?\.length \? meal\.userIds : meal\.userId \? \[meal\.userId\] : \[\]/);
+  assert.match(mealDetailSummary, /meal\.userIds\?\.length \? meal\.userIds : meal\.userId \? \[meal\.userId\] : \[\]/);
+  assert.match(archivePage, /const participantRoles = meal\.userIds\?\.length \? meal\.userIds : meal\.userId \? \[meal\.userId\] : \[\]/);
+  assert.match(mealFilters, /const participantRoles = meal\.userIds\?\.length \? meal\.userIds : meal\.userId \? \[meal\.userId\] : \[\]/);
+});
+
+test("detail page guards meal and same-day fetches against stale responses", () => {
+  const mealDetailPage = read("app/meals/[id]/page.tsx");
+  const editPage = read("app/edit/[id]/page.tsx");
+
+  assert.match(mealDetailPage, /const mealRequestSequenceRef = useRef\(0\)/);
+  assert.match(mealDetailPage, /const sameDayRequestSequenceRef = useRef\(0\)/);
+  assert.match(mealDetailPage, /const requestId = \+\+mealRequestSequenceRef\.current/);
+  assert.match(mealDetailPage, /const requestId = \+\+sameDayRequestSequenceRef\.current/);
+  assert.match(mealDetailPage, /if \(!active \|\| requestId !== mealRequestSequenceRef\.current\)/);
+  assert.match(mealDetailPage, /if \(!active \|\| requestId !== sameDayRequestSequenceRef\.current\)/);
+  assert.match(editPage, /const loadRequestSequenceRef = useRef\(0\)/);
+  assert.match(editPage, /const currentUid = userProfile\?\.uid/);
+  assert.match(editPage, /const currentRole = userProfile\?\.role/);
+  assert.match(editPage, /const showToastRef = useRef\(showToast\)/);
+  assert.match(editPage, /let active = true;/);
+  assert.match(editPage, /const requestId = \+\+loadRequestSequenceRef\.current/);
+  assert.match(editPage, /if \(!active \|\| requestId !== loadRequestSequenceRef\.current\) \{/);
+  assert.doesNotMatch(editPage, /\}, \[mealId, router, showToast, userProfile\]\);/);
+});
+
+test("detail page exits to archive after terminal delete outcomes and keyword search uses normalized participants", () => {
+  const mealCard = read("components/MealCard.tsx");
+  const mealDetailPage = read("app/meals/[id]/page.tsx");
+  const mealQueries = read("lib/client/meal-queries.ts");
+
+  assert.match(mealCard, /onDeleted\?: \(result: MealDeleteResult\) => void/);
+  assert.match(mealCard, /onDeleted\?\.\(result\)/);
+  assert.match(mealDetailPage, /onDeleted=\{\(result\) => \{/);
+  assert.match(mealDetailPage, /if \(result\.status === "completed" \|\| result\.status === "already_deleted"\)/);
+  assert.match(mealDetailPage, /router\.replace\("\/archive"\)/);
+  assert.match(mealQueries, /const participantRoles = meal\.userIds\?\.length \? meal\.userIds : meal\.userId \? \[meal\.userId\] : \[\]/);
+  assert.match(mealQueries, /participantRoles\.some\(\(u\) => u\.toLowerCase\(\)\.includes\(lower\)\)/);
+});
+
 test("meal delete route uses idempotent server cleanup flow", () => {
   const deleteRoute = read("app/api/meals/[id]/route.ts");
   const mealUseCases = read("lib/server/meals/meal-use-cases.ts");
@@ -593,6 +697,12 @@ test("meal editor pages reuse focused meal form helpers and direct public env co
   assert.match(editPage, /from "@\/lib\/meal-form"/);
   assert.doesNotMatch(addPage, /new FileReader\(/);
   assert.doesNotMatch(editPage, /new FileReader\(/);
+  assert.match(addPage, /const imagePreviewRequestSequenceRef = useRef\(0\)/);
+  assert.match(editPage, /const imagePreviewRequestSequenceRef = useRef\(0\)/);
+  assert.match(addPage, /const requestId = \+\+imagePreviewRequestSequenceRef\.current/);
+  assert.match(editPage, /const requestId = \+\+imagePreviewRequestSequenceRef\.current/);
+  assert.match(addPage, /if \(requestId !== imagePreviewRequestSequenceRef\.current\) \{\s*return;\s*\}/);
+  assert.match(editPage, /if \(requestId !== imagePreviewRequestSequenceRef\.current\) \{\s*return;\s*\}/);
   assert.doesNotMatch(addPage, /const toggleUser =/);
   assert.doesNotMatch(editPage, /const toggleUser =/);
 

@@ -21,6 +21,8 @@ export default function EditMealPage() {
   const params = useParams();
   const mealId = params.id as string;
   const { showToast } = useToast();
+  const currentUid = userProfile?.uid;
+  const currentRole = userProfile?.role;
 
   const [description, setDescription] = useState("");
   const [type, setType] = useState<Meal["type"]>("점심");
@@ -28,27 +30,41 @@ export default function EditMealPage() {
   const [selectedUsers, setSelectedUsers] = useState<UserRole[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [needsOwnerAdoption, setNeedsOwnerAdoption] = useState(false);
+  const [requiresLegacyMigration, setRequiresLegacyMigration] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const loadRequestSequenceRef = useRef(0);
+  const imagePreviewRequestSequenceRef = useRef(0);
+  const showToastRef = useRef(showToast);
 
   useEffect(() => {
-    if (!userProfile?.role) {
+    showToastRef.current = showToast;
+  }, [showToast]);
+
+  useEffect(() => {
+    if (!currentRole) {
       router.replace("/");
       return;
     }
 
+    let active = true;
+    const requestId = ++loadRequestSequenceRef.current;
+    setLoading(true);
+
     const loadMeal = async () => {
       try {
         const meal = await getMealById(mealId);
+        if (!active || requestId !== loadRequestSequenceRef.current) {
+          return;
+        }
         if (!meal) {
-          showToast("해당 기록을 찾을 수 없습니다.", "error");
+          showToastRef.current("해당 기록을 찾을 수 없습니다.", "error");
           router.push("/");
           return;
         }
 
-        if (meal.ownerUid && meal.ownerUid !== userProfile.uid) {
-          showToast("작성자만 수정할 수 있습니다.", "error");
+        if (meal.ownerUid && meal.ownerUid !== currentUid) {
+          showToastRef.current("작성자만 수정할 수 있습니다.", "error");
           router.push("/");
           return;
         }
@@ -56,35 +72,58 @@ export default function EditMealPage() {
         setDescription(meal.description);
         setType(meal.type);
         setImagePreview(meal.imageUrl || null);
-        setSelectedUsers(meal.userIds?.length ? meal.userIds : userProfile.role ? [userProfile.role] : []);
-        setNeedsOwnerAdoption(!meal.ownerUid);
+        setSelectedUsers(meal.userIds?.length ? meal.userIds : currentRole ? [currentRole] : []);
+        setRequiresLegacyMigration(!meal.ownerUid);
       } catch (error) {
+        if (!active || requestId !== loadRequestSequenceRef.current) {
+          return;
+        }
         console.error("Failed to load meal", error);
-        showToast("기록을 불러오지 못했습니다.", "error");
+        showToastRef.current("기록을 불러오지 못했습니다.", "error");
         router.push("/");
       } finally {
-        setLoading(false);
+        if (active && requestId === loadRequestSequenceRef.current) {
+          setLoading(false);
+        }
       }
     };
 
     void loadMeal();
-  }, [mealId, router, showToast, userProfile]);
 
-  if (!userProfile?.role) return null;
+    return () => {
+      active = false;
+    };
+  }, [currentRole, currentUid, mealId, router]);
+
+  if (!currentRole) return null;
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    const requestId = ++imagePreviewRequestSequenceRef.current;
 
     void readMealImagePreview(file)
-      .then(setImagePreview)
+      .then((preview) => {
+        if (requestId !== imagePreviewRequestSequenceRef.current) {
+          return;
+        }
+        setImagePreview(preview);
+      })
       .catch((error) => {
+        if (requestId !== imagePreviewRequestSequenceRef.current) {
+          return;
+        }
         console.error("Failed to read meal image preview", error);
       });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    // legacy meals require owner migration before the server allows mutation
+    if (requiresLegacyMigration) {
+      showToast("등록 이전 기록은 소유자 이전 작업 후 수정할 수 있습니다.", "error");
+      return;
+    }
     const normalizedDescription = description.trim();
     if (!normalizedDescription) {
       showToast("설명을 입력해 주세요.", "error");
@@ -112,7 +151,6 @@ export default function EditMealPage() {
 
       try {
         await updateMeal(mealId, {
-          ...(needsOwnerAdoption ? { ownerUid: userProfile.uid } : {}),
           userIds: selectedUsers,
           description: normalizedDescription,
           type,
@@ -151,6 +189,14 @@ export default function EditMealPage() {
           subtitle="기록된 내용을 같은 화면 패턴 안에서 깔끔하게 수정합니다."
         />
 
+        {requiresLegacyMigration && (
+          <div className="surface-card empty-state">
+            <p className="empty-state-copy">
+              등록 이전 기록은 소유자 이전 작업 후 수정할 수 있습니다.
+            </p>
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="form-stack">
           <SurfaceSection
             title="사진"
@@ -159,6 +205,7 @@ export default function EditMealPage() {
                 <button
                   type="button"
                   onClick={() => {
+                    imagePreviewRequestSequenceRef.current += 1;
                     setImagePreview(null);
                     if (fileInputRef.current) fileInputRef.current.value = "";
                   }}
@@ -170,11 +217,12 @@ export default function EditMealPage() {
             }
             bodyClassName=""
           >
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="media-picker"
-            >
+              <button
+                type="button"
+                disabled={requiresLegacyMigration}
+                onClick={() => fileInputRef.current?.click()}
+                className="media-picker"
+              >
               {imagePreview ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={imagePreview} alt="Preview" className="media-preview" />
@@ -191,6 +239,7 @@ export default function EditMealPage() {
             type="file"
             ref={fileInputRef}
             onChange={handleImageChange}
+            disabled={requiresLegacyMigration}
             accept="image/*"
             style={{ display: "none" }}
           />
@@ -203,6 +252,7 @@ export default function EditMealPage() {
                     <button
                       key={value}
                       type="button"
+                      disabled={requiresLegacyMigration}
                       onClick={() => setType(value)}
                       className={`chip-button${type === value ? " chip-button-active" : ""}`}
                     >
@@ -219,6 +269,7 @@ export default function EditMealPage() {
                     <button
                       key={role}
                       type="button"
+                      disabled={requiresLegacyMigration}
                       onClick={() => setSelectedUsers((prev) => toggleMealParticipant(prev, role))}
                       className={`chip-button${selectedUsers.includes(role) ? " chip-button-active" : ""}`}
                     >
@@ -235,6 +286,7 @@ export default function EditMealPage() {
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="어떤 식사를 했는지 적어주세요"
                   required
+                  disabled={requiresLegacyMigration}
                   maxLength={300}
                   className="input-base textarea-base"
                   style={{
@@ -252,7 +304,7 @@ export default function EditMealPage() {
             <button type="button" onClick={() => router.back()} className="secondary-button">
               취소
             </button>
-            <button type="submit" disabled={isSubmitting} className="primary-button">
+            <button type="submit" disabled={isSubmitting || requiresLegacyMigration} className="primary-button">
               {isSubmitting ? "수정 중..." : <><Save size={18} /> 수정 완료</>}
             </button>
           </div>

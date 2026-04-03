@@ -7,6 +7,16 @@ export type MealUpdateInput = Partial<Omit<Meal, "id" | "imageUrl">> & {
   imageUrl?: string | null;
 };
 
+export type MealDeleteStatus = "completed" | "already_deleted" | "already_processing";
+
+export type MealDeleteResult = {
+  deleted: boolean;
+  status: MealDeleteStatus;
+};
+
+const isMealDeleteStatus = (value: unknown): value is MealDeleteStatus =>
+  value === "completed" || value === "already_deleted" || value === "already_processing";
+
 const normalizeMealDescription = (description: string): string => {
   const trimmed = description.trim();
   if (!trimmed) {
@@ -65,12 +75,19 @@ export const updateMeal = async (
   return response.meal;
 };
 
-export const deleteMeal = async (id: string) => {
+export const deleteMeal = async (id: string): Promise<MealDeleteResult> => {
   const mealId = encodeURIComponent(id);
-  await fetchAuthedJson<{ ok: true; deleted: boolean; status: string }>(
+  const response = await fetchAuthedJson<{ ok: true; deleted: boolean; status: string }>(
     `/api/meals/${mealId}`,
     {
       method: "DELETE",
     }
   );
+  if (!isMealDeleteStatus(response.status)) {
+    throw new Error("Unexpected delete status");
+  }
+  return {
+    deleted: response.deleted,
+    status: response.status,
+  };
 };

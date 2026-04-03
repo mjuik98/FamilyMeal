@@ -5,8 +5,10 @@ import { useRouter } from "next/navigation";
 
 import { useUser } from "@/context/UserContext";
 import { deleteMeal } from "@/lib/client/meals";
+import type { MealDeleteResult } from "@/lib/client/meal-mutations";
 import { useMealCommentsController as useMealComments } from "@/lib/features/comments/ui/useMealCommentsController";
 import { useMealReactionsController as useMealReactions } from "@/lib/features/reactions/ui/useMealReactionsController";
+import { toMealDeleteErrorMessage } from "@/lib/meal-errors";
 import type { Meal } from "@/lib/types";
 
 import { useConfirm } from "./ConfirmDialog";
@@ -19,16 +21,19 @@ export default function MealCard({
   meal,
   sameDayMeals = [],
   onSelectMeal,
+  onDeleted,
 }: {
   meal: Meal;
   sameDayMeals?: Meal[];
   onSelectMeal?: (mealId: string) => void;
+  onDeleted?: (result: MealDeleteResult) => void;
 }) {
   const { userProfile } = useUser();
   const router = useRouter();
   const { showToast } = useToast();
   const { showConfirm } = useConfirm();
   const [commentsOpen, setCommentsOpen] = useState(true);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const {
     comments,
@@ -69,34 +74,50 @@ export default function MealCard({
     showToast,
   });
 
-  const uids = useMemo(
-    () => meal.userIds || (meal.userId ? [meal.userId] : []),
-    [meal.userId, meal.userIds]
-  );
-
   const isOwner = useMemo(() => {
     if (!userProfile) return false;
-    if (meal.ownerUid) return meal.ownerUid === userProfile.uid;
-    return Boolean(userProfile.role && uids.length > 0 && uids[0] === userProfile.role);
-  }, [meal.ownerUid, uids, userProfile]);
+    return Boolean(meal.ownerUid && meal.ownerUid === userProfile.uid);
+  }, [meal.ownerUid, userProfile]);
 
   const handleDelete = async () => {
-    const confirmed = await showConfirm({
-      title: "식사 기록 삭제",
-      message: "이 식사 기록을 삭제하시겠습니까?",
-      confirmText: "삭제",
-      cancelText: "취소",
-      danger: true,
-    });
-    if (!confirmed) return;
+    if (isDeleting) return;
+    setIsDeleting(true);
 
     try {
-      await deleteMeal(meal.id);
-      showToast("삭제되었습니다.", "success");
-      router.refresh();
+      const confirmed = await showConfirm({
+        title: "식사 기록 삭제",
+        message: "이 식사 기록을 삭제하시겠습니까?",
+        confirmText: "삭제",
+        cancelText: "취소",
+        danger: true,
+      });
+      if (!confirmed) return;
+
+      const result = await deleteMeal(meal.id);
+      switch (result.status) {
+        case "already_processing":
+          showToast("삭제 작업이 이미 진행 중입니다.", "info");
+          return;
+        case "already_deleted":
+          showToast("이미 삭제된 기록입니다.", "success");
+          onDeleted?.(result);
+          if (!onDeleted) {
+            router.refresh();
+          }
+          return;
+        case "completed":
+          showToast("삭제되었습니다.", "success");
+          onDeleted?.(result);
+          if (!onDeleted) {
+            router.refresh();
+          }
+          return;
+      }
     } catch (error) {
       console.error("Failed to delete meal", error);
-      showToast("삭제에 실패했습니다.", "error");
+      showToast(toMealDeleteErrorMessage(error), "error");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -126,6 +147,7 @@ export default function MealCard({
         <MealDetailSummary
           meal={meal}
           isOwner={isOwner}
+          deleteDisabled={isDeleting}
           onEdit={() => router.push(`/edit/${meal.id}`)}
           onDelete={() => void handleDelete()}
         />

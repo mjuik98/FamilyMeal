@@ -59,9 +59,9 @@ export async function DELETE(
   try {
     const user = await verifyRequestUser(request);
     mealId = await decodeMealId(context.params);
-    const role = await getUserRole(user.uid);
+    await getUserRole(user.uid);
 
-    const plan = await planMealDeleteOperation(mealId, user.uid, role);
+    const plan = await planMealDeleteOperation(mealId, user.uid);
     if (plan.action === "already_deleted") {
       return NextResponse.json({ ok: true, deleted: false, status: "already_deleted" });
     }
@@ -135,7 +135,6 @@ export async function PATCH(
     const meal = await updateMealDocument({
       mealId,
       uid: user.uid,
-      role,
       input: parsed.data as Partial<Omit<Meal, "id">>,
     });
 
