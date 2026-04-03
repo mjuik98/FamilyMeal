@@ -18,6 +18,9 @@ const toUploadFailureMessage = (message: string): string => {
   if (message.includes("too large")) {
     return "사진 업로드에 실패했습니다. 이미지 용량이 너무 큽니다.";
   }
+  if (message.includes("Image normalization failed")) {
+    return "사진 업로드에 실패했습니다. 이미지를 처리할 수 없는 형식입니다.";
+  }
   if (message.includes("Storage bucket is not configured")) {
     return "사진 업로드에 실패했습니다. 저장소 설정을 확인해 주세요.";
   }

@@ -12,7 +12,7 @@
     "test:smoke:meals": "node scripts/smoke-meal-mutations.mjs",
     "test:smoke:qa-token-required": "node scripts/smoke-qa-token-required.mjs",
     "test:ui": "node --test tests/ui-theme.test.mjs",
-    "test:api": "node --test tests/api-security.test.mjs tests/archive-query.test.mjs",
+    "test:api": "node --test tests/api-security.test.mjs tests/archive-query.test.mjs tests/meal-image-policy.test.mjs",
     "test:e2e": "playwright test",
     "test:e2e:install": "playwright install --with-deps chromium",
     "audit:report": "npm audit --json",
@@ -39,6 +39,7 @@
     "react": "19.2.3",
     "react-calendar": "^6.0.0",
     "react-dom": "19.2.3",
+    "sharp": "^0.34.5",
     "zod": "^4.3.6"
   },
   "devDependencies": {

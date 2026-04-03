@@ -57,7 +57,10 @@
 ### 업로드
 
 - 식사 이미지 업로드는 `/api/uploads/meal-image` 에서 인증 후 처리합니다.
-- data URI 파싱, 파일 경로 생성, Storage 저장은 `lib/server/uploads/meal-image-use-cases.ts` 로 분리돼 있습니다.
+- 클라이언트는 원본 `File` 을 multipart form-data 로 전송하고, add/edit 페이지는 공통 이미지 선택 훅으로 미리보기와 로컬 검증을 공유합니다.
+- 업로드 라우트는 multipart 파싱 전에 `content-length` 기반 용량 제한을 먼저 확인합니다.
+- 서버 정규화, 파일 경로 생성, Storage 저장은 `lib/server/uploads/meal-image-use-cases.ts` 로 분리돼 있습니다.
+- 서버는 `sharp` 로 EXIF 회전을 보정하고, 제한된 크기의 JPEG 로 재인코딩한 결과만 Storage 에 저장합니다.
 - 라우트는 버킷 설정 확인과 HTTP 에러 변환만 맡습니다.
 
 ## 디렉터리 책임

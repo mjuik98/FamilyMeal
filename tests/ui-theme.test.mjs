@@ -362,7 +362,10 @@ test("default build script preserves cache and exposes explicit clean build", ()
   assert.match(packageJson, /"build":\s*"next build --webpack"/);
   assert.match(packageJson, /"build:clean":\s*"node scripts\/clean-next-dir\.mjs && next build --webpack"/);
   assert.doesNotMatch(packageJson, /"build":\s*"node scripts\/clean-next-dir\.mjs/);
-  assert.match(packageJson, /"test:api":\s*"node --test tests\/api-security\.test\.mjs tests\/archive-query\.test\.mjs"/);
+  assert.match(
+    packageJson,
+    /"test:api":\s*"node --test tests\/api-security\.test\.mjs tests\/archive-query\.test\.mjs tests\/meal-image-policy\.test\.mjs"/
+  );
   assert.match(packageJson, /"ci:verify":\s*"[^"]*npm run test:e2e"/);
 });
 
@@ -772,23 +775,58 @@ test("meal editor pages reuse focused meal form helpers and direct public env co
   const addPage = read("app/add/page.tsx");
   const editPage = read("app/edit/[id]/page.tsx");
   const mealForm = read("lib/meal-form.ts");
+  const imagePolicy = read("lib/meal-image-policy.ts");
+  const imageHook = read("components/hooks/useMealImageSelection.ts");
   const layout = read("app/layout.tsx");
   const firebase = read("lib/firebase.ts");
 
   assert.match(mealForm, /export const readMealImagePreview = async/);
+  assert.match(mealForm, /URL\.createObjectURL\(file\)/);
+  assert.match(mealForm, /export const revokeMealImagePreview =/);
+  assert.match(mealForm, /URL\.revokeObjectURL\(previewUrl\)/);
+  assert.match(mealForm, /export const readMealImageDataUrl = async/);
   assert.match(mealForm, /export const toggleMealParticipant =/);
-  assert.match(mealForm, /export const isLocalMealImagePreview =/);
+  assert.doesNotMatch(mealForm, /export const isLocalMealImagePreview =/);
 
-  assert.match(addPage, /from "@\/lib\/meal-form"/);
-  assert.match(editPage, /from "@\/lib\/meal-form"/);
+  assert.match(imagePolicy, /MAX_MEAL_IMAGE_UPLOAD_BYTES/);
+  assert.match(imagePolicy, /ALLOWED_MEAL_IMAGE_TYPES/);
+  assert.match(imagePolicy, /export const validateMealImageFile =/);
+  assert.match(imagePolicy, /export const formatMealImageFileSize =/);
+
+  assert.match(imageHook, /export const useMealImageSelection =/);
+  assert.match(imageHook, /validateMealImageFile/);
+  assert.match(imageHook, /readMealImagePreview/);
+  assert.match(imageHook, /revokeMealImagePreview/);
+  assert.match(
+    imageHook,
+    /if \(nextValidationError\) \{\s*if \(previewRef\.current\?\.startsWith\("blob:"\)\) \{\s*clearImage\(\);\s*\}\s*setValidationError\(nextValidationError\);/s
+  );
+
+  assert.match(addPage, /from "@\/components\/hooks\/useMealImageSelection"/);
+  assert.match(editPage, /from "@\/components\/hooks\/useMealImageSelection"/);
   assert.doesNotMatch(addPage, /new FileReader\(/);
   assert.doesNotMatch(editPage, /new FileReader\(/);
-  assert.match(addPage, /const imagePreviewRequestSequenceRef = useRef\(0\)/);
-  assert.match(editPage, /const imagePreviewRequestSequenceRef = useRef\(0\)/);
-  assert.match(addPage, /const requestId = \+\+imagePreviewRequestSequenceRef\.current/);
-  assert.match(editPage, /const requestId = \+\+imagePreviewRequestSequenceRef\.current/);
-  assert.match(addPage, /if \(requestId !== imagePreviewRequestSequenceRef\.current\) \{\s*return;\s*\}/);
-  assert.match(editPage, /if \(requestId !== imagePreviewRequestSequenceRef\.current\) \{\s*return;\s*\}/);
+  assert.match(addPage, /const imageSelection = useMealImageSelection\(\)/);
+  assert.match(editPage, /const imageSelection = useMealImageSelection\(\)/);
+  assert.match(addPage, /await imageSelection\.selectFile\(file\)/);
+  assert.match(editPage, /await imageSelection\.selectFile\(file\)/);
+  assert.match(addPage, /imageSelection\.clearImage\(\)/);
+  assert.match(editPage, /imageSelection\.clearImage\(\)/);
+  assert.match(addPage, /imageSelection\.imagePreview/);
+  assert.match(editPage, /imageSelection\.imagePreview/);
+  assert.match(addPage, /imageSelection\.imageFile/);
+  assert.match(editPage, /imageSelection\.imageFile/);
+  assert.match(addPage, /imageSelection\.validationError/);
+  assert.match(editPage, /imageSelection\.validationError/);
+  assert.match(
+    editPage,
+    /imageSelection\.isLocalImage\s*\?\s*"미리보기를 표시하지 못했습니다\. 업로드 시 서버에서 변환을 시도합니다\."\s*:\s*"저장된 이미지를 표시하지 못했습니다\."/s
+  );
+  assert.doesNotMatch(addPage, /const imagePreviewRequestSequenceRef = useRef\(0\)/);
+  assert.doesNotMatch(editPage, /const imagePreviewRequestSequenceRef = useRef\(0\)/);
+  assert.match(addPage, /await uploadImage\(imageSelection\.imageFile\)/);
+  assert.match(editPage, /imageUrl = await uploadImage\(imageSelection\.imageFile\)/);
+  assert.match(addPage, /readMealImageDataUrl\(imageSelection\.imageFile\)/);
   assert.doesNotMatch(addPage, /const toggleUser =/);
   assert.doesNotMatch(editPage, /const toggleUser =/);
 

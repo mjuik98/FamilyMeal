@@ -4,15 +4,17 @@ import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Camera, Save } from "lucide-react";
 
+import { useMealImageSelection } from "@/components/hooks/useMealImageSelection";
 import PageHeader from "@/components/PageHeader";
 import SurfaceSection from "@/components/SurfaceSection";
 import { useToast } from "@/components/Toast";
 import { useUser } from "@/context/UserContext";
 import { getMealById, updateMeal } from "@/lib/client/meals";
+import { MEAL_IMAGE_INPUT_ACCEPT } from "@/lib/meal-image-policy";
 import { USER_ROLES, VALID_MEAL_TYPES } from "@/lib/domain/meal-policy";
 import { logError } from "@/lib/logging";
 import { toMealUpdateErrorMessage } from "@/lib/meal-errors";
-import { isLocalMealImagePreview, readMealImagePreview, toggleMealParticipant } from "@/lib/meal-form";
+import { toggleMealParticipant } from "@/lib/meal-form";
 import { Meal, UserRole } from "@/lib/types";
 import { uploadImage } from "@/lib/uploadImage";
 
@@ -27,16 +29,17 @@ export default function EditMealPage() {
 
   const [description, setDescription] = useState("");
   const [type, setType] = useState<Meal["type"]>("점심");
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [selectedUsers, setSelectedUsers] = useState<UserRole[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitPhase, setSubmitPhase] = useState<"idle" | "uploading" | "saving">("idle");
   const [loading, setLoading] = useState(true);
   const [requiresLegacyMigration, setRequiresLegacyMigration] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const loadRequestSequenceRef = useRef(0);
-  const imagePreviewRequestSequenceRef = useRef(0);
   const showToastRef = useRef(showToast);
+  const imageSelection = useMealImageSelection();
+  const { setRemoteImage } = imageSelection;
 
   useEffect(() => {
     showToastRef.current = showToast;
@@ -72,7 +75,7 @@ export default function EditMealPage() {
 
         setDescription(meal.description);
         setType(meal.type);
-        setImagePreview(meal.imageUrl || null);
+        setRemoteImage(meal.imageUrl || null);
         setSelectedUsers(meal.userIds?.length ? meal.userIds : currentRole ? [currentRole] : []);
         setRequiresLegacyMigration(!meal.ownerUid);
       } catch (error) {
@@ -94,28 +97,29 @@ export default function EditMealPage() {
     return () => {
       active = false;
     };
-  }, [currentRole, currentUid, mealId, router]);
+  }, [currentRole, currentUid, mealId, router, setRemoteImage]);
 
   if (!currentRole) return null;
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const submissionLabel =
+    submitPhase === "uploading" ? "사진 업로드 중..." : submitPhase === "saving" ? "저장 중..." : null;
+  const previewStatusMessage = imageSelection.previewUnavailable
+    ? imageSelection.isLocalImage
+      ? "미리보기를 표시하지 못했습니다. 업로드 시 서버에서 변환을 시도합니다."
+      : "저장된 이미지를 표시하지 못했습니다."
+    : null;
+
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const requestId = ++imagePreviewRequestSequenceRef.current;
+    const result = await imageSelection.selectFile(file);
+    if (!result.ok) {
+      showToast(result.error.message, "error");
+    }
 
-    void readMealImagePreview(file)
-      .then((preview) => {
-        if (requestId !== imagePreviewRequestSequenceRef.current) {
-          return;
-        }
-        setImagePreview(preview);
-      })
-      .catch((error) => {
-        if (requestId !== imagePreviewRequestSequenceRef.current) {
-          return;
-        }
-        logError("Failed to read meal image preview", error);
-      });
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -137,20 +141,22 @@ export default function EditMealPage() {
 
     setIsSubmitting(true);
     try {
-      let imageUrl: string | null | undefined = imagePreview || undefined;
-      if (isLocalMealImagePreview(imagePreview)) {
+      let imageUrl: string | null | undefined = imageSelection.imagePreview || undefined;
+      if (imageSelection.imageFile) {
         try {
-          imageUrl = await uploadImage(imagePreview);
+          setSubmitPhase("uploading");
+          imageUrl = await uploadImage(imageSelection.imageFile);
         } catch (error) {
           logError("Failed to upload updated meal image", error);
           showToast(toMealUpdateErrorMessage(error, "upload"), "error");
           return;
         }
-      } else if (!imagePreview) {
+      } else if (!imageSelection.imagePreview) {
         imageUrl = null;
       }
 
       try {
+        setSubmitPhase("saving");
         await updateMeal(mealId, {
           userIds: selectedUsers,
           description: normalizedDescription,
@@ -171,6 +177,7 @@ export default function EditMealPage() {
       showToast(toMealUpdateErrorMessage(error, "save"), "error");
     } finally {
       setIsSubmitting(false);
+      setSubmitPhase("idle");
     }
   };
 
@@ -202,13 +209,14 @@ export default function EditMealPage() {
           <SurfaceSection
             title="사진"
             actions={
-              imagePreview ? (
+              imageSelection.imagePreview ? (
                 <button
                   type="button"
                   onClick={() => {
-                    imagePreviewRequestSequenceRef.current += 1;
-                    setImagePreview(null);
-                    if (fileInputRef.current) fileInputRef.current.value = "";
+                    imageSelection.clearImage();
+                    if (fileInputRef.current) {
+                      fileInputRef.current.value = "";
+                    }
                   }}
                   className="link-button"
                 >
@@ -224,24 +232,50 @@ export default function EditMealPage() {
                 onClick={() => fileInputRef.current?.click()}
                 className="media-picker"
               >
-              {imagePreview ? (
+              {imageSelection.imagePreview && !imageSelection.previewUnavailable ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={imagePreview} alt="Preview" className="media-preview" />
+                <img
+                  src={imageSelection.imagePreview}
+                  alt="Preview"
+                  className="media-preview"
+                  onError={() => imageSelection.markPreviewUnavailable()}
+                />
               ) : (
                 <div className="media-placeholder">
                   <Camera size={36} strokeWidth={1.5} />
-                  <span style={{ fontSize: "0.85rem" }}>눌러서 사진 추가</span>
+                  <span style={{ fontSize: "0.85rem" }}>
+                    {imageSelection.previewUnavailable
+                      ? "미리보기를 표시하지 못했습니다"
+                      : "눌러서 사진 추가"}
+                  </span>
                 </div>
               )}
             </button>
+            {imageSelection.localImageSummary ? (
+              <p className="surface-note" style={{ marginTop: "10px" }}>
+                {imageSelection.localImageSummary} · 업로드 시 서버에서 자동 최적화됩니다.
+              </p>
+            ) : null}
+            {previewStatusMessage ? (
+              <p className="surface-note" style={{ marginTop: "8px", color: "var(--danger)" }}>
+                {previewStatusMessage}
+              </p>
+            ) : null}
+            {imageSelection.validationError ? (
+              <p className="surface-note" style={{ marginTop: "8px", color: "var(--danger)" }}>
+                {imageSelection.validationError.message}
+              </p>
+            ) : null}
           </SurfaceSection>
 
           <input
             type="file"
             ref={fileInputRef}
-            onChange={handleImageChange}
+            onChange={(event) => {
+              void handleImageChange(event);
+            }}
             disabled={requiresLegacyMigration}
-            accept="image/*"
+            accept={MEAL_IMAGE_INPUT_ACCEPT}
             style={{ display: "none" }}
           />
 
@@ -306,7 +340,7 @@ export default function EditMealPage() {
               취소
             </button>
             <button type="submit" disabled={isSubmitting || requiresLegacyMigration} className="primary-button">
-              {isSubmitting ? "수정 중..." : <><Save size={18} /> 수정 완료</>}
+              {submissionLabel ?? <><Save size={18} /> 수정 완료</>}
             </button>
           </div>
         </form>

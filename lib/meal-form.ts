@@ -1,6 +1,17 @@
 import type { UserRole } from "@/lib/types";
 
 export const readMealImagePreview = async (file: File): Promise<string> =>
+  URL.createObjectURL(file);
+
+export const revokeMealImagePreview = (previewUrl: string | null | undefined): void => {
+  if (typeof previewUrl !== "string" || !previewUrl.startsWith("blob:")) {
+    return;
+  }
+
+  URL.revokeObjectURL(previewUrl);
+};
+
+export const readMealImageDataUrl = async (file: File): Promise<string> =>
   new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onloadend = () => {
@@ -25,7 +36,3 @@ export const toggleMealParticipant = (
 
   return [...participants, role];
 };
-
-export const isLocalMealImagePreview = (
-  value: string | null | undefined
-): value is string => typeof value === "string" && value.startsWith("data:");

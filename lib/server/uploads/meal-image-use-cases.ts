@@ -1,67 +1,79 @@
 import { randomUUID } from "node:crypto";
 
+import sharp from "sharp";
+
 import { adminStorage } from "@/lib/firebase-admin";
+import {
+  ALLOWED_MEAL_IMAGE_TYPES,
+  MAX_MEAL_IMAGE_DIMENSION,
+  MAX_MEAL_IMAGE_UPLOAD_BYTES,
+  NORMALIZED_MEAL_IMAGE_QUALITY,
+} from "@/lib/meal-image-policy";
 import { RouteError } from "@/lib/route-errors";
 
-const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
-const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"]);
-const DEFAULT_CONTENT_TYPE = "image/jpeg";
+const ALLOWED_IMAGE_TYPE_SET = new Set<string>(ALLOWED_MEAL_IMAGE_TYPES);
+const NORMALIZED_CONTENT_TYPE = "image/jpeg";
 
-const parseDataUri = (imageData: string): { contentType: string; buffer: Buffer } => {
-  const match = imageData.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,([A-Za-z0-9+/=\s]+)$/);
-  if (!match) {
-    throw new RouteError("Invalid image data", 400);
-  }
-
-  const [, contentType, base64Payload] = match;
-  if (!ALLOWED_IMAGE_TYPES.has(contentType)) {
+const validateImageFile = (file: File): string => {
+  const contentType = file.type.trim().toLowerCase();
+  if (!ALLOWED_IMAGE_TYPE_SET.has(contentType)) {
     throw new RouteError("Unsupported image type", 415);
   }
 
-  const buffer = Buffer.from(base64Payload.replace(/\s+/g, ""), "base64");
-  if (buffer.length === 0) {
+  if (file.size <= 0) {
     throw new RouteError("Image payload is empty", 400);
   }
-  if (buffer.length > MAX_IMAGE_BYTES) {
+  if (file.size > MAX_MEAL_IMAGE_UPLOAD_BYTES) {
     throw new RouteError("Image payload is too large", 413);
   }
 
-  return { contentType, buffer };
+  return contentType;
 };
 
-const getFileExtension = (contentType: string): string => {
-  if (contentType === "image/png") return "png";
-  if (contentType === "image/webp") return "webp";
-  if (contentType === "image/heic") return "heic";
-  if (contentType === "image/heif") return "heif";
-  return "jpg";
+const normalizeMealImageBuffer = async (buffer: Buffer): Promise<Buffer> => {
+  try {
+    return await sharp(buffer)
+      .rotate()
+      .resize({
+        width: MAX_MEAL_IMAGE_DIMENSION,
+        height: MAX_MEAL_IMAGE_DIMENSION,
+        fit: "inside",
+        withoutEnlargement: true,
+      })
+      .jpeg({
+        quality: NORMALIZED_MEAL_IMAGE_QUALITY,
+        mozjpeg: true,
+      })
+      .toBuffer();
+  } catch {
+    throw new RouteError("Image normalization failed", 415);
+  }
 };
 
-const buildStoragePath = (uid: string, contentType: string): string => {
-  const extension = getFileExtension(contentType);
-  return `meals/${uid}/${Date.now()}_${randomUUID()}.${extension}`;
-};
+const buildStoragePath = (uid: string): string => `meals/${uid}/${Date.now()}_${randomUUID()}.jpg`;
 
 const buildDownloadUrl = (bucketName: string, objectPath: string, token: string): string =>
   `https://firebasestorage.googleapis.com/v0/b/${bucketName}/o/${encodeURIComponent(objectPath)}?alt=media&token=${token}`;
 
-export const storeMealImageFromDataUri = async ({
+export const storeMealImageFile = async ({
   uid,
   bucketName,
-  imageData,
+  file: imageFile,
 }: {
   uid: string;
   bucketName: string;
-  imageData: string;
+  file: File;
 }) => {
-  const { contentType, buffer } = parseDataUri(imageData);
-  const objectPath = buildStoragePath(uid, contentType);
+  validateImageFile(imageFile);
+  const sourceBuffer = Buffer.from(await imageFile.arrayBuffer());
+  const normalizedBuffer = await normalizeMealImageBuffer(sourceBuffer);
+  const objectPath = buildStoragePath(uid);
   const downloadToken = randomUUID();
-  const file = adminStorage.bucket(bucketName).file(objectPath);
+  const storageFile = adminStorage.bucket(bucketName).file(objectPath);
 
-  await file.save(buffer, {
+  await storageFile.save(normalizedBuffer, {
     resumable: false,
-    contentType: contentType || DEFAULT_CONTENT_TYPE,
+    contentType: NORMALIZED_CONTENT_TYPE,
     metadata: {
       cacheControl: "public, max-age=31536000, immutable",
       metadata: {

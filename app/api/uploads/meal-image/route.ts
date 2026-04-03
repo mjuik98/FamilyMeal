@@ -1,32 +1,45 @@
 import { NextResponse } from "next/server";
-import { z } from "zod";
 
+import { MAX_MEAL_IMAGE_REQUEST_BYTES } from "@/lib/meal-image-policy";
 import { serverEnv } from "@/lib/config/server-env";
 import { getRouteErrorMessage, getRouteErrorStatus, RouteError } from "@/lib/route-errors";
 import { requireVerifiedUser } from "@/lib/server/route-auth";
-import { storeMealImageFromDataUri } from "@/lib/server/uploads/meal-image-use-cases";
+import { storeMealImageFile } from "@/lib/server/uploads/meal-image-use-cases";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const UploadImageSchema = z.object({
-  imageData: z.string().trim().min(1),
-});
+const validateUploadContentLength = (request: Request): void => {
+  const contentLengthHeader = request.headers.get("content-length");
+  const contentLength = contentLengthHeader ? Number(contentLengthHeader) : 0;
+  if (Number.isFinite(contentLength) && contentLength > MAX_MEAL_IMAGE_REQUEST_BYTES) {
+    throw new RouteError("Image upload request is too large", 413);
+  }
+};
+
+const validateUploadContentType = (request: Request): void => {
+  const contentType = request.headers.get("content-type")?.trim().toLowerCase() ?? "";
+  if (!contentType.startsWith("multipart/form-data")) {
+    throw new RouteError("Invalid upload content type", 415);
+  }
+};
 
 export async function POST(request: Request) {
   try {
     const user = await requireVerifiedUser(request);
+    validateUploadContentLength(request);
+    validateUploadContentType(request);
 
-    let body: unknown;
+    let formData: FormData;
     try {
-      body = await request.json();
+      formData = await request.formData();
     } catch {
-      throw new RouteError("Invalid JSON body", 400);
+      throw new RouteError("Invalid form data", 400);
     }
 
-    const parsed = UploadImageSchema.safeParse(body);
-    if (!parsed.success) {
-      throw new RouteError("Invalid payload", 400);
+    const file = formData.get("file");
+    if (!(file instanceof File)) {
+      throw new RouteError("Image file is required", 400);
     }
 
     const bucketName = serverEnv.storageBucket?.trim();
@@ -34,10 +47,10 @@ export async function POST(request: Request) {
       throw new RouteError("Storage bucket is not configured", 503);
     }
 
-    const uploaded = await storeMealImageFromDataUri({
+    const uploaded = await storeMealImageFile({
       uid: user.uid,
       bucketName,
-      imageData: parsed.data.imageData,
+      file,
     });
 
     return NextResponse.json({
