@@ -21,9 +21,8 @@
 ### 식사 기록
 
 - 클라이언트 식사 읽기/검색/정렬/주간 통계는 `lib/client/meals.ts` 가 담당합니다.
-- `lib/data.ts` 는 기존 호출부 호환성을 위한 얇은 배럴입니다.
 - 식사 생성/수정/삭제는 `/api/meals` 와 `/api/meals/[id]` 에서 처리합니다.
-- 서버 측 직렬화와 필드 보정은 `lib/server/meals/*` 가 담당하고, `lib/server-meals.ts` 는 호환 배럴만 제공합니다.
+- 서버 측 직렬화와 필드 보정은 `lib/server/meals/*` 가 담당하고, 라우트는 필요한 모듈을 직접 import 합니다.
 - 댓글은 `meals/{mealId}/comments` 서브컬렉션에 저장됩니다.
 
 ### 댓글과 반응
@@ -32,6 +31,7 @@
 - 댓글 상태 orchestration 은 `lib/features/comments/ui/useMealCommentsController.ts` 로 분리돼 있고, 실시간 목록 캐시는 `lib/meal-comments-store.ts` 가 담당합니다.
 - 반응 상태 orchestration 은 `lib/features/reactions/ui/useMealReactionsController.ts` 로 분리돼 있습니다.
 - 댓글 클라이언트 호출은 `lib/client/comments.ts`, 반응 클라이언트 호출은 `lib/client/reactions.ts` 로 분리했습니다.
+- 알림 activity 문서는 서버에서 계속 기록하지만, 현재 클라이언트는 피드 UI 를 두지 않고 `lib/client/activity.ts` 를 통해 알림 설정 저장만 수행합니다.
 - 댓글 생성/수정/삭제의 서버 트랜잭션 로직은 `lib/server/comments/comment-use-cases.ts` 로 추출했고, API 라우트는 얇은 컨트롤러 역할만 수행합니다.
 - 반응 변경의 서버 트랜잭션과 activity 동기화는 `lib/server/reactions/reaction-use-cases.ts` 로 추출했고, payload/route param 검증은 `lib/server/reactions/reaction-policy.ts` 가 맡습니다.
 - 댓글/반응 변경은 모두 전용 API 라우트로 보냅니다.
@@ -65,6 +65,7 @@
 - `app/`: 페이지와 서버 API
 - `components/`: UI 조립과 표현 컴포넌트
 - `components/comments/`, `components/meal-detail/`: 세부 UI 조각
+- `components/hooks/`: 페이지 로컬 UI 상태 훅
 - `context/`: 사용자 컨텍스트
 - `lib/client/`: 클라이언트 데이터 접근과 API 호출
 - `lib/config/`: 공개/서버 환경변수 접근
@@ -72,14 +73,14 @@
 - `lib/server/`: 서버 유스케이스와 라우트 보조 로직
 - `lib/features/`: 화면별 상태 orchestration 훅
 - `lib/qa/`: QA 모드, fixture, session, runtime adapter
-- `lib/`: Firebase 초기화, 타입, 공통 유틸, 로깅, 호환 배럴
+- `lib/`: Firebase 초기화, 타입, 공통 유틸, 로깅, PWA cache helper
 - `scripts/`: 스모크 테스트, 마이그레이션, 보조 도구
 - `tests/`: 구조 회귀 테스트, API 보안 테스트, Firestore Rules 테스트, E2E
 
 ## 경계 규칙
 
 - `app/`, `components/`, `context/`, `lib/features/*` 는 `console.*` 를 직접 호출하지 않고 `lib/logging.ts` 를 사용합니다.
-- 신규 코드에서는 `@/lib/data`, `@/lib/server-meals` 호환 배럴 import 를 금지합니다.
+- 삭제된 호환 경로(`@/lib/data`, `@/lib/server-meals`, `@/lib/client/http`, `@/lib/env`, `@/lib/qa`) 재도입을 금지하고, 실제 모듈을 직접 import 합니다.
 - 공개 런타임 설정은 `lib/config/public-env.ts`, 서버 전용 설정은 `lib/config/server-env.ts` 를 통해서만 읽습니다.
 
 ## 검증 전략

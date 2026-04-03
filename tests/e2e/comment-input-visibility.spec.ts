@@ -35,8 +35,10 @@ const openQaMealDetail = async (page: Page) => {
   await page.goto("/");
   const openButton = page.getByTestId("meal-preview-open-qa-home-meal");
   await expect(openButton).toBeVisible();
-  await openButton.click();
-  await expect(page).toHaveURL(/\/meals\/qa-home-meal/);
+  await Promise.all([
+    page.waitForURL(/\/meals\/qa-home-meal/, { timeout: 15_000 }),
+    openButton.click(),
+  ]);
   await expect(page.getByTestId("meal-detail-screen")).toBeVisible();
 };
 

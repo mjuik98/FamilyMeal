@@ -122,9 +122,9 @@ test("meal routes delegate to extracted server meal modules", () => {
   const mealMutations = read("lib/client/meal-mutations.ts");
   const createRoute = read("app/api/meals/route.ts");
   const mealRoute = read("app/api/meals/[id]/route.ts");
-  const serverMealsBarrel = read("lib/server-meals.ts");
   const mealUseCases = read("lib/server/meals/meal-use-cases.ts");
   const mealStorage = read("lib/server/meals/meal-storage.ts");
+  const serverMealsBarrelPath = path.join(process.cwd(), "lib", "server-meals.ts");
 
   assert.match(mealMutations, /fetchAuthedJson<\{ ok: true; meal: Meal \}>\("\/api\/meals"/);
   assert.match(mealMutations, /\/api\/meals\/\$\{encodedMealId\}/);
@@ -143,8 +143,7 @@ test("meal routes delegate to extracted server meal modules", () => {
   assert.doesNotMatch(mealRoute, /from "@\/lib\/firebase-admin"/);
   assert.doesNotMatch(mealRoute, /const planDeleteOperation = async/);
   assert.doesNotMatch(mealRoute, /const deleteMealComments = async/);
-  assert.match(serverMealsBarrel, /from "@\/lib\/server\/meals\/meal-use-cases"/);
-  assert.match(serverMealsBarrel, /from "@\/lib\/server\/meals\/meal-storage"/);
+  assert.equal(fs.existsSync(serverMealsBarrelPath), false);
   assert.match(mealUseCases, /export const createMealDocument = async/);
   assert.match(mealUseCases, /export const updateMealDocument = async/);
   assert.match(mealUseCases, /export const planMealDeleteOperation = async/);
@@ -158,15 +157,15 @@ test("meal routes delegate to extracted server meal modules", () => {
 });
 
 test("meal mutations fail closed for legacy records without ownerUid", () => {
-  const serverMealsBarrel = read("lib/server-meals.ts");
   const mealUseCases = read("lib/server/meals/meal-use-cases.ts");
   const mealTypes = read("lib/server/meals/meal-types.ts");
+  const serverMealsBarrelPath = path.join(process.cwd(), "lib", "server-meals.ts");
 
   assert.match(mealUseCases, /Legacy meals must be migrated before mutation/);
   assert.doesNotMatch(mealUseCases, /legacyAllowed/);
   assert.doesNotMatch(mealUseCases, /isLegacyParticipant/);
   assert.doesNotMatch(mealTypes, /export const isLegacyParticipant =/);
-  assert.doesNotMatch(serverMealsBarrel, /isLegacyParticipant/);
+  assert.equal(fs.existsSync(serverMealsBarrelPath), false);
 });
 
 test("owner backfill migration script exists for legacy meals", () => {
@@ -183,15 +182,14 @@ test("archive queries are handled by authenticated server route and server meal 
   const archiveRoute = read("app/api/archive/route.ts");
   const archiveUseCases = read("lib/server/meals/archive-use-cases.ts");
   const archiveTypes = read("lib/server/meals/archive-types.ts");
-  const serverMealsBarrel = read("lib/server-meals.ts");
+  const serverMealsBarrelPath = path.join(process.cwd(), "lib", "server-meals.ts");
 
   assert.match(archiveRoute, /requireValidatedUserRole/);
   assert.match(archiveRoute, /listArchiveMeals/);
   assert.match(archiveUseCases, /export const listArchiveMeals = async/);
   assert.match(archiveTypes, /export const parseArchiveQueryParams =/);
   assert.match(archiveTypes, /export const encodeArchiveCursor =/);
-  assert.match(serverMealsBarrel, /from "@\/lib\/server\/meals\/archive-use-cases"/);
-  assert.match(serverMealsBarrel, /from "@\/lib\/server\/meals\/archive-types"/);
+  assert.equal(fs.existsSync(serverMealsBarrelPath), false);
 });
 
 test("client delete mutations preserve structured route status for callers", () => {
@@ -386,19 +384,20 @@ test("route auth helpers centralize verified-user and role loading", () => {
 test("server config and meal policy are centralized in shared modules", () => {
   const publicEnv = read("lib/config/public-env.ts");
   const serverEnv = read("lib/config/server-env.ts");
-  const env = read("lib/env.ts");
   const mealPolicy = read("lib/domain/meal-policy.ts");
   const firebaseAdmin = read("lib/firebase-admin.ts");
   const serverAuth = read("lib/server-auth.ts");
-  const serverMealsBarrel = read("lib/server-meals.ts");
   const mealStorage = read("lib/server/meals/meal-storage.ts");
   const mealTypes = read("lib/server/meals/meal-types.ts");
   const uploadRoute = read("app/api/uploads/meal-image/route.ts");
   const profilePage = read("app/profile/page.tsx");
+  const envCompatPath = path.join(process.cwd(), "lib", "env.ts");
+  const serverMealsBarrelPath = path.join(process.cwd(), "lib", "server-meals.ts");
 
   assert.match(publicEnv, /export const publicEnv/);
   assert.match(serverEnv, /export const serverEnv/);
-  assert.match(env, /from "@\/lib\/config\/public-env"/);
+  assert.equal(fs.existsSync(envCompatPath), false);
+  assert.equal(fs.existsSync(serverMealsBarrelPath), false);
   assert.match(mealPolicy, /export const USER_ROLES/);
   assert.match(mealPolicy, /export const VALID_MEAL_TYPES/);
   assert.match(mealPolicy, /export const MAX_MEAL_DESCRIPTION_LENGTH/);
@@ -407,7 +406,6 @@ test("server config and meal policy are centralized in shared modules", () => {
   assert.match(serverAuth, /from "@\/lib\/config\/server-env"/);
   assert.match(mealStorage, /from "@\/lib\/config\/server-env"/);
   assert.match(mealTypes, /from "@\/lib\/domain\/meal-policy"/);
-  assert.match(serverMealsBarrel, /from "@\/lib\/server\/meals\/meal-types"/);
   assert.match(uploadRoute, /from "@\/lib\/config\/server-env"/);
   assert.match(profilePage, /from "@\/lib\/client\/profile"/);
 

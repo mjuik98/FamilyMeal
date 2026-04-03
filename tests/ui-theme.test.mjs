@@ -353,6 +353,7 @@ test("next config is kept minimal and avoids placeholder comments", () => {
 
   assert.doesNotMatch(nextConfig, /config options here/);
   assert.match(nextConfig, /withPWA\(nextConfig\)/);
+  assert.doesNotMatch(nextConfig, /optimizePackageImports/);
 });
 
 test("default build script preserves cache and exposes explicit clean build", () => {
@@ -393,6 +394,7 @@ test("public runtime env is centralized for pwa and qa UI gates", () => {
   const nextConfig = read("next.config.ts");
   const updateBanner = read("components/AppUpdateBanner.tsx");
   const cleanup = read("components/ServiceWorkerCleanup.tsx");
+  const pwaCache = read("lib/pwa-cache.ts");
   const qaMode = read("lib/qa/mode.ts");
   const qaPage = read("app/qa/meal-card/page.tsx");
 
@@ -402,6 +404,10 @@ test("public runtime env is centralized for pwa and qa UI gates", () => {
   assert.match(nextConfig, /from "@\/lib\/config\/public-env"/);
   assert.match(updateBanner, /from "@\/lib\/config\/public-env"/);
   assert.match(cleanup, /from "@\/lib\/config\/public-env"/);
+  assert.match(updateBanner, /from "@\/lib\/pwa-cache"/);
+  assert.match(cleanup, /from "@\/lib\/pwa-cache"/);
+  assert.match(pwaCache, /APP_CACHE_PATTERNS/);
+  assert.match(pwaCache, /shouldDeletePwaCache/);
   assert.match(qaMode, /from "@\/lib\/config\/public-env"/);
   assert.match(qaPage, /from "@\/lib\/config\/public-env"/);
   assert.doesNotMatch(nextConfig, /process\.env\.NEXT_PUBLIC_ENABLE_PWA/);
@@ -490,18 +496,20 @@ test("update polling only runs when a service worker registration is available",
   assert.doesNotMatch(updateBanner, /void checkForUpdate\(\);\s*\n\s*intervalId = window\.setInterval/);
 });
 
-test("persistent activity feed and profile notification settings are wired", () => {
+test("profile notification settings stay wired after removing dead activity feed ui", () => {
   const types = read("lib/types.ts");
   const clientActivity = read("lib/client/activity.ts");
-  const activityFeed = read("components/ActivityFeed.tsx");
   const profilePage = read("app/profile/page.tsx");
   const userContext = read("context/UserContext.tsx");
+  const activityFeedPath = path.join(process.cwd(), "components", "ActivityFeed.tsx");
 
   assert.match(types, /notificationPreferences/);
-  assert.match(types, /ActivityFeedItem/);
-  assert.match(clientActivity, /subscribeUserActivity/);
-  assert.match(clientActivity, /markAllActivitiesRead/);
-  assert.match(activityFeed, /activity-mark-all-read/);
+  assert.doesNotMatch(types, /ActivityFeedItem/);
+  assert.match(clientActivity, /updateNotificationPreferences/);
+  assert.doesNotMatch(clientActivity, /subscribeUserActivity/);
+  assert.doesNotMatch(clientActivity, /markAllActivitiesRead/);
+  assert.doesNotMatch(clientActivity, /mapUserActivitiesToFeedItems/);
+  assert.equal(fs.existsSync(activityFeedPath), false);
   assert.match(profilePage, /profile-notification-toggle-browserEnabled/);
   assert.match(profilePage, /profile-notification-toggle-reactionAlerts/);
   assert.match(userContext, /updateNotificationPreferences/);
@@ -650,8 +658,6 @@ test("critical UI files are UTF-8 clean", () => {
 });
 
 test("client data access is split into focused adapters and user context delegates profile I/O", () => {
-  const clientData = read("lib/data.ts");
-  const clientHttp = read("lib/client/http.ts");
   const clientMeals = read("lib/client/meal-queries.ts");
   const mealMutations = read("lib/client/meal-mutations.ts");
   const mealFilters = read("lib/client/meal-filters.ts");
@@ -670,8 +676,11 @@ test("client data access is split into focused adapters and user context delegat
   const mealCard = read("components/MealCard.tsx");
   const profilePage = read("app/profile/page.tsx");
   const userContext = read("context/UserContext.tsx");
+  const removedCompatFiles = [
+    path.join(process.cwd(), "lib", "data.ts"),
+    path.join(process.cwd(), "lib", "client", "http.ts"),
+  ];
 
-  assert.match(clientHttp, /export const fetchAuthedJson = async/);
   assert.match(clientMeals, /export const getMealsForDate = async/);
   assert.match(clientMeals, /export const getMealById = async/);
   assert.match(mealMutations, /export const addMeal = async/);
@@ -688,11 +697,7 @@ test("client data access is split into focused adapters and user context delegat
   assert.match(profileSession, /export const saveUserRole = async/);
   assert.match(authHttp, /export const getAccessToken = async/);
   assert.match(authHttp, /export const parseErrorMessage = async/);
-
-  assert.match(clientData, /from "@\/lib\/client\/meals"/);
-  assert.match(clientData, /from "@\/lib\/client\/comments"/);
-  assert.match(clientData, /from "@\/lib\/client\/reactions"/);
-  assert.match(clientData, /from "@\/lib\/client\/activity"/);
+  removedCompatFiles.forEach((filePath) => assert.equal(fs.existsSync(filePath), false));
 
   assert.match(mealCommentsHook, /from "@\/lib\/client\/comments"/);
   assert.match(mealReactionsHook, /from "@\/lib\/client\/reactions"/);
@@ -709,24 +714,35 @@ test("client data access is split into focused adapters and user context delegat
 
 test("meal date hooks are routed through feature ui controllers and upload helper reuses shared auth http", () => {
   const homePage = read("app/page.tsx");
-  const mealsHookCompat = read("components/hooks/useMealsForDate.ts");
-  const weeklyStatsHookCompat = read("components/hooks/useWeeklyStats.ts");
   const mealsController = read("lib/features/meals/ui/useMealsForDateController.ts");
   const weeklyStatsController = read("lib/features/meals/ui/useWeeklyStatsController.ts");
   const uploadHelper = read("lib/uploadImage.ts");
+  const removedCompatHooks = [
+    path.join(process.cwd(), "components", "hooks", "useMealComments.ts"),
+    path.join(process.cwd(), "components", "hooks", "useMealReactions.ts"),
+    path.join(process.cwd(), "components", "hooks", "useMealsForDate.ts"),
+    path.join(process.cwd(), "components", "hooks", "useWeeklyStats.ts"),
+  ];
 
   assert.match(homePage, /from "@\/lib\/features\/meals\/ui\/useMealsForDateController"/);
   assert.match(homePage, /from "@\/lib\/features\/meals\/ui\/useWeeklyStatsController"/);
   assert.doesNotMatch(homePage, /@\/components\/hooks\/useMealsForDate/);
   assert.doesNotMatch(homePage, /@\/components\/hooks\/useWeeklyStats/);
-  assert.match(mealsHookCompat, /useMealsForDateController as useMealsForDate/);
-  assert.match(weeklyStatsHookCompat, /useWeeklyStatsController as useWeeklyStats/);
   assert.match(mealsController, /export const useMealsForDateController =/);
   assert.match(weeklyStatsController, /export const useWeeklyStatsController =/);
+  removedCompatHooks.forEach((filePath) => assert.equal(fs.existsSync(filePath), false));
 
   assert.match(uploadHelper, /from "@\/lib\/client\/auth-http"/);
   assert.doesNotMatch(uploadHelper, /const getAccessToken = async/);
   assert.doesNotMatch(uploadHelper, /const parseErrorMessage = async/);
+});
+
+test("stale generated assets are removed from the tracked source tree", () => {
+  const staleServiceWorkerPath = path.join(process.cwd(), "public", "sw.js");
+  const staleDemoAssetPath = path.join(process.cwd(), "public", "videos", "demo.webp");
+
+  assert.equal(fs.existsSync(staleServiceWorkerPath), false);
+  assert.equal(fs.existsSync(staleDemoAssetPath), false);
 });
 
 test("runtime pages avoid compat meal barrel and comment store reuses shared serializers", () => {
@@ -783,7 +799,6 @@ test("meal editor pages reuse focused meal form helpers and direct public env co
 });
 
 test("qa helpers are split by responsibility and meal card uses feature ui controllers", () => {
-  const qaBarrel = read("lib/qa.ts");
   const qaMode = read("lib/qa/mode.ts");
   const qaFixtures = read("lib/qa/fixtures.ts");
   const qaSession = read("lib/qa/session.ts");
@@ -793,11 +808,9 @@ test("qa helpers are split by responsibility and meal card uses feature ui contr
   const mealDetailPage = read("app/meals/[id]/page.tsx");
   const userContext = read("context/UserContext.tsx");
   const mealCard = read("components/MealCard.tsx");
+  const qaBarrelPath = path.join(process.cwd(), "lib", "qa.ts");
 
-  assert.match(qaBarrel, /from "@\/lib\/qa\/mode"/);
-  assert.match(qaBarrel, /from "@\/lib\/qa\/fixtures"/);
-  assert.match(qaBarrel, /from "@\/lib\/qa\/session"/);
-  assert.match(qaBarrel, /from "@\/lib\/qa\/runtime"/);
+  assert.equal(fs.existsSync(qaBarrelPath), false);
   assert.match(qaMode, /export const isQaMockMode =/);
   assert.match(qaFixtures, /export const createQaMockMeals =/);
   assert.match(qaSession, /export const getQaNotificationPreferences =/);

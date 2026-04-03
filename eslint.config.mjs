@@ -29,11 +29,23 @@ const config = [
           paths: [
             {
               name: "@/lib/data",
-              message: "Import domain-scoped adapters directly from lib/client/* instead of the compat barrel.",
+              message: "This compatibility barrel was removed. Import domain-scoped adapters directly from lib/client/*.",
             },
             {
               name: "@/lib/server-meals",
-              message: "Import focused server meal modules directly instead of the compat barrel.",
+              message: "This compatibility barrel was removed. Import focused server meal modules directly.",
+            },
+            {
+              name: "@/lib/client/http",
+              message: "This compatibility wrapper was removed. Import shared auth helpers from lib/client/auth-http.",
+            },
+            {
+              name: "@/lib/env",
+              message: "This compatibility wrapper was removed. Import runtime config from lib/config/public-env directly.",
+            },
+            {
+              name: "@/lib/qa",
+              message: "This compatibility barrel was removed. Import specific QA modules from lib/qa/* directly.",
             },
           ],
         },

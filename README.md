@@ -44,6 +44,7 @@ npm run test:api
 npm run test:rules
 npm run test:e2e
 npm run test:smoke
+npm run test:smoke:qa-token-required
 npm run ci:verify
 ```
 
@@ -113,11 +114,11 @@ app/
   qa/                 QA 확인용 라우트
 components/
   comments/           댓글 UI
-  hooks/              화면/MealCard 상태 훅
+  hooks/              페이지 로컬 UI 훅 (예: 날짜 선택)
   meal-detail/        식사 상세 표시 조각
 context/              사용자 컨텍스트
 lib/                  데이터 접근, 서버 유틸, 공통 타입
-public/               아이콘, 로고, PWA 자산, 데모 이미지
+public/               아이콘, 로고, manifest 같은 커밋 대상 정적 자산
 scripts/              스모크 테스트/마이그레이션/보조 스크립트
 tests/                소스 구조 회귀 테스트와 Firestore rules 테스트
 docs/                 설계/계획 문서와 아키텍처 문서
@@ -132,6 +133,7 @@ docs/                 설계/계획 문서와 아키텍처 문서
 
 - QA 라우트는 개발 환경에서는 열려 있고, 운영 환경에서는 `NEXT_PUBLIC_ENABLE_QA=true` 와 `QA_ROUTE_TOKEN` 이 모두 필요합니다.
 - PWA 가 꺼져 있으면 레이아웃에서 기존 service worker 와 캐시를 정리합니다.
+- PWA service worker (`public/sw.js`) 는 빌드 시 생성되는 산출물이며 저장소에는 추적하지 않습니다.
 - 클라이언트 오류 수집 엔드포인트 `/api/client-errors` 는 Upstash 가 없으면 메모리 rate limit 으로 동작합니다.
 
 ## 검증

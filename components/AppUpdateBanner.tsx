@@ -3,6 +3,7 @@
 import { RefreshCw } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { publicEnv } from "@/lib/config/public-env";
+import { shouldDeletePwaCache } from "@/lib/pwa-cache";
 
 const POLL_INTERVAL_MS = 60_000;
 const POLL_LOCK_TTL_MS = POLL_INTERVAL_MS + 15_000;
@@ -10,14 +11,6 @@ const UPDATE_LOCK_KEY = "familymeal:update-poll-lock";
 const UPDATE_LOCK_NAME = "familymeal:update-poll";
 const UPDATE_CHANNEL_NAME = "familymeal:update-channel";
 const isPwaEnabled = publicEnv.enablePwa;
-
-const APP_CACHE_PATTERNS = [
-  /^familymeal-(precache|runtime)-/,
-  /^family-meal-(precache|runtime)-/,
-  /^next-pwa-(precache|runtime)-/,
-  /^workbox-precache-v2-/,
-  /^workbox-runtime-/,
-];
 
 type PollLock = {
   owner: string;
@@ -48,9 +41,6 @@ const parsePollLock = (raw: string | null): PollLock | null => {
     return null;
   }
 };
-
-const shouldDeleteCache = (key: string): boolean =>
-  APP_CACHE_PATTERNS.some((pattern) => pattern.test(key));
 
 export default function AppUpdateBanner() {
   const [updateAvailable, setUpdateAvailable] = useState(false);
@@ -290,7 +280,7 @@ export default function AppUpdateBanner() {
 
     if ("caches" in window) {
       const keys = await caches.keys();
-      await Promise.all(keys.filter(shouldDeleteCache).map((key) => caches.delete(key)));
+      await Promise.all(keys.filter(shouldDeletePwaCache).map((key) => caches.delete(key)));
     }
 
     window.setTimeout(() => {

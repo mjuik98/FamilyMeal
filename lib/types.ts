@@ -23,16 +23,6 @@ export interface UserActivity {
   readAt?: number | null;
 }
 
-export interface ActivityFeedItem {
-  id: string;
-  kind: UserActivityType;
-  actorLabel: string;
-  actionLabel: string;
-  preview: string;
-  timestamp: number;
-  readAt?: number | null;
-}
-
 export interface WeeklyMealStat {
   date: Date;
   label: string;

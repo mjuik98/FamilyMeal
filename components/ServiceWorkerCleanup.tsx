@@ -2,18 +2,9 @@
 
 import { useEffect } from "react";
 import { publicEnv } from "@/lib/config/public-env";
+import { shouldDeletePwaCache } from "@/lib/pwa-cache";
 
 const CLEANUP_STORAGE_KEY = `familymeal:sw-cleanup:${publicEnv.appVersion}`;
-const APP_CACHE_PATTERNS = [
-  /^familymeal-(precache|runtime)-/,
-  /^family-meal-(precache|runtime)-/,
-  /^next-pwa-(precache|runtime)-/,
-  /^workbox-precache-v2-/,
-  /^workbox-runtime-/,
-];
-
-const shouldDeleteCache = (key: string): boolean =>
-  APP_CACHE_PATTERNS.some((pattern) => pattern.test(key));
 
 export default function ServiceWorkerCleanup() {
   useEffect(() => {
@@ -34,7 +25,7 @@ export default function ServiceWorkerCleanup() {
 
       if ("caches" in window) {
         const keys = await caches.keys();
-        await Promise.all(keys.filter(shouldDeleteCache).map((key) => caches.delete(key)));
+        await Promise.all(keys.filter(shouldDeletePwaCache).map((key) => caches.delete(key)));
       }
     })();
   }, []);
