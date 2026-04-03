@@ -1,16 +1,18 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
+import { publicEnv } from "@/lib/config/public-env";
+import { serverEnv } from "@/lib/config/server-env";
 import { canAccessQaRoute } from "@/lib/qa-access";
 
-const isQaAllowedInProduction = process.env.NEXT_PUBLIC_ENABLE_QA === "true";
-const qaRouteToken = process.env.QA_ROUTE_TOKEN?.trim() ?? "";
+const isQaAllowedInProduction = publicEnv.enableQa;
+const qaRouteToken = serverEnv.qaRouteToken;
 
 const notFound = () => new NextResponse("Not Found", { status: 404 });
 
 export function proxy(request: NextRequest) {
   const canAccess = canAccessQaRoute({
-    nodeEnv: process.env.NODE_ENV,
+    nodeEnv: serverEnv.isProduction ? "production" : "development",
     qaEnabledInProduction: isQaAllowedInProduction,
     qaRouteToken,
     queryToken: request.nextUrl.searchParams.get("qa_token"),

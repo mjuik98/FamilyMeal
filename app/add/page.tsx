@@ -11,12 +11,12 @@ import { useUser } from "@/context/UserContext";
 import { addMeal } from "@/lib/client/meals";
 import { formatDateKey, parseDateKey } from "@/lib/date-utils";
 import { USER_ROLES, VALID_MEAL_TYPES } from "@/lib/domain/meal-policy";
+import { logError } from "@/lib/logging";
 import { getMealDraftDefaults, saveMealDraftDefaults } from "@/lib/meal-draft";
 import { buildAutoMealDescription } from "@/lib/meal-copy";
 import { toMealCreateErrorMessage } from "@/lib/meal-errors";
 import { readMealImagePreview, toggleMealParticipant } from "@/lib/meal-form";
-import { addQaCustomMeal } from "@/lib/qa/fixtures";
-import { isQaMockMode } from "@/lib/qa/mode";
+import { isQaRuntimeActive, saveQaMeal } from "@/lib/qa/runtime";
 import { Meal, UserRole } from "@/lib/types";
 import { uploadImage } from "@/lib/uploadImage";
 
@@ -43,7 +43,9 @@ function AddMealPageContent() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imagePreviewRequestSequenceRef = useRef(0);
   const recordDate = useMemo(
-    () => parseDateKey(searchParams.get("date")) ?? (isQaMockMode() ? getQaAnchorDate() : new Date()),
+    () =>
+      parseDateKey(searchParams.get("date")) ??
+      (isQaRuntimeActive() ? getQaAnchorDate() : new Date()),
     [searchParams]
   );
   const autoDescription = useMemo(
@@ -101,7 +103,7 @@ function AddMealPageContent() {
         if (requestId !== imagePreviewRequestSequenceRef.current) {
           return;
         }
-        console.error("Failed to read meal image preview", error);
+        logError("Failed to read meal image preview", error);
       });
   };
 
@@ -122,8 +124,8 @@ function AddMealPageContent() {
     try {
       const timestamp = recordDate.getTime();
 
-      if (isQaMockMode()) {
-        addQaCustomMeal({
+      if (isQaRuntimeActive()) {
+        saveQaMeal({
           id: `qa-custom-${Date.now()}`,
           ownerUid: userProfile.uid,
           userIds: selectedUsers,
@@ -140,7 +142,7 @@ function AddMealPageContent() {
         try {
           imageUrl = await uploadImage(imagePreview);
         } catch (error) {
-          console.error("Failed to upload meal image", error);
+          logError("Failed to upload meal image", error);
           showToast(toMealCreateErrorMessage(error, "upload"), "error");
           return;
         }
@@ -157,7 +159,7 @@ function AddMealPageContent() {
             reactions: {},
           });
         } catch (error) {
-          console.error("Failed to save meal document", error);
+          logError("Failed to save meal document", error);
           showToast(toMealCreateErrorMessage(error, "save"), "error");
           return;
         }
@@ -167,7 +169,7 @@ function AddMealPageContent() {
       router.push(`/?date=${formatDateKey(recordDate)}`);
       router.refresh();
     } catch (error) {
-      console.error("Failed to add meal", error);
+      logError("Failed to add meal", error);
       showToast(toMealCreateErrorMessage(error, "save"), "error");
     } finally {
       setIsSubmitting(false);

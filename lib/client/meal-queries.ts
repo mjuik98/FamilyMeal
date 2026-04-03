@@ -17,6 +17,7 @@ import {
   SEARCH_FALLBACK_LIMIT,
   SEARCH_INDEX_LIMIT,
 } from "@/lib/domain/meal-policy";
+import { logError, logWarn } from "@/lib/logging";
 import type { Meal, WeeklyMealStat } from "@/lib/types";
 
 import {
@@ -96,7 +97,7 @@ export const subscribeMealsForDate = (
       onMeals(dedupeAndSortMeals(snapshot.docs.map(convertMeal)));
     },
     (error) => {
-      console.error("Failed to subscribe to meals", error);
+      logError("Failed to subscribe to meals", error);
       onError?.(error);
     }
   );
@@ -192,7 +193,7 @@ export const searchMeals = async (keyword: string): Promise<Meal[]> => {
       }
     }
   } catch (error) {
-    console.warn("Indexed search failed, falling back to full scan", error);
+    logWarn("Indexed search failed, falling back to full scan", error);
   }
 
   const fallbackQuery = query(

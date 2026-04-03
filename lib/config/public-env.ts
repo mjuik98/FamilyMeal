@@ -8,6 +8,8 @@ const rawPublicEnv = {
   NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
   NEXT_PUBLIC_FIREBASE_APP_ID: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
   NEXT_PUBLIC_ENABLE_PWA: process.env.NEXT_PUBLIC_ENABLE_PWA,
+  NEXT_PUBLIC_ENABLE_QA: process.env.NEXT_PUBLIC_ENABLE_QA,
+  NEXT_PUBLIC_APP_VERSION: process.env.NEXT_PUBLIC_APP_VERSION,
 };
 
 const PublicEnvSchema = z.object({
@@ -18,6 +20,8 @@ const PublicEnvSchema = z.object({
   NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: z.string().trim().min(1),
   NEXT_PUBLIC_FIREBASE_APP_ID: z.string().trim().min(1),
   NEXT_PUBLIC_ENABLE_PWA: z.enum(["true", "false"]).optional().default("false"),
+  NEXT_PUBLIC_ENABLE_QA: z.enum(["true", "false"]).optional().default("false"),
+  NEXT_PUBLIC_APP_VERSION: z.string().trim().optional().default("dev"),
 });
 
 const parsed = PublicEnvSchema.safeParse(rawPublicEnv);
@@ -39,4 +43,6 @@ export const publicEnv = {
     appId: values.NEXT_PUBLIC_FIREBASE_APP_ID.trim(),
   },
   enablePwa: values.NEXT_PUBLIC_ENABLE_PWA === "true",
+  enableQa: values.NEXT_PUBLIC_ENABLE_QA === "true",
+  appVersion: values.NEXT_PUBLIC_APP_VERSION.trim() || "dev",
 } as const;

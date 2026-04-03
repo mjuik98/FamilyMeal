@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect } from "react";
+import { publicEnv } from "@/lib/config/public-env";
 
-const CLEANUP_STORAGE_KEY = `familymeal:sw-cleanup:${process.env.NEXT_PUBLIC_APP_VERSION ?? "dev"}`;
+const CLEANUP_STORAGE_KEY = `familymeal:sw-cleanup:${publicEnv.appVersion}`;
 const APP_CACHE_PATTERNS = [
   /^familymeal-(precache|runtime)-/,
   /^family-meal-(precache|runtime)-/,

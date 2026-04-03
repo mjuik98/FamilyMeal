@@ -96,17 +96,54 @@ test("qa route for meal card e2e exists", () => {
   assert.equal(fs.existsSync(qaPagePath), true);
 });
 
+test("qa behavior is routed through the shared qa runtime adapter", () => {
+  const addPage = read("app/add/page.tsx");
+  const archivePage = read("app/archive/page.tsx");
+  const mealDetailPage = read("app/meals/[id]/page.tsx");
+  const userContext = read("context/UserContext.tsx");
+  const mealsHook = read("lib/features/meals/ui/useMealsForDateController.ts");
+  const weeklyStatsHook = read("lib/features/meals/ui/useWeeklyStatsController.ts");
+  const commentsHook = read("lib/features/comments/ui/useMealCommentsController.ts");
+  const reactionsHook = read("lib/features/reactions/ui/useMealReactionsController.ts");
+  const qaRuntime = read("lib/qa/runtime.ts");
+
+  for (const source of [
+    addPage,
+    archivePage,
+    mealDetailPage,
+    userContext,
+    mealsHook,
+    weeklyStatsHook,
+    commentsHook,
+    reactionsHook,
+  ]) {
+    assert.match(source, /@\/lib\/qa\/runtime/);
+  }
+
+  assert.doesNotMatch(addPage, /@\/lib\/qa\/fixtures/);
+  assert.doesNotMatch(archivePage, /@\/lib\/qa\/fixtures/);
+  assert.doesNotMatch(mealDetailPage, /@\/lib\/qa\/fixtures/);
+  assert.doesNotMatch(userContext, /@\/lib\/qa\/session/);
+  assert.doesNotMatch(userContext, /@\/lib\/qa\/mode/);
+  assert.match(qaRuntime, /export const isQaRuntimeActive =/);
+  assert.match(qaRuntime, /export const getQaMealsForDate =/);
+  assert.match(qaRuntime, /export const saveQaMeal =/);
+  assert.match(qaRuntime, /export const getQaUserContextValue =/);
+});
+
 test("qa route is gated in production", () => {
   const qaPage = read("app/qa/meal-card/page.tsx");
   assert.match(qaPage, /process\.env\.NODE_ENV !== "production"/);
-  assert.match(qaPage, /NEXT_PUBLIC_ENABLE_QA === "true"/);
+  assert.match(qaPage, /@\/lib\/config\/public-env/);
+  assert.match(qaPage, /publicEnv\.enableQa/);
   assert.match(qaPage, /notFound\(\)/);
 });
 
 test("qa proxy supports token-based protection", () => {
   const proxy = read("proxy.ts");
   const qaAccess = read("lib/qa-access.ts");
-  assert.match(proxy, /QA_ROUTE_TOKEN/);
+  assert.match(proxy, /@\/lib\/config\/server-env/);
+  assert.match(proxy, /serverEnv\.qaRouteToken/);
   assert.match(proxy, /qa_token/);
   assert.match(proxy, /x-qa-token/);
   assert.match(proxy, /matcher:\s*\["\/qa\/:path\*"\]/);
@@ -132,12 +169,14 @@ test("reaction mutations are handled by dedicated APIs with shared validation", 
   const mealReactionRoute = read("app/api/meals/[id]/reactions/route.ts");
   const commentReactionRoute = read("app/api/meals/[id]/comments/[commentId]/reactions/route.ts");
   const reactionHelpers = read("lib/reactions.ts");
+  const reactionPolicy = read("lib/server/reactions/reaction-policy.ts");
 
   assert.match(clientReactions, /\/api\/meals\/\$\{encodedMealId\}\/reactions/);
   assert.match(clientReactions, /\/api\/meals\/\$\{encodedMealId\}\/comments\/\$\{encodedCommentId\}\/reactions/);
   assert.match(reactionBar, /data-testid=\{`\$\{scope\}-reaction-chip-\$\{option\.key\}`\}/);
-  assert.match(mealReactionRoute, /ALLOWED_REACTION_EMOJIS/);
-  assert.match(commentReactionRoute, /ALLOWED_REACTION_EMOJIS/);
+  assert.match(mealReactionRoute, /parseReactionPayload/);
+  assert.match(commentReactionRoute, /parseReactionPayload/);
+  assert.match(reactionPolicy, /ALLOWED_REACTION_EMOJIS/);
   assert.match(reactionHelpers, /export const ALLOWED_REACTION_EMOJIS/);
 });
 
@@ -347,6 +386,29 @@ test("client error route lazy-loads Upstash only when credentials exist", () => 
   assert.match(clientErrorsRoute, /import\("@upstash\/ratelimit"\)/);
   assert.match(clientErrorsRoute, /import\("@upstash\/redis"\)/);
   assert.match(clientErrorsRoute, /getUpstashLimiter/);
+});
+
+test("public runtime env is centralized for pwa and qa UI gates", () => {
+  const publicEnv = read("lib/config/public-env.ts");
+  const nextConfig = read("next.config.ts");
+  const updateBanner = read("components/AppUpdateBanner.tsx");
+  const cleanup = read("components/ServiceWorkerCleanup.tsx");
+  const qaMode = read("lib/qa/mode.ts");
+  const qaPage = read("app/qa/meal-card/page.tsx");
+
+  assert.match(publicEnv, /enablePwa:/);
+  assert.match(publicEnv, /enableQa:/);
+  assert.match(publicEnv, /appVersion:/);
+  assert.match(nextConfig, /from "@\/lib\/config\/public-env"/);
+  assert.match(updateBanner, /from "@\/lib\/config\/public-env"/);
+  assert.match(cleanup, /from "@\/lib\/config\/public-env"/);
+  assert.match(qaMode, /from "@\/lib\/config\/public-env"/);
+  assert.match(qaPage, /from "@\/lib\/config\/public-env"/);
+  assert.doesNotMatch(nextConfig, /process\.env\.NEXT_PUBLIC_ENABLE_PWA/);
+  assert.doesNotMatch(updateBanner, /process\.env\.NEXT_PUBLIC_ENABLE_PWA/);
+  assert.doesNotMatch(cleanup, /process\.env\.NEXT_PUBLIC_APP_VERSION/);
+  assert.doesNotMatch(qaMode, /process\.env\.NEXT_PUBLIC_ENABLE_QA/);
+  assert.doesNotMatch(qaPage, /process\.env\.NEXT_PUBLIC_ENABLE_QA/);
 });
 
 test("qa fixtures use readable Korean literals in source", () => {
@@ -682,6 +744,14 @@ test("runtime pages avoid compat meal barrel and comment store reuses shared ser
   assert.doesNotMatch(commentsStore, /const convertCommentDoc =/);
 });
 
+test("eslint guards forbid compat barrels and direct console usage", () => {
+  const eslintConfig = read("eslint.config.mjs");
+
+  assert.match(eslintConfig, /no-console/);
+  assert.match(eslintConfig, /@\/lib\/data/);
+  assert.match(eslintConfig, /@\/lib\/server-meals/);
+});
+
 test("meal editor pages reuse focused meal form helpers and direct public env config", () => {
   const addPage = read("app/add/page.tsx");
   const editPage = read("app/edit/[id]/page.tsx");
@@ -717,6 +787,7 @@ test("qa helpers are split by responsibility and meal card uses feature ui contr
   const qaMode = read("lib/qa/mode.ts");
   const qaFixtures = read("lib/qa/fixtures.ts");
   const qaSession = read("lib/qa/session.ts");
+  const qaRuntime = read("lib/qa/runtime.ts");
   const homePage = read("app/page.tsx");
   const archivePage = read("app/archive/page.tsx");
   const mealDetailPage = read("app/meals/[id]/page.tsx");
@@ -726,14 +797,16 @@ test("qa helpers are split by responsibility and meal card uses feature ui contr
   assert.match(qaBarrel, /from "@\/lib\/qa\/mode"/);
   assert.match(qaBarrel, /from "@\/lib\/qa\/fixtures"/);
   assert.match(qaBarrel, /from "@\/lib\/qa\/session"/);
+  assert.match(qaBarrel, /from "@\/lib\/qa\/runtime"/);
   assert.match(qaMode, /export const isQaMockMode =/);
   assert.match(qaFixtures, /export const createQaMockMeals =/);
   assert.match(qaSession, /export const getQaNotificationPreferences =/);
+  assert.match(qaRuntime, /export const isQaRuntimeActive =/);
 
-  assert.match(homePage, /from "@\/lib\/qa\/mode"/);
-  assert.match(archivePage, /from "@\/lib\/qa\/fixtures"/);
-  assert.match(mealDetailPage, /from "@\/lib\/qa\/fixtures"/);
-  assert.match(userContext, /from "@\/lib\/qa\/session"/);
+  assert.match(homePage, /from "@\/lib\/qa\/runtime"/);
+  assert.match(archivePage, /from "@\/lib\/qa\/runtime"/);
+  assert.match(mealDetailPage, /from "@\/lib\/qa\/runtime"/);
+  assert.match(userContext, /from "@\/lib\/qa\/runtime"/);
 
   assert.match(mealCard, /from "@\/lib\/features\/comments\/ui\/useMealCommentsController"/);
   assert.match(mealCard, /from "@\/lib\/features\/reactions\/ui\/useMealReactionsController"/);

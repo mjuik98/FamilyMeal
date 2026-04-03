@@ -10,6 +10,7 @@ import { useToast } from "@/components/Toast";
 import { useUser } from "@/context/UserContext";
 import { getMealById, updateMeal } from "@/lib/client/meals";
 import { USER_ROLES, VALID_MEAL_TYPES } from "@/lib/domain/meal-policy";
+import { logError } from "@/lib/logging";
 import { toMealUpdateErrorMessage } from "@/lib/meal-errors";
 import { isLocalMealImagePreview, readMealImagePreview, toggleMealParticipant } from "@/lib/meal-form";
 import { Meal, UserRole } from "@/lib/types";
@@ -78,7 +79,7 @@ export default function EditMealPage() {
         if (!active || requestId !== loadRequestSequenceRef.current) {
           return;
         }
-        console.error("Failed to load meal", error);
+        logError("Failed to load meal", error);
         showToastRef.current("기록을 불러오지 못했습니다.", "error");
         router.push("/");
       } finally {
@@ -113,7 +114,7 @@ export default function EditMealPage() {
         if (requestId !== imagePreviewRequestSequenceRef.current) {
           return;
         }
-        console.error("Failed to read meal image preview", error);
+        logError("Failed to read meal image preview", error);
       });
   };
 
@@ -141,7 +142,7 @@ export default function EditMealPage() {
         try {
           imageUrl = await uploadImage(imagePreview);
         } catch (error) {
-          console.error("Failed to upload updated meal image", error);
+          logError("Failed to upload updated meal image", error);
           showToast(toMealUpdateErrorMessage(error, "upload"), "error");
           return;
         }
@@ -157,7 +158,7 @@ export default function EditMealPage() {
           imageUrl,
         });
       } catch (error) {
-        console.error("Failed to save updated meal", error);
+        logError("Failed to save updated meal", error);
         showToast(toMealUpdateErrorMessage(error, "save"), "error");
         return;
       }
@@ -166,7 +167,7 @@ export default function EditMealPage() {
       router.push("/");
       router.refresh();
     } catch (error) {
-      console.error("Failed to update meal", error);
+      logError("Failed to update meal", error);
       showToast(toMealUpdateErrorMessage(error, "save"), "error");
     } finally {
       setIsSubmitting(false);

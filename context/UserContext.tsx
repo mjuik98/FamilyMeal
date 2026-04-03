@@ -12,11 +12,13 @@ import {
 
 import { auth } from "@/lib/firebase";
 import {
-  getQaDefaultRole,
-  getQaNotificationPreferences,
-  setQaNotificationPreferences,
-} from "@/lib/qa/session";
-import { isQaMockMode, QA_MOCK_MODE_KEY } from "@/lib/qa/mode";
+  clearQaRuntimeSession,
+  getQaUserContextValue,
+  isQaRuntimeActive,
+  saveQaRuntimeNotificationPreferences,
+  setQaRuntimeRole,
+} from "@/lib/qa/runtime";
+import { logError } from "@/lib/logging";
 import { NotificationPreferences, UserProfile, UserRole } from "@/lib/types";
 import { updateNotificationPreferences as saveNotificationPreferences } from "@/lib/client/activity";
 import { buildFallbackUserProfile, loadUserProfile, saveUserRole } from "@/lib/client/profile-session";
@@ -36,16 +38,6 @@ type UserContextType = {
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
 
-const createQaUser = (): User => ({ uid: "qa-user" } as User);
-
-const createQaProfile = (role: UserRole = getQaDefaultRole()): UserProfile => ({
-  uid: "qa-user",
-  email: "qa@example.com",
-  displayName: "QA User",
-  role,
-  notificationPreferences: getQaNotificationPreferences(),
-});
-
 export function UserProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
@@ -54,9 +46,10 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      if (isQaMockMode()) {
-        setUser(createQaUser());
-        setUserProfile(createQaProfile());
+      if (isQaRuntimeActive()) {
+        const qaValue = getQaUserContextValue();
+        setUser(qaValue.user);
+        setUserProfile(qaValue.userProfile);
         setAuthError(null);
         setLoading(false);
         return;
@@ -69,7 +62,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         try {
           setUserProfile(await loadUserProfile(firebaseUser));
         } catch (error) {
-          console.error("Error fetching user profile", error);
+          logError("Error fetching user profile", error);
           setUserProfile(buildFallbackUserProfile(firebaseUser));
           setAuthError(
             "\uB85C\uADF8\uC778 \uC815\uBCF4\uB97C \uBD88\uB7EC\uC624\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4. \uC7A0\uC2DC \uD6C4 \uB2E4\uC2DC \uC2DC\uB3C4\uD574 \uC8FC\uC138\uC694."
@@ -88,9 +81,10 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signInWithGoogle = async () => {
-    if (isQaMockMode()) {
-      setUser(createQaUser());
-      setUserProfile(createQaProfile());
+    if (isQaRuntimeActive()) {
+      const qaValue = getQaUserContextValue();
+      setUser(qaValue.user);
+      setUserProfile(qaValue.userProfile);
       setAuthError(null);
       return;
     }
@@ -127,13 +121,13 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       setAuthError(
         "Google \uB85C\uADF8\uC778\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4. \uC7A0\uC2DC \uD6C4 \uB2E4\uC2DC \uC2DC\uB3C4\uD574 \uC8FC\uC138\uC694."
       );
-      console.error("Error signing in with Google", error);
+      logError("Error signing in with Google", error);
     }
   };
 
   const signOut = async () => {
-    if (typeof window !== "undefined" && isQaMockMode()) {
-      window.localStorage.removeItem(QA_MOCK_MODE_KEY);
+    if (isQaRuntimeActive()) {
+      clearQaRuntimeSession();
       setUser(null);
       setUserProfile(null);
       setAuthError(null);
@@ -144,19 +138,13 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     try {
       await firebaseSignOut(auth);
     } catch (error) {
-      console.error("Error signing out", error);
+      logError("Error signing out", error);
     }
   };
 
   const selectRole = async (role: UserRole) => {
-    if (isQaMockMode()) {
-      setUserProfile((prev) => ({
-        uid: prev?.uid ?? "qa-user",
-        email: prev?.email ?? "qa@example.com",
-        displayName: prev?.displayName ?? "QA User",
-        role,
-        notificationPreferences: prev?.notificationPreferences ?? getQaNotificationPreferences(),
-      }));
+    if (isQaRuntimeActive()) {
+      setUserProfile((prev) => setQaRuntimeRole(role, prev));
       return;
     }
 
@@ -166,7 +154,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       setUserProfile(await saveUserRole(role));
       setAuthError(null);
     } catch (error) {
-      console.error("Error saving user role", error);
+      logError("Error saving user role", error);
       setAuthError(
         error instanceof Error
           ? error.message
@@ -179,18 +167,9 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   const updateNotificationPreferences = async (
     preferences: NotificationPreferences
   ) => {
-    if (isQaMockMode()) {
-      setQaNotificationPreferences(preferences);
+    if (isQaRuntimeActive()) {
       setUserProfile((prev) =>
-        prev
-          ? { ...prev, notificationPreferences: preferences }
-          : {
-              uid: "qa-user",
-              email: "qa@example.com",
-              displayName: "QA User",
-              role: getQaDefaultRole(),
-              notificationPreferences: preferences,
-            }
+        saveQaRuntimeNotificationPreferences(preferences, prev)
       );
       return;
     }

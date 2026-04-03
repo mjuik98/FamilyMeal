@@ -47,9 +47,11 @@ test("archive matching checks query, type, and participant together", () => {
 
 test("archive route threads authenticated caller identity into the server use case", () => {
   const archiveRoute = read("app/api/archive/route.ts");
+  const routeAuth = read("lib/server/route-auth.ts");
 
-  assert.match(archiveRoute, /const user = await verifyRequestUser\(request\);/);
-  assert.match(archiveRoute, /const role = await getUserRole\(user\.uid\);/);
+  assert.match(archiveRoute, /const \{ user, role \} = await requireValidatedUserRole\(request\);/);
+  assert.match(routeAuth, /verifyRequestUser/);
+  assert.match(routeAuth, /getUserRole/);
   assert.match(archiveRoute, /const result = await listArchiveMeals\(\{\s*\.\.\.query,\s*uid: user\.uid,\s*actorRole: role,\s*\}\);/s);
 });
 

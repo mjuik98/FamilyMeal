@@ -2,6 +2,7 @@ import { FieldValue, Timestamp } from "firebase-admin/firestore";
 
 import { isMealType, isUserRole } from "@/lib/domain/meal-policy";
 import { adminDb } from "@/lib/firebase-admin";
+import { logError } from "@/lib/logging";
 import { deleteStorageObjectByUrl } from "@/lib/server/meals/meal-storage";
 import {
   buildMealKeywords,
@@ -204,7 +205,7 @@ export const updateMealDocument = async ({
     try {
       await deleteStorageObjectByUrl(staleImageUrl);
     } catch (error) {
-      console.error("Failed to delete stale meal image", error);
+      logError("Failed to delete stale meal image", error);
     }
   }
 
@@ -292,6 +293,10 @@ export const deleteMealCommentsByMealId = async (mealId: string): Promise<void> 
     cursor = snapshot.docs[snapshot.docs.length - 1] ?? null;
     if (!cursor) return;
   }
+};
+
+export const deleteMealDocumentById = async (mealId: string): Promise<void> => {
+  await adminDb.collection("meals").doc(mealId).delete();
 };
 
 export const markMealDeleteJob = async (mealId: string, payload: Record<string, unknown>) => {

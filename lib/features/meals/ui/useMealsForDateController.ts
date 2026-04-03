@@ -4,7 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 
 import { subscribeMealsForDate } from "@/lib/client/meals";
 import { formatDateKey } from "@/lib/date-utils";
-import { createQaMockMeals } from "@/lib/qa/fixtures";
+import { logError } from "@/lib/logging";
+import { getQaMealsForDate } from "@/lib/qa/runtime";
 import type { Meal, UserRole } from "@/lib/types";
 
 export const useMealsForDateController = ({
@@ -37,7 +38,7 @@ export const useMealsForDateController = ({
         setLoadedDateKey(currentDateKey);
       },
       (error) => {
-        console.error("Failed to load meals", error);
+        logError("Failed to load meals", error);
         setRemoteMeals([]);
         setLoadedDateKey(currentDateKey);
       }
@@ -47,7 +48,7 @@ export const useMealsForDateController = ({
   const meals = useMemo(
     () =>
       qaMode && role
-        ? createQaMockMeals(role, effectiveSelectedDate, qaAnchorDate)
+        ? getQaMealsForDate(role, effectiveSelectedDate, qaAnchorDate)
         : loadedDateKey === currentDateKey && role
           ? remoteMeals
           : [],

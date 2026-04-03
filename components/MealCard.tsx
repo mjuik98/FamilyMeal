@@ -8,6 +8,7 @@ import { deleteMeal } from "@/lib/client/meals";
 import type { MealDeleteResult } from "@/lib/client/meal-mutations";
 import { useMealCommentsController as useMealComments } from "@/lib/features/comments/ui/useMealCommentsController";
 import { useMealReactionsController as useMealReactions } from "@/lib/features/reactions/ui/useMealReactionsController";
+import { logError } from "@/lib/logging";
 import { toMealDeleteErrorMessage } from "@/lib/meal-errors";
 import type { Meal } from "@/lib/types";
 
@@ -114,7 +115,7 @@ export default function MealCard({
           return;
       }
     } catch (error) {
-      console.error("Failed to delete meal", error);
+      logError("Failed to delete meal", error);
       showToast(toMealDeleteErrorMessage(error), "error");
     } finally {
       setIsDeleting(false);

@@ -8,10 +8,11 @@ import {
   USER_ROLES,
   VALID_MEAL_TYPES,
 } from "@/lib/domain/meal-policy";
-import { adminDb } from "@/lib/firebase-admin";
+import { logError } from "@/lib/logging";
 import { getRouteErrorMessage, getRouteErrorStatus } from "@/lib/route-errors";
 import {
   deleteMealCommentsByMealId,
+  deleteMealDocumentById,
   markMealDeleteJob,
   planMealDeleteOperation,
   updateMealDocument,
@@ -74,12 +75,12 @@ export async function DELETE(
     }
 
     await deleteMealCommentsByMealId(mealId);
-    await adminDb.collection("meals").doc(mealId).delete();
+    await deleteMealDocumentById(mealId);
     if (plan.action === "delete_now" && plan.mealImageUrl) {
       try {
         await deleteStorageObjectByUrl(plan.mealImageUrl);
       } catch (error) {
-        console.error("Failed to delete meal image during delete cleanup", error);
+        logError("Failed to delete meal image during delete cleanup", error);
       }
     }
     await markMealDeleteJob(mealId, {

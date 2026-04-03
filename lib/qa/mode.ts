@@ -1,9 +1,10 @@
+import { publicEnv } from "@/lib/config/public-env";
 import { QA_MOCK_MODE_KEY } from "@/lib/qa/storage";
 
 export { QA_MOCK_MODE_KEY } from "@/lib/qa/storage";
 
 export const isQaEnabled =
-  process.env.NEXT_PUBLIC_ENABLE_QA === "true" ||
+  publicEnv.enableQa ||
   process.env.NODE_ENV !== "production";
 
 export const isQaMockEnabledByEnv = (

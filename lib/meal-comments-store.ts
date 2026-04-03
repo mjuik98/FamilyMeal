@@ -7,6 +7,7 @@ import {
 
 import { convertCommentDoc } from "@/lib/client/serializers";
 import { db } from "@/lib/firebase";
+import { logError } from "@/lib/logging";
 import type { MealComment } from "@/lib/types";
 
 type CommentListener = {
@@ -67,7 +68,7 @@ const startRemoteSubscription = (mealId: string, entry: CommentEntry) => {
       emitComments(entry);
     },
     (error) => {
-      console.error("Failed to subscribe to comments", error);
+      logError("Failed to subscribe to comments", error);
       emitError(entry, error);
     }
   );

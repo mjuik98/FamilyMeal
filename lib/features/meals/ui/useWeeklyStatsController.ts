@@ -3,7 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { getWeeklyStats } from "@/lib/client/meals";
-import { createQaMockWeeklyStats } from "@/lib/qa/fixtures";
+import { logError } from "@/lib/logging";
+import { getQaWeeklyStats } from "@/lib/qa/runtime";
 import type { UserRole, WeeklyMealStat } from "@/lib/types";
 
 export const useWeeklyStatsController = ({
@@ -57,7 +58,7 @@ export const useWeeklyStatsController = ({
         if (!isActive) {
           return;
         }
-        console.error("Failed to load weekly stats", error);
+        logError("Failed to load weekly stats", error);
       });
 
     return () => {
@@ -68,7 +69,7 @@ export const useWeeklyStatsController = ({
   const weeklyStats = useMemo(
     () =>
       qaMode && role
-        ? createQaMockWeeklyStats(effectiveSelectedDate, role, qaAnchorDate)
+        ? getQaWeeklyStats(effectiveSelectedDate, role, qaAnchorDate)
         : role
           ? cachedWeekStats ?? []
           : [],

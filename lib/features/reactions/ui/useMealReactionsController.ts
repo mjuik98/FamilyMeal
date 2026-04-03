@@ -7,7 +7,8 @@ import {
   toggleMealCommentReaction,
   toggleMealReaction,
 } from "@/lib/client/reactions";
-import { isQaMockMode } from "@/lib/qa/mode";
+import { logError } from "@/lib/logging";
+import { isQaRuntimeActive } from "@/lib/qa/runtime";
 import { normalizeReactionMap, toggleReactionInMap } from "@/lib/reactions";
 import type { Meal, MealComment, ReactionEmoji } from "@/lib/types";
 
@@ -47,7 +48,7 @@ export const useMealReactionsController = ({
     const next = toggleReactionInMap(previous, emoji, userUid);
     setMealReactions(next);
 
-    if (isQaMockMode()) {
+    if (isQaRuntimeActive()) {
       return;
     }
 
@@ -56,7 +57,7 @@ export const useMealReactionsController = ({
       const serverReactions = await toggleMealReaction(meal.id, emoji);
       setMealReactions(serverReactions);
     } catch (error) {
-      console.error("Failed to toggle meal reaction", error);
+      logError("Failed to toggle meal reaction", error);
       setMealReactions(previous);
       showToast("반응 등록에 실패했습니다.", "error");
     } finally {
@@ -87,7 +88,7 @@ export const useMealReactionsController = ({
       );
     });
 
-    if (isQaMockMode()) {
+    if (isQaRuntimeActive()) {
       return;
     }
 
@@ -106,7 +107,7 @@ export const useMealReactionsController = ({
         )
       );
     } catch (error) {
-      console.error("Failed to toggle comment reaction", error);
+      logError("Failed to toggle comment reaction", error);
       setComments(previous);
       showToast("댓글 반응 등록에 실패했습니다.", "error");
     } finally {

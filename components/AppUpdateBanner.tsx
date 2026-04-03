@@ -2,13 +2,14 @@
 
 import { RefreshCw } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { publicEnv } from "@/lib/config/public-env";
 
 const POLL_INTERVAL_MS = 60_000;
 const POLL_LOCK_TTL_MS = POLL_INTERVAL_MS + 15_000;
 const UPDATE_LOCK_KEY = "familymeal:update-poll-lock";
 const UPDATE_LOCK_NAME = "familymeal:update-poll";
 const UPDATE_CHANNEL_NAME = "familymeal:update-channel";
-const isPwaEnabled = process.env.NEXT_PUBLIC_ENABLE_PWA === "true";
+const isPwaEnabled = publicEnv.enablePwa;
 
 const APP_CACHE_PATTERNS = [
   /^familymeal-(precache|runtime)-/,

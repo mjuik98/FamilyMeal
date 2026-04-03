@@ -1,14 +1,11 @@
 import { NextResponse } from "next/server";
+import { serverEnv } from "@/lib/config/server-env";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 export async function GET() {
-  const version =
-    process.env.VERCEL_GIT_COMMIT_SHA ||
-    process.env.VERCEL_DEPLOYMENT_ID ||
-    process.env.NEXT_PUBLIC_APP_VERSION ||
-    "local";
+  const version = serverEnv.deploymentVersion;
 
   return NextResponse.json(
     {

@@ -1,4 +1,5 @@
 import MealCard from "@/components/MealCard";
+import { publicEnv } from "@/lib/config/public-env";
 import { getQaDefaultRole } from "@/lib/qa/session";
 import { Meal } from "@/lib/types";
 import { notFound } from "next/navigation";
@@ -35,7 +36,7 @@ const sampleMeal: Meal = {
 
 export default function QaMealCardPage() {
   const qaEnabled =
-    process.env.NODE_ENV !== "production" || process.env.NEXT_PUBLIC_ENABLE_QA === "true";
+    process.env.NODE_ENV !== "production" || publicEnv.enableQa;
 
   if (!qaEnabled) {
     notFound();

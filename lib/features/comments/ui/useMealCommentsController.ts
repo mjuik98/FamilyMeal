@@ -8,8 +8,9 @@ import {
   updateMealComment,
 } from "@/lib/client/comments";
 import type { ReplyTarget } from "@/lib/features/comments/ui/types";
+import { logError } from "@/lib/logging";
 import { subscribeToMealComments } from "@/lib/meal-comments-store";
-import { isQaMockMode } from "@/lib/qa/mode";
+import { isQaRuntimeActive } from "@/lib/qa/runtime";
 import type { Meal, MealComment, UserProfile } from "@/lib/types";
 
 type ToastFn = (
@@ -91,7 +92,7 @@ export const useMealCommentsController = ({
     setComments(fallbackComments);
     setCommentCount(meal.commentCount ?? fallbackComments.length);
 
-    if (isQaMockMode()) {
+    if (isQaRuntimeActive()) {
       return;
     }
 
@@ -160,7 +161,7 @@ export const useMealCommentsController = ({
       reactions: {},
     };
 
-    if (isQaMockMode()) {
+    if (isQaRuntimeActive()) {
       setCommentText("");
       setComments((prev) => [...prev, optimisticComment]);
       setCommentCount((prev) => prev + 1);
@@ -188,7 +189,7 @@ export const useMealCommentsController = ({
       setReplyTarget(null);
       showToast("댓글이 등록되었습니다.", "success");
     } catch (error) {
-      console.error("Failed to add comment", error);
+      logError("Failed to add comment", error);
       setComments((prev) => prev.filter((comment) => comment.id !== optimisticId));
       setCommentCount((prev) => Math.max(0, prev - 1));
       setCommentText(trimmed);
@@ -230,7 +231,7 @@ export const useMealCommentsController = ({
       );
     });
 
-    if (isQaMockMode()) {
+    if (isQaRuntimeActive()) {
       cancelEditingComment();
       showToast("댓글이 수정되었습니다.", "success");
       return;
@@ -250,7 +251,7 @@ export const useMealCommentsController = ({
       cancelEditingComment();
       showToast("댓글이 수정되었습니다.", "success");
     } catch (error) {
-      console.error("Failed to update comment", error);
+      logError("Failed to update comment", error);
       setComments(previous);
       showToast("댓글 수정에 실패했습니다.", "error");
     } finally {
@@ -273,7 +274,7 @@ export const useMealCommentsController = ({
     });
     setCommentCount((prev) => Math.max(0, prev - 1));
 
-    if (isQaMockMode()) {
+    if (isQaRuntimeActive()) {
       if (editingCommentId === commentId) {
         cancelEditingComment();
       }
@@ -289,7 +290,7 @@ export const useMealCommentsController = ({
       }
       showToast("댓글이 삭제되었습니다.", "success");
     } catch (error) {
-      console.error("Failed to delete comment", error);
+      logError("Failed to delete comment", error);
       setComments(previous);
       setCommentCount(previous.length);
       showToast(

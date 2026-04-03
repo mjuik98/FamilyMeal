@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 
 import { getRouteErrorMessage, getRouteErrorStatus } from "@/lib/route-errors";
-import { getUserRole, verifyRequestUser } from "@/lib/server-auth";
 import {
   getMealId,
   parseCommentCreatePayload,
@@ -10,6 +9,7 @@ import {
   assertValidCommentRole,
   createMealComment,
 } from "@/lib/server/comments/comment-use-cases";
+import { requireValidatedUserRole } from "@/lib/server/route-auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -23,9 +23,11 @@ export async function POST(
   context: { params: Promise<Params> }
 ) {
   try {
-    const user = await verifyRequestUser(request);
+    const { user, role: actorRole } = await requireValidatedUserRole(
+      request,
+      assertValidCommentRole
+    );
     const mealId = await getMealId(context.params);
-    const actorRole = assertValidCommentRole(await getUserRole(user.uid));
     const { text, parentId } = await parseCommentCreatePayload(request);
 
     const comment = await createMealComment({

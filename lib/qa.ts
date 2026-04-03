@@ -20,3 +20,16 @@ export {
   createQaMockWeeklyStats,
   getQaMockMealById,
 } from "@/lib/qa/fixtures";
+export {
+  clearQaRuntimeSession,
+  getQaArchiveMeals,
+  getQaMealDetail,
+  getQaMealsForDate,
+  getQaSameDayMeals,
+  getQaUserContextValue,
+  getQaWeeklyStats,
+  isQaRuntimeActive,
+  saveQaMeal,
+  saveQaRuntimeNotificationPreferences,
+  setQaRuntimeRole,
+} from "@/lib/qa/runtime";

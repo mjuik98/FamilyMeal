@@ -2,15 +2,14 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import {
-  isUserRole,
   MAX_MEAL_DESCRIPTION_LENGTH,
   MAX_MEAL_IMAGE_URL_LENGTH,
   USER_ROLES,
   VALID_MEAL_TYPES,
 } from "@/lib/domain/meal-policy";
 import { getRouteErrorMessage, getRouteErrorStatus } from "@/lib/route-errors";
-import { getUserRole, verifyRequestUser } from "@/lib/server-auth";
 import { createMealDocument } from "@/lib/server/meals/meal-use-cases";
+import { requireValidatedUserRole } from "@/lib/server/route-auth";
 import { MealRouteError } from "@/lib/server/meals/meal-types";
 
 export const runtime = "nodejs";
@@ -26,11 +25,7 @@ const MealCreateSchema = z.object({
 
 export async function POST(request: Request) {
   try {
-    const user = await verifyRequestUser(request);
-    const role = await getUserRole(user.uid);
-    if (!isUserRole(role)) {
-      throw new MealRouteError("Valid user role is required", 403);
-    }
+    const { user, role } = await requireValidatedUserRole(request);
 
     let body: unknown;
     try {

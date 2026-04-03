@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { serverEnv } from "@/lib/config/server-env";
+import { logError } from "@/lib/logging";
+
 const MAX_REQUEST_BYTES = 16 * 1024;
 const RATE_LIMIT_WINDOW_MS = 60_000;
 const RATE_LIMIT_MAX_REQUESTS = 30;
@@ -13,8 +16,8 @@ type RateBucket = {
 
 const inMemoryBuckets = new Map<string, RateBucket>();
 
-const upstashUrl = process.env.UPSTASH_REDIS_REST_URL?.trim();
-const upstashToken = process.env.UPSTASH_REDIS_REST_TOKEN?.trim();
+const upstashUrl = serverEnv.upstash.url;
+const upstashToken = serverEnv.upstash.token;
 const hasUpstash = Boolean(upstashUrl && upstashToken);
 
 type UpstashLimiter = {
@@ -163,10 +166,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, error: "invalid payload" }, { status: 400 });
     }
 
-    console.error("[client-error]", parsed.data);
+    logError("[client-error]", undefined, parsed.data);
     return NextResponse.json({ ok: true });
   } catch (error) {
-    console.error("[client-error] route failure", error);
+    logError("[client-error] route failure", error);
     return NextResponse.json({ ok: false }, { status: 500 });
   }
 }

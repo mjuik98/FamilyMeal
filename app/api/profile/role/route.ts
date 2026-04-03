@@ -1,40 +1,24 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { serverEnv } from "@/lib/config/server-env";
 import { USER_ROLES } from "@/lib/domain/meal-policy";
-import { adminAuth, adminDb } from "@/lib/firebase-admin";
 import { getRouteErrorMessage, getRouteErrorStatus, RouteError } from "@/lib/route-errors";
-import { verifyRequestUser } from "@/lib/server-auth";
+import { saveUserRoleProfile } from "@/lib/server/profile/profile-use-cases";
+import { requireVerifiedUser } from "@/lib/server/route-auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const allowRoleReassign = process.env.ALLOW_ROLE_REASSIGN === "true";
-const DEFAULT_NOTIFICATION_PREFERENCES = {
-  browserEnabled: true,
-  commentAlerts: true,
-  reactionAlerts: true,
-  replyAlerts: true,
-};
-
-type UserProfileDoc = {
-  uid?: unknown;
-  email?: unknown;
-  displayName?: unknown;
-  role?: unknown;
-  notificationPreferences?: unknown;
-};
+const allowRoleReassign = serverEnv.allowRoleReassign;
 
 const RoleUpdateSchema = z.object({
   role: z.enum(USER_ROLES),
 });
 
-const toStringOrNull = (value: unknown): string | null =>
-  typeof value === "string" && value.trim().length > 0 ? value : null;
-
 export async function POST(request: Request) {
   try {
-    const user = await verifyRequestUser(request);
+    const user = await requireVerifiedUser(request);
 
     let body: unknown;
     try {
@@ -49,41 +33,10 @@ export async function POST(request: Request) {
     }
 
     const requestedRole = parsed.data.role;
-    const userRef = adminDb.collection("users").doc(user.uid);
-    const authUser = await adminAuth.getUser(user.uid);
-    const authEmail = toStringOrNull(authUser.email) ?? user.email;
-    const authDisplayName = toStringOrNull(authUser.displayName);
-
-    const updatedProfile = await adminDb.runTransaction(async (tx) => {
-      const snap = await tx.get(userRef);
-      const existing = (snap.data() ?? {}) as UserProfileDoc;
-      const currentRole = toStringOrNull(existing.role);
-
-      if (
-        currentRole &&
-        currentRole !== requestedRole &&
-        !allowRoleReassign
-      ) {
-        throw new RouteError("Role is locked. Contact admin to change it.", 403);
-      }
-
-      const nextProfile = {
-        uid: user.uid,
-        email: toStringOrNull(existing.email) ?? authEmail,
-        displayName: toStringOrNull(existing.displayName) ?? authDisplayName,
-        role: requestedRole,
-        notificationPreferences:
-          existing.notificationPreferences && typeof existing.notificationPreferences === "object"
-            ? existing.notificationPreferences
-            : DEFAULT_NOTIFICATION_PREFERENCES,
-      };
-
-      if (!nextProfile.email) {
-        throw new RouteError("Authenticated email is required", 403);
-      }
-
-      tx.set(userRef, nextProfile, { merge: true });
-      return nextProfile;
+    const updatedProfile = await saveUserRoleProfile({
+      user,
+      requestedRole,
+      allowRoleReassign,
     });
 
     return NextResponse.json({ ok: true, profile: updatedProfile });

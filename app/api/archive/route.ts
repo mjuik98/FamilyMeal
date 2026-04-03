@@ -1,21 +1,16 @@
 import { NextResponse } from "next/server";
 
-import { isUserRole } from "@/lib/domain/meal-policy";
 import { getRouteErrorMessage, getRouteErrorStatus, RouteError } from "@/lib/route-errors";
-import { getUserRole, verifyRequestUser } from "@/lib/server-auth";
 import { parseArchiveQueryParams } from "@/lib/server/meals/archive-types";
 import { listArchiveMeals } from "@/lib/server/meals/archive-use-cases";
+import { requireValidatedUserRole } from "@/lib/server/route-auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
   try {
-    const user = await verifyRequestUser(request);
-    const role = await getUserRole(user.uid);
-    if (!isUserRole(role)) {
-      throw new RouteError("Valid user role is required", 403);
-    }
+    const { user, role } = await requireValidatedUserRole(request);
 
     let query;
     try {

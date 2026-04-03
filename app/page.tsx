@@ -14,7 +14,7 @@ import { useUser } from "@/context/UserContext";
 import { formatDateKey } from "@/lib/date-utils";
 import { useMealsForDateController as useMealsForDate } from "@/lib/features/meals/ui/useMealsForDateController";
 import { useWeeklyStatsController as useWeeklyStats } from "@/lib/features/meals/ui/useWeeklyStatsController";
-import { isQaMockMode } from "@/lib/qa/mode";
+import { isQaRuntimeActive } from "@/lib/qa/runtime";
 
 const roleEmoji: Record<string, string> = {
   아빠: "👨",
@@ -46,7 +46,7 @@ const LazyCalendar = dynamic(() => import("@/components/LazyCalendar"));
 
 function HomeContent() {
   const { user, userProfile, loading, signOut } = useUser();
-  const qaMode = isQaMockMode();
+  const qaMode = isQaRuntimeActive();
   const [qaAnchorDate] = useState(getQaAnchorDate);
   const { effectiveSelectedDate, showCalendar, setShowCalendar, selectDate, onDateChange } =
     useSelectedDate({

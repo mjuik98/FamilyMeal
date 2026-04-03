@@ -17,6 +17,9 @@ const parseAllowedEmails = (raw: string | undefined): string[] =>
     .map((email) => email.trim().toLowerCase())
     .filter(Boolean);
 
+const parseOptionalBoolean = (value: string | undefined): boolean =>
+  normalizeEnvValue(value) === "true";
+
 export const serverEnv = {
   firebaseAdmin: {
     projectId: normalizeEnvValue(
@@ -29,5 +32,16 @@ export const serverEnv = {
     normalizeEnvValue(process.env.FIREBASE_STORAGE_BUCKET) ??
     normalizeEnvValue(process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET),
   allowedEmails: parseAllowedEmails(process.env.ALLOWED_EMAILS),
+  allowRoleReassign: parseOptionalBoolean(process.env.ALLOW_ROLE_REASSIGN),
+  upstash: {
+    url: normalizeEnvValue(process.env.UPSTASH_REDIS_REST_URL),
+    token: normalizeEnvValue(process.env.UPSTASH_REDIS_REST_TOKEN),
+  },
+  qaRouteToken: normalizeEnvValue(process.env.QA_ROUTE_TOKEN) ?? "",
+  deploymentVersion:
+    normalizeEnvValue(process.env.VERCEL_GIT_COMMIT_SHA) ??
+    normalizeEnvValue(process.env.VERCEL_DEPLOYMENT_ID) ??
+    normalizeEnvValue(process.env.NEXT_PUBLIC_APP_VERSION) ??
+    "local",
   isProduction: process.env.NODE_ENV === "production",
 } as const;

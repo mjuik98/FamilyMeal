@@ -2,6 +2,7 @@ import { collection, doc, limit, onSnapshot, orderBy, query, Timestamp, writeBat
 
 import { convertActivityDoc, normalizeNotificationPreferences, toActivityFeedItem } from "@/lib/activity";
 import { db } from "@/lib/firebase";
+import { logError } from "@/lib/logging";
 import type { ActivityFeedItem, NotificationPreferences, UserActivity } from "@/lib/types";
 
 import { fetchAuthedJson } from "@/lib/client/auth-http";
@@ -47,7 +48,7 @@ export const subscribeUserActivity = (
       onActivities(activities);
     },
     (error) => {
-      console.error("Failed to subscribe to activities", error);
+      logError("Failed to subscribe to activities", error);
       onError?.(error);
     }
   );

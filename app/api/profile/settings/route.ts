@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { adminDb } from "@/lib/firebase-admin";
 import { getRouteErrorMessage, getRouteErrorStatus, RouteError } from "@/lib/route-errors";
-import { verifyRequestUser } from "@/lib/server-auth";
+import { saveUserNotificationPreferences } from "@/lib/server/profile/profile-use-cases";
+import { requireVerifiedUser } from "@/lib/server/route-auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -21,7 +21,7 @@ const SettingsSchema = z.object({
 
 export async function POST(request: Request) {
   try {
-    const user = await verifyRequestUser(request);
+    const user = await requireVerifiedUser(request);
 
     let body: unknown;
     try {
@@ -35,20 +35,13 @@ export async function POST(request: Request) {
       throw new RouteError("Invalid payload", 400);
     }
 
-    const userRef = adminDb.collection("users").doc(user.uid);
     const notificationPreferences = parsed.data.notificationPreferences;
+    const profile = await saveUserNotificationPreferences({
+      user,
+      notificationPreferences,
+    });
 
-    await userRef.set(
-      {
-        uid: user.uid,
-        email: user.email,
-        notificationPreferences,
-      },
-      { merge: true }
-    );
-
-    const snapshot = await userRef.get();
-    return NextResponse.json({ ok: true, profile: snapshot.data() ?? {} });
+    return NextResponse.json({ ok: true, profile });
   } catch (error) {
     return NextResponse.json(
       { ok: false, error: getRouteErrorMessage(error) },

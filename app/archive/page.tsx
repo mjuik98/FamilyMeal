@@ -10,9 +10,8 @@ import MealPreviewCard from "@/components/MealPreviewCard";
 import PageHeader from "@/components/PageHeader";
 import { useUser } from "@/context/UserContext";
 import { listArchiveMeals } from "@/lib/client/meals";
-import { createQaMockRecentMeals } from "@/lib/qa/fixtures";
-import { isQaMockMode } from "@/lib/qa/mode";
-import { filterAndSortMeals } from "@/lib/client/meal-filters";
+import { logError } from "@/lib/logging";
+import { getQaArchiveMeals, isQaRuntimeActive } from "@/lib/qa/runtime";
 import type { Meal, UserRole } from "@/lib/types";
 
 const TYPE_OPTIONS = ["전체", "아침", "점심", "저녁", "간식"] as const;
@@ -62,15 +61,18 @@ export default function ArchivePage() {
       setLoadingMeals(true);
       setLoadingMore(false);
       try {
-        if (isQaMockMode()) {
+        if (isQaRuntimeActive()) {
           if (!active || requestId !== requestSequenceRef.current) {
             return;
           }
-          const qaMeals = filterAndSortMeals(createQaMockRecentMeals(currentRole), {
+          const qaMeals = getQaArchiveMeals({
+            role: currentRole,
+            referenceDate: new Date(),
+            focalDate: new Date(),
             query: deferredQuery,
             type: typeFilter,
-            participant: userFilter === "전체" ? "전체" : (userFilter as UserRole),
-            sort: "recent",
+            participant:
+              userFilter === "전체" ? "전체" : (userFilter as UserRole),
           });
           setSourceMeals(qaMeals);
           setNextCursor(null);
@@ -96,7 +98,7 @@ export default function ArchivePage() {
         if (!active || requestId !== requestSequenceRef.current) {
           return;
         }
-        console.error("Failed to load archive meals", error);
+        logError("Failed to load archive meals", error);
         setSourceMeals([]);
         setNextCursor(null);
         setHasMore(false);
@@ -144,7 +146,7 @@ export default function ArchivePage() {
   }, [sourceMeals, userFilter]);
 
   const loadMoreMeals = async () => {
-    if (!hasMore || !nextCursor || loadingMore || isQaMockMode()) {
+    if (!hasMore || !nextCursor || loadingMore || isQaRuntimeActive()) {
       return;
     }
 
@@ -176,7 +178,7 @@ export default function ArchivePage() {
       if (requestId !== requestSequenceRef.current) {
         return;
       }
-      console.error("Failed to load more archive meals", error);
+      logError("Failed to load more archive meals", error);
     } finally {
       if (requestId === requestSequenceRef.current) {
         setLoadingMore(false);

@@ -1,7 +1,8 @@
 import type { NextConfig } from "next";
 import withPWAInit from "@ducanh2912/next-pwa";
+import { publicEnv } from "@/lib/config/public-env";
 
-const enablePwa = process.env.NEXT_PUBLIC_ENABLE_PWA === "true";
+const enablePwa = publicEnv.enablePwa;
 
 const withPWA = withPWAInit({
   dest: "public",

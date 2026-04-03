@@ -9,11 +9,12 @@ import MealCard from "@/components/MealCard";
 import PageHeader from "@/components/PageHeader";
 import { useUser } from "@/context/UserContext";
 import { getMealById, getMealsForDate } from "@/lib/client/meals";
+import { logError } from "@/lib/logging";
 import {
-  createQaMockRecentMeals,
-  getQaMockMealById,
-} from "@/lib/qa/fixtures";
-import { isQaMockMode } from "@/lib/qa/mode";
+  getQaMealDetail,
+  getQaSameDayMeals,
+  isQaRuntimeActive,
+} from "@/lib/qa/runtime";
 import type { Meal } from "@/lib/types";
 
 export default function MealDetailPage() {
@@ -45,11 +46,11 @@ export default function MealDetailPage() {
 
     const loadMeal = async () => {
       try {
-        if (isQaMockMode()) {
+        if (isQaRuntimeActive()) {
           if (!active || requestId !== mealRequestSequenceRef.current) {
             return;
           }
-          setMeal(getQaMockMealById(currentRole, mealId));
+          setMeal(getQaMealDetail(currentRole, mealId));
           return;
         }
 
@@ -62,7 +63,7 @@ export default function MealDetailPage() {
         if (!active || requestId !== mealRequestSequenceRef.current) {
           return;
         }
-        console.error("Failed to load meal detail", error);
+        logError("Failed to load meal detail", error);
         setMeal(null);
       } finally {
         if (active && requestId === mealRequestSequenceRef.current) {
@@ -88,20 +89,11 @@ export default function MealDetailPage() {
 
     const loadSameDayMeals = async () => {
       try {
-        if (isQaMockMode()) {
+        if (isQaRuntimeActive()) {
           if (!active || requestId !== sameDayRequestSequenceRef.current) {
             return;
           }
-          setSameDayMeals(
-            createQaMockRecentMeals(currentRole, mealDate, mealDate).filter((item) => {
-              const itemDate = new Date(item.timestamp);
-              return (
-                itemDate.getFullYear() === mealDate.getFullYear() &&
-                itemDate.getMonth() === mealDate.getMonth() &&
-                itemDate.getDate() === mealDate.getDate()
-              );
-            })
-          );
+          setSameDayMeals(getQaSameDayMeals(currentRole, mealDate));
           return;
         }
 
@@ -114,7 +106,7 @@ export default function MealDetailPage() {
         if (!active || requestId !== sameDayRequestSequenceRef.current) {
           return;
         }
-        console.error("Failed to load same-day meals", error);
+        logError("Failed to load same-day meals", error);
         setSameDayMeals([meal]);
       }
     };

@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 
 import { getRouteErrorMessage, getRouteErrorStatus } from "@/lib/route-errors";
-import { verifyRequestUser } from "@/lib/server-auth";
 import {
   getCommentRouteParams,
   parseCommentUpdatePayload,
@@ -10,6 +9,7 @@ import {
   deleteMealCommentById,
   updateMealCommentById,
 } from "@/lib/server/comments/comment-use-cases";
+import { requireVerifiedUser } from "@/lib/server/route-auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -24,7 +24,7 @@ export async function PATCH(
   context: { params: Promise<Params> }
 ) {
   try {
-    const user = await verifyRequestUser(request);
+    const user = await requireVerifiedUser(request);
     const { mealId, commentId } = await getCommentRouteParams(context.params);
     const { text } = await parseCommentUpdatePayload(request);
 
@@ -49,7 +49,7 @@ export async function DELETE(
   context: { params: Promise<Params> }
 ) {
   try {
-    const user = await verifyRequestUser(request);
+    const user = await requireVerifiedUser(request);
     const { mealId, commentId } = await getCommentRouteParams(context.params);
 
     await deleteMealCommentById({
