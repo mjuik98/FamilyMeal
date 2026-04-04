@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
 import {
   onAuthStateChanged,
   GoogleAuthProvider,
@@ -43,10 +43,17 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [authError, setAuthError] = useState<string | null>(null);
+  const authRequestSequenceRef = useRef(0);
 
   useEffect(() => {
+    let active = true;
+
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      const requestId = ++authRequestSequenceRef.current;
       if (isQaRuntimeActive()) {
+        if (!active || requestId !== authRequestSequenceRef.current) {
+          return;
+        }
         const qaValue = getQaUserContextValue();
         setUser(qaValue.user);
         setUserProfile(qaValue.userProfile);
@@ -56,12 +63,22 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (firebaseUser) {
+        if (!active || requestId !== authRequestSequenceRef.current) {
+          return;
+        }
         setUser(firebaseUser);
         setAuthError(null);
 
         try {
-          setUserProfile(await loadUserProfile(firebaseUser));
+          const nextProfile = await loadUserProfile(firebaseUser);
+          if (!active || requestId !== authRequestSequenceRef.current) {
+            return;
+          }
+          setUserProfile(nextProfile);
         } catch (error) {
+          if (!active || requestId !== authRequestSequenceRef.current) {
+            return;
+          }
           logError("Error fetching user profile", error);
           setUserProfile(buildFallbackUserProfile(firebaseUser));
           setAuthError(
@@ -69,15 +86,23 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
           );
         }
       } else {
+        if (!active || requestId !== authRequestSequenceRef.current) {
+          return;
+        }
         setUser(null);
         setUserProfile(null);
         setAuthError(null);
       }
 
-      setLoading(false);
+      if (active && requestId === authRequestSequenceRef.current) {
+        setLoading(false);
+      }
     });
 
-    return () => unsubscribe();
+    return () => {
+      active = false;
+      unsubscribe();
+    };
   }, []);
 
   const signInWithGoogle = async () => {

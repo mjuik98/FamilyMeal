@@ -1,5 +1,7 @@
 import type { UserRole } from "@/lib/types";
 
+export const hasMealParticipants = (participants: UserRole[]): boolean => participants.length > 0;
+
 export const readMealImagePreview = async (file: File): Promise<string> =>
   URL.createObjectURL(file);
 

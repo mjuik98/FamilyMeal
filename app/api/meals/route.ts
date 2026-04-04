@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { parseDateKey } from "@/lib/date-utils";
 import {
   MAX_MEAL_DESCRIPTION_LENGTH,
   MAX_MEAL_IMAGE_URL_LENGTH,
@@ -8,8 +9,8 @@ import {
   VALID_MEAL_TYPES,
 } from "@/lib/domain/meal-policy";
 import { logError } from "@/lib/logging";
-import { getRouteErrorMessage, getRouteErrorStatus } from "@/lib/route-errors";
-import { createMealDocument } from "@/lib/server/meals/meal-use-cases";
+import { getRouteErrorMessage, getRouteErrorStatus, RouteError } from "@/lib/route-errors";
+import { createMealDocument, listMealsForDate } from "@/lib/server/meals/meal-use-cases";
 import { deleteStorageObjectByUrl } from "@/lib/server/meals/meal-storage";
 import { requireValidatedUserRole } from "@/lib/server/route-auth";
 import { MealRouteError } from "@/lib/server/meals/meal-types";
@@ -24,6 +25,27 @@ const MealCreateSchema = z.object({
   imageUrl: z.string().trim().url().max(MAX_MEAL_IMAGE_URL_LENGTH),
   timestamp: z.number().int().positive().optional(),
 });
+
+export async function GET(request: Request) {
+  try {
+    const { role } = await requireValidatedUserRole(request);
+    const date = parseDateKey(new URL(request.url).searchParams.get("date"));
+    if (!date) {
+      throw new RouteError("Invalid meal date", 400);
+    }
+
+    const meals = await listMealsForDate({
+      actorRole: role,
+      date,
+    });
+    return NextResponse.json({ ok: true, meals });
+  } catch (error) {
+    return NextResponse.json(
+      { ok: false, error: getRouteErrorMessage(error) },
+      { status: getRouteErrorStatus(error) }
+    );
+  }
+}
 
 export async function POST(request: Request) {
   let uid: string | null = null;

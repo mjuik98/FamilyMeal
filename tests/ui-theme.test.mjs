@@ -463,12 +463,14 @@ test("date-driven hooks clear stale meal state and cache weekly stats by week", 
 
   assert.match(mealsHook, /setRemoteMeals\(\[\]\)/);
   assert.match(mealsHook, /loadedDateKey === currentDateKey/);
-  assert.match(weeklyStatsHook, /weeklyStatsCache/);
+  assert.match(weeklyStatsHook, /remoteWeeklyStats/);
   assert.match(weeklyStatsHook, /weekKey/);
-  assert.match(weeklyStatsHook, /const cachedWeekStats = weeklyStatsCache\[weekKey\]/);
-  assert.match(weeklyStatsHook, /if \(cachedWeekStats\)/);
-  assert.doesNotMatch(weeklyStatsHook, /\[effectiveSelectedDate, qaMode, role, weekKey, weeklyStatsCache\]/);
-  assert.match(mealQueries, /serializeWeeklyStatMealSnapshot/);
+  assert.match(weeklyStatsHook, /loadedWeekKey === weekKey/);
+  assert.match(weeklyStatsHook, /window\.addEventListener\("focus", handleFocus\)/);
+  assert.match(weeklyStatsHook, /document\.addEventListener\("visibilitychange", handleVisibilityChange\)/);
+  assert.doesNotMatch(weeklyStatsHook, /weeklyStatsCache/);
+  assert.match(mealQueries, /MEAL_REFRESH_INTERVAL_MS/);
+  assert.match(mealQueries, /\/api\/meals\/weekly-stats\?date=/);
   assert.match(mealFilters, /type DerivedMealMetrics =/);
   assert.match(mealFilters, /const derivedMeals = meals\.map\(\(meal\) =>/);
   assert.match(mealFilters, /engagementCount:/);
@@ -626,7 +628,7 @@ test("detail page exits to archive after terminal delete outcomes and keyword se
   assert.match(mealDetailPage, /if \(result\.status === "completed" \|\| result\.status === "already_deleted"\)/);
   assert.match(mealDetailPage, /router\.replace\("\/archive"\)/);
   assert.match(mealQueries, /const participantRoles = meal\.userIds\?\.length \? meal\.userIds : meal\.userId \? \[meal\.userId\] : \[\]/);
-  assert.match(mealQueries, /participantRoles\.some\(\(u\) => u\.toLowerCase\(\)\.includes\(lower\)\)/);
+  assert.match(mealQueries, /participantRoles\.some\(\([A-Za-z_]+\) => [A-Za-z_]+\.toLowerCase\(\)\.includes\(lower\)\)/);
 });
 
 test("meal delete route uses idempotent server cleanup flow", () => {

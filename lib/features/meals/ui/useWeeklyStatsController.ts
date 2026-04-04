@@ -18,7 +18,8 @@ export const useWeeklyStatsController = ({
   qaAnchorDate: Date;
   role?: UserRole | null;
 }) => {
-  const [weeklyStatsCache, setWeeklyStatsCache] = useState<Record<string, WeeklyMealStat[]>>({});
+  const [remoteWeeklyStats, setRemoteWeeklyStats] = useState<WeeklyMealStat[]>([]);
+  const [loadedWeekKey, setLoadedWeekKey] = useState<string | null>(null);
   const weekKey = useMemo(() => {
     const startOfWeek = new Date(effectiveSelectedDate);
     startOfWeek.setHours(12, 0, 0, 0);
@@ -27,53 +28,75 @@ export const useWeeklyStatsController = ({
       startOfWeek.getDate()
     ).padStart(2, "0")}`;
   }, [effectiveSelectedDate]);
-  const cachedWeekStats = weeklyStatsCache[weekKey];
 
   useEffect(() => {
     if (!role || qaMode) {
+      setRemoteWeeklyStats([]);
+      setLoadedWeekKey(null);
       return;
     }
 
-    if (cachedWeekStats) {
-      return;
-    }
+    let active = true;
+    let requestSequence = 0;
 
-    let isActive = true;
-    getWeeklyStats(effectiveSelectedDate)
-      .then((stats) => {
-        if (!isActive) {
+    const loadWeeklyStats = async () => {
+      const requestId = ++requestSequence;
+      try {
+        const stats = await getWeeklyStats(effectiveSelectedDate);
+        if (!active || requestId !== requestSequence) {
           return;
         }
-        setWeeklyStatsCache((currentCache) => {
-          if (currentCache[weekKey]) {
-            return currentCache;
-          }
-          return {
-            ...currentCache,
-            [weekKey]: stats,
-          };
-        });
-      })
-      .catch((error) => {
-        if (!isActive) {
+        setRemoteWeeklyStats(stats);
+        setLoadedWeekKey(weekKey);
+      } catch (error) {
+        if (!active || requestId !== requestSequence) {
           return;
         }
         logError("Failed to load weekly stats", error);
-      });
+        setRemoteWeeklyStats([]);
+        setLoadedWeekKey(weekKey);
+      }
+    };
+
+    void loadWeeklyStats();
+
+    if (typeof window === "undefined") {
+      return () => {
+        active = false;
+        requestSequence += 1;
+      };
+    }
+
+    const handleFocus = () => {
+      void loadWeeklyStats();
+    };
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        void loadWeeklyStats();
+      }
+    };
+
+    window.addEventListener("focus", handleFocus);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
 
     return () => {
-      isActive = false;
+      active = false;
+      requestSequence += 1;
+      window.removeEventListener("focus", handleFocus);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, [cachedWeekStats, effectiveSelectedDate, qaMode, role, weekKey]);
+  }, [effectiveSelectedDate, qaMode, role, weekKey]);
 
   const weeklyStats = useMemo(
     () =>
       qaMode && role
         ? getQaWeeklyStats(effectiveSelectedDate, role, qaAnchorDate)
         : role
-          ? cachedWeekStats ?? []
+          ? loadedWeekKey === weekKey
+            ? remoteWeeklyStats
+            : []
           : [],
-    [cachedWeekStats, effectiveSelectedDate, qaAnchorDate, qaMode, role]
+    [effectiveSelectedDate, loadedWeekKey, qaAnchorDate, qaMode, remoteWeeklyStats, role, weekKey]
   );
 
   return weeklyStats;

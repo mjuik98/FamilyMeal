@@ -14,7 +14,7 @@ import { MEAL_IMAGE_INPUT_ACCEPT } from "@/lib/meal-image-policy";
 import { USER_ROLES, VALID_MEAL_TYPES } from "@/lib/domain/meal-policy";
 import { logError } from "@/lib/logging";
 import { toMealUpdateErrorMessage } from "@/lib/meal-errors";
-import { toggleMealParticipant } from "@/lib/meal-form";
+import { hasMealParticipants, toggleMealParticipant } from "@/lib/meal-form";
 import { Meal, UserRole } from "@/lib/types";
 import { cleanupUploadedMealImage, uploadImage } from "@/lib/uploadImage";
 
@@ -136,6 +136,10 @@ export default function EditMealPage() {
     }
     if (normalizedDescription.length > 300) {
       showToast("설명은 300자 이하로 입력해 주세요.", "error");
+      return;
+    }
+    if (!hasMealParticipants(selectedUsers)) {
+      showToast("함께 먹은 사람을 1명 이상 선택해 주세요.", "error");
       return;
     }
 
@@ -355,7 +359,11 @@ export default function EditMealPage() {
             <button type="button" onClick={() => router.back()} className="secondary-button">
               취소
             </button>
-            <button type="submit" disabled={isSubmitting || requiresLegacyMigration} className="primary-button">
+            <button
+              type="submit"
+              disabled={isSubmitting || requiresLegacyMigration || !hasMealParticipants(selectedUsers)}
+              className="primary-button"
+            >
               {submissionLabel ?? <><Save size={18} /> 수정 완료</>}
             </button>
           </div>

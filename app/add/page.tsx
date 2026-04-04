@@ -17,7 +17,7 @@ import { logError } from "@/lib/logging";
 import { getMealDraftDefaults, saveMealDraftDefaults } from "@/lib/meal-draft";
 import { buildAutoMealDescription } from "@/lib/meal-copy";
 import { toMealCreateErrorMessage } from "@/lib/meal-errors";
-import { readMealImageDataUrl, toggleMealParticipant } from "@/lib/meal-form";
+import { hasMealParticipants, readMealImageDataUrl, toggleMealParticipant } from "@/lib/meal-form";
 import { isQaRuntimeActive, saveQaMeal } from "@/lib/qa/runtime";
 import { Meal, UserRole } from "@/lib/types";
 import { cleanupUploadedMealImage, uploadImage } from "@/lib/uploadImage";
@@ -116,6 +116,10 @@ function AddMealPageContent() {
     const normalizedDescription = description.trim() || autoDescription;
     if (normalizedDescription.length > 300) {
       showToast("설명은 300자 이하로 입력해 주세요.", "error");
+      return;
+    }
+    if (!hasMealParticipants(selectedUsers)) {
+      showToast("함께 먹은 사람을 1명 이상 선택해 주세요.", "error");
       return;
     }
 
@@ -338,7 +342,7 @@ function AddMealPageContent() {
           <div className="surface-row" style={{ gap: "10px", alignItems: "stretch" }}>
             <button
               type="button"
-              disabled={isSubmitting || !imageSelection.imageFile}
+              disabled={isSubmitting || !imageSelection.imageFile || !hasMealParticipants(selectedUsers)}
               className="secondary-button"
               onClick={() => void persistMeal()}
               data-testid="add-quick-save"
@@ -348,7 +352,7 @@ function AddMealPageContent() {
             </button>
             <button
               type="submit"
-              disabled={isSubmitting || !imageSelection.imageFile}
+              disabled={isSubmitting || !imageSelection.imageFile || !hasMealParticipants(selectedUsers)}
               className="primary-button"
               style={{ flex: 1 }}
             >
