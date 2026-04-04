@@ -1,9 +1,7 @@
 import type { User } from "firebase/auth";
-import { doc, getDoc } from "firebase/firestore";
 
 import { DEFAULT_NOTIFICATION_PREFERENCES, normalizeNotificationPreferences } from "@/lib/activity";
 import { fetchAuthedJson } from "@/lib/client/auth-http";
-import { db } from "@/lib/firebase";
 import type { UserProfile, UserRole } from "@/lib/types";
 
 export const buildFallbackUserProfile = (
@@ -17,17 +15,18 @@ export const buildFallbackUserProfile = (
 });
 
 export const loadUserProfile = async (firebaseUser: User): Promise<UserProfile> => {
-  const userDocRef = doc(db, "users", firebaseUser.uid);
-  const userDoc = await getDoc(userDocRef);
+  const payload = await fetchAuthedJson<{ ok: true; profile?: UserProfile | null }>(
+    "/api/profile/session"
+  );
+  const profile = payload.profile;
 
-  if (!userDoc.exists()) {
+  if (!profile) {
     return buildFallbackUserProfile(firebaseUser);
   }
 
-  const data = userDoc.data() as UserProfile;
   return {
-    ...data,
-    notificationPreferences: normalizeNotificationPreferences(data.notificationPreferences),
+    ...profile,
+    notificationPreferences: normalizeNotificationPreferences(profile.notificationPreferences),
   };
 };
 

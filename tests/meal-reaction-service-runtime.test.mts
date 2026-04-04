@@ -34,9 +34,33 @@ mock.module("@/lib/client/reactions", {
   }),
 });
 
-mock.module("@/lib/qa/runtime", {
+mock.module("@/lib/qa/adapters/reactions", {
   ...mockModuleOptions({
-    isQaRuntimeActive: () => qaMode,
+    isQaReactionRuntimeActive: () => qaMode,
+    toggleQaMealReaction: async ({
+      emoji,
+      userUid,
+      currentReactions,
+    }: {
+      emoji: keyof ReactionMap;
+      userUid: string;
+      currentReactions: ReactionMap;
+    }) => ({
+      ...currentReactions,
+      [emoji]: [...(currentReactions[emoji] ?? []), userUid],
+    }),
+    toggleQaCommentReaction: async ({
+      emoji,
+      userUid,
+      currentReactions,
+    }: {
+      emoji: keyof ReactionMap;
+      userUid: string;
+      currentReactions: ReactionMap;
+    }) => ({
+      ...currentReactions,
+      [emoji]: [...(currentReactions[emoji] ?? []), userUid],
+    }),
   }),
 });
 

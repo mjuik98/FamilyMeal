@@ -14,12 +14,12 @@ import type {
 import {
   clearQaRuntimeSession,
   getQaUserContextValue,
-  isQaRuntimeActive,
   saveQaRuntimeNotificationPreferences,
   setQaRuntimeRole,
-} from "@/lib/qa/runtime";
+  isQaUserSessionRuntimeActive,
+} from "@/lib/qa/adapters/profile";
 
-export const isUserSessionQaRuntime = (): boolean => isQaRuntimeActive();
+export const isUserSessionQaRuntime = (): boolean => isQaUserSessionRuntimeActive();
 
 export const getUserContextValueFromRuntime = (role?: UserRole) =>
   getQaUserContextValue(role);

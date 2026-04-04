@@ -28,11 +28,11 @@ mock.module("@/lib/firebase", {
   }),
 });
 
-mock.module("@/lib/qa/runtime", {
+mock.module("@/lib/qa/adapters/profile", {
   ...mockModuleOptions({
     clearQaRuntimeSession: () => undefined,
     getQaUserContextValue: () => ({ user: null, userProfile: null }),
-    isQaRuntimeActive: () => false,
+    isQaUserSessionRuntimeActive: () => false,
     saveQaRuntimeNotificationPreferences: (_preferences: unknown, prev: unknown) => prev,
     setQaRuntimeRole: (_role: unknown, prev: unknown) => prev,
   }),

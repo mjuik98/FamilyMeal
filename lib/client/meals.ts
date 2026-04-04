@@ -12,7 +12,9 @@ export type { MealUpdateInput } from "@/lib/client/meal-mutations";
 export {
   countCommentReactions,
   countMealReactions,
-  filterAndSortMeals,
   getMealCommentCount,
+} from "@/lib/domain/meal-engagement";
+export {
+  filterAndSortMeals,
 } from "@/lib/client/meal-filters";
 export type { MealSortOrder } from "@/lib/client/meal-filters";

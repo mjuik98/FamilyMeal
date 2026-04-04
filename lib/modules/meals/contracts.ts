@@ -20,6 +20,13 @@ export type UpdateMealCommand = {
   timestamp?: number;
 };
 
+export type MealDeleteStatus = "completed" | "already_deleted" | "already_processing";
+
+export type MealDeleteResult = {
+  deleted: boolean;
+  status: MealDeleteStatus;
+};
+
 export type ArchiveMealsQuery = {
   query?: string;
   type?: MealTypeFilter;

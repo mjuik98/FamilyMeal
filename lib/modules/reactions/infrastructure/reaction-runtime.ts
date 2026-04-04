@@ -2,9 +2,12 @@ import {
   toggleMealCommentReaction,
   toggleMealReaction,
 } from "@/lib/client/reactions";
-import { toggleReactionInMap } from "@/lib/reactions";
-import { isQaRuntimeActive } from "@/lib/qa/runtime";
 import type { ReactionEmoji, ReactionMap } from "@/lib/types";
+import {
+  isQaReactionRuntimeActive,
+  toggleQaCommentReaction,
+  toggleQaMealReaction,
+} from "@/lib/qa/adapters/reactions";
 
 export const toggleMealReactionInRuntime = async ({
   mealId,
@@ -17,8 +20,13 @@ export const toggleMealReactionInRuntime = async ({
   userUid: string;
   currentReactions: ReactionMap;
 }): Promise<ReactionMap> => {
-  if (isQaRuntimeActive()) {
-    return toggleReactionInMap(currentReactions, emoji, userUid);
+  if (isQaReactionRuntimeActive()) {
+    return toggleQaMealReaction({
+      mealId,
+      emoji,
+      userUid,
+      currentReactions,
+    });
   }
 
   return toggleMealReaction(mealId, emoji);
@@ -37,8 +45,14 @@ export const toggleCommentReactionInRuntime = async ({
   userUid: string;
   currentReactions: ReactionMap;
 }): Promise<ReactionMap> => {
-  if (isQaRuntimeActive()) {
-    return toggleReactionInMap(currentReactions, emoji, userUid);
+  if (isQaReactionRuntimeActive()) {
+    return toggleQaCommentReaction({
+      mealId,
+      commentId,
+      emoji,
+      userUid,
+      currentReactions,
+    });
   }
 
   return toggleMealCommentReaction(mealId, commentId, emoji);

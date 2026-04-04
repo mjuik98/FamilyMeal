@@ -4,7 +4,6 @@ import {
   updateMealComment,
 } from "@/lib/client/comments";
 import { subscribeToMealComments } from "@/lib/meal-comments-store";
-import { isQaRuntimeActive } from "@/lib/qa/runtime";
 import type { MealComment } from "@/lib/types";
 
 import type {
@@ -12,6 +11,13 @@ import type {
   DeleteMealCommentCommand,
   UpdateMealCommentCommand,
 } from "@/lib/modules/comments/contracts";
+import {
+  createQaMealComment,
+  deleteQaMealComment,
+  isQaCommentRuntimeActive,
+  updateQaMealComment,
+  watchQaMealComments,
+} from "@/lib/qa/adapters/comments";
 
 export const watchMealCommentsForViewerInRuntime = ({
   mealId,
@@ -24,9 +30,12 @@ export const watchMealCommentsForViewerInRuntime = ({
   onComments: (comments: MealComment[]) => void;
   onError?: (error: Error) => void;
 }) => {
-  if (isQaRuntimeActive()) {
-    onComments(fallbackComments);
-    return () => undefined;
+  if (isQaCommentRuntimeActive()) {
+    return watchQaMealComments({
+      mealId,
+      fallbackComments,
+      onComments,
+    });
   }
 
   return subscribeToMealComments(
@@ -42,22 +51,8 @@ export const watchMealCommentsForViewerInRuntime = ({
 export const createMealCommentInRuntime = async (
   command: CreateMealCommentCommand
 ): Promise<MealComment> => {
-  if (isQaRuntimeActive()) {
-    const now = Date.now();
-    return {
-      id: `qa-comment-${now}`,
-      author: command.authorRole,
-      authorUid: command.authorUid,
-      text: command.text,
-      ...(command.parentId ? { parentId: command.parentId } : {}),
-      ...(command.mentionedAuthor
-        ? { mentionedAuthor: command.mentionedAuthor }
-        : {}),
-      createdAt: now,
-      updatedAt: now,
-      timestamp: now,
-      reactions: {},
-    };
+  if (isQaCommentRuntimeActive()) {
+    return createQaMealComment(command);
   }
 
   return addMealComment(
@@ -73,16 +68,8 @@ export const updateMealCommentInRuntime = async (
   command: UpdateMealCommentCommand,
   existingComment: MealComment
 ): Promise<MealComment> => {
-  if (isQaRuntimeActive()) {
-    const now = Date.now();
-    return {
-      ...existingComment,
-      id: command.commentId,
-      authorUid: command.actorUid,
-      text: command.text,
-      updatedAt: now,
-      timestamp: now,
-    };
+  if (isQaCommentRuntimeActive()) {
+    return updateQaMealComment(command, existingComment);
   }
 
   return updateMealComment(
@@ -96,8 +83,8 @@ export const updateMealCommentInRuntime = async (
 export const deleteMealCommentInRuntime = async (
   command: DeleteMealCommentCommand
 ): Promise<void> => {
-  if (isQaRuntimeActive()) {
-    return;
+  if (isQaCommentRuntimeActive()) {
+    return deleteQaMealComment();
   }
 
   await deleteMealComment(command.mealId, command.commentId, command.actorUid);

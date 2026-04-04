@@ -144,6 +144,7 @@ test("meal image uploads no longer accept caller-controlled storage paths", () =
 
 test("meal routes delegate to extracted server meal modules", () => {
   const mealMutations = read("lib/client/meal-mutations.ts");
+  const mealQueries = read("lib/client/meal-queries.ts");
   const createRoute = read("app/api/meals/route.ts");
   const mealRoute = read("app/api/meals/[id]/route.ts");
   const mealReadUseCases = read("lib/server/meals/meal-read-use-cases.ts");
@@ -160,6 +161,8 @@ test("meal routes delegate to extracted server meal modules", () => {
   assert.match(createRoute, /createMealDocument/);
   assert.match(createRoute, /listMealsForDate/);
   assert.doesNotMatch(createRoute, /@\/lib\/server-meals/);
+  assert.match(mealRoute, /export async function GET/);
+  assert.match(mealRoute, /from "@\/lib\/server\/meals\/meal-read-use-cases"/);
   assert.match(mealRoute, /export async function PATCH/);
   assert.match(mealRoute, /from "@\/lib\/server\/meals\/meal-write-use-cases"/);
   assert.match(mealRoute, /from "@\/lib\/server\/meals\/meal-delete-use-cases"/);
@@ -187,6 +190,9 @@ test("meal routes delegate to extracted server meal modules", () => {
   assert.match(mealStorage, /export const deleteStorageObjectByUrl = async/);
   assert.doesNotMatch(mealMutations, /await addDoc\(mealsRef/);
   assert.doesNotMatch(mealMutations, /await updateDoc\(mealRef/);
+  assert.match(mealQueries, /fetchAuthedJson<\{ ok: true; meal: Meal \| null \}>\(/);
+  assert.doesNotMatch(mealQueries, /doc\(db, "meals", id\)/);
+  assert.doesNotMatch(mealQueries, /getDoc\(mealRef\)/);
 });
 
 test("meal edit mutations preserve timestamp updates through the patch stack", () => {
@@ -246,6 +252,32 @@ test("owner backfill migration script exists for legacy meals", () => {
   assert.match(source, /resolveLegacyMealOwnerUid/);
 });
 
+test("profile session reads are handled by server route and client loader avoids direct Firestore access", () => {
+  const sessionRoutePath = path.join(process.cwd(), "app", "api", "profile", "session", "route.ts");
+  const profileSession = read("lib/client/profile-session.ts");
+
+  assert.equal(fs.existsSync(sessionRoutePath), true);
+
+  const sessionRoute = read("app/api/profile/session/route.ts");
+  const profileUseCases = read("lib/server/profile/profile-use-cases.ts");
+
+  assert.match(sessionRoute, /from "@\/lib\/server\/profile\/profile-use-cases"/);
+  assert.match(sessionRoute, /requireVerifiedUser/);
+  assert.match(sessionRoute, /loadUserProfileSession/);
+  assert.match(profileUseCases, /export const loadUserProfileSession = async/);
+  assert.match(profileSession, /fetchAuthedJson<\{ ok: true; profile\?: UserProfile \| null \}>/);
+  assert.doesNotMatch(profileSession, /from "firebase\/firestore"/);
+  assert.doesNotMatch(profileSession, /from "@\/lib\/firebase"/);
+  assert.doesNotMatch(profileSession, /getDoc\(userDocRef\)/);
+});
+
+test("migration script admin context fails closed when project id is missing", () => {
+  const adminContext = read("scripts/lib/firebase-admin-app.mjs");
+
+  assert.doesNotMatch(adminContext, /DEFAULT_PROJECT_ID/);
+  assert.match(adminContext, /throw new Error\("Firebase project id is required for admin scripts"\)/);
+});
+
 test("archive queries are handled by authenticated server route and server meal helpers", () => {
   const archiveRoute = read("app/api/archive/route.ts");
   const archiveUseCases = read("lib/server/meals/archive-use-cases.ts");
@@ -262,11 +294,13 @@ test("archive queries are handled by authenticated server route and server meal 
 
 test("client delete mutations preserve structured route status for callers", () => {
   const mealMutations = read("lib/client/meal-mutations.ts");
+  const mealContracts = read("lib/modules/meals/contracts.ts");
 
-  assert.match(mealMutations, /export type MealDeleteResult = \{/);
-  assert.match(mealMutations, /deleted: boolean;/);
-  assert.match(mealMutations, /export type MealDeleteStatus =/);
-  assert.match(mealMutations, /status: MealDeleteStatus;/);
+  assert.match(mealContracts, /export type MealDeleteResult = \{/);
+  assert.match(mealContracts, /deleted: boolean;/);
+  assert.match(mealContracts, /export type MealDeleteStatus =/);
+  assert.match(mealContracts, /status: MealDeleteStatus;/);
+  assert.match(mealMutations, /from "@\/lib\/modules\/meals\/contracts"/);
   assert.match(mealMutations, /const isMealDeleteStatus = \(value: unknown\): value is MealDeleteStatus =>/);
   assert.match(mealMutations, /if \(!isMealDeleteStatus\(response\.status\)\) \{/);
   assert.match(mealMutations, /throw new Error\("Unexpected delete status"\)/);
@@ -477,7 +511,8 @@ test("server config and meal policy are centralized in shared modules", () => {
   assert.match(mealStorage, /from "@\/lib\/server\/meals\/meal-image-url"/);
   assert.match(mealTypes, /from "@\/lib\/domain\/meal-policy"/);
   assert.match(uploadRoute, /from "@\/lib\/config\/server-env"/);
-  assert.match(profilePage, /from "@\/lib\/client\/profile"/);
+  assert.match(profilePage, /from "@\/lib\/domain\/meal-policy"/);
+  assert.doesNotMatch(profilePage, /from "@\/lib\/client\/profile"/);
 
   assert.doesNotMatch(firebaseAdmin, /process\.env\.NEXT_PUBLIC_FIREBASE_PROJECT_ID/);
   assert.doesNotMatch(mealTypes, /const VALID_MEAL_TYPES:/);
@@ -529,6 +564,7 @@ test("meal client access is split into query, mutation, and filtering modules", 
   const mealQueries = read("lib/client/meal-queries.ts");
   const mealMutations = read("lib/client/meal-mutations.ts");
   const mealFilters = read("lib/client/meal-filters.ts");
+  const mealEngagement = read("lib/domain/meal-engagement.ts");
 
   assert.match(mealsBarrel, /from "@\/lib\/client\/meal-queries"/);
   assert.match(mealsBarrel, /from "@\/lib\/client\/meal-mutations"/);
@@ -545,7 +581,8 @@ test("meal client access is split into query, mutation, and filtering modules", 
   assert.match(mealMutations, /export const deleteMeal = async/);
 
   assert.match(mealFilters, /export const filterAndSortMeals =/);
-  assert.match(mealFilters, /export const getMealCommentCount =/);
+  assert.match(mealFilters, /from "@\/lib\/domain\/meal-engagement"/);
+  assert.match(mealEngagement, /export const getMealCommentCount =/);
 
   assert.doesNotMatch(mealsBarrel, /const getDayRange =/);
   assert.doesNotMatch(mealsBarrel, /const deriveMealMetrics =/);

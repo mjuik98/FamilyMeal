@@ -65,7 +65,7 @@ const callLog = {
 const mockModuleOptions = (exports: Record<string, unknown>) =>
   ({ exports }) as unknown as Parameters<typeof mock.module>[1];
 
-mock.module("@/lib/client/meals", {
+mock.module("@/lib/client/meal-queries", {
   ...mockModuleOptions({
     subscribeMealsForDate: (
       _date: Date,
@@ -88,8 +88,9 @@ mock.module("@/lib/client/meals", {
   }),
 });
 
-mock.module("@/lib/qa/runtime", {
+mock.module("@/lib/qa/adapters/meals", {
   ...mockModuleOptions({
+    isQaMealsRuntimeActive: () => false,
     getQaMealsForDate: () => qaMeals,
     getQaWeeklyStats: () => {
       callLog.qaWeeklyCalls += 1;

@@ -2,19 +2,14 @@ import { MAX_MEAL_DESCRIPTION_LENGTH } from "@/lib/domain/meal-policy";
 import type { Meal } from "@/lib/types";
 import type {
   CreateMealCommand,
+  MealDeleteResult,
+  MealDeleteStatus,
   UpdateMealCommand,
 } from "@/lib/modules/meals/contracts";
 
 import { fetchAuthedJson } from "@/lib/client/auth-http";
 
 export type MealUpdateInput = UpdateMealCommand;
-
-export type MealDeleteStatus = "completed" | "already_deleted" | "already_processing";
-
-export type MealDeleteResult = {
-  deleted: boolean;
-  status: MealDeleteStatus;
-};
 
 const isMealDeleteStatus = (value: unknown): value is MealDeleteStatus =>
   value === "completed" || value === "already_deleted" || value === "already_processing";

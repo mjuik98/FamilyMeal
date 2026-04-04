@@ -16,7 +16,7 @@ let shouldFailUpdate = false;
 const mockModuleOptions = (exports: Record<string, unknown>) =>
   ({ exports }) as unknown as Parameters<typeof mock.module>[1];
 
-mock.module("@/lib/client/meals", {
+mock.module("@/lib/client/meal-mutations", {
   ...mockModuleOptions({
     addMeal: async (payload: Record<string, unknown>) => {
       addMealCalls.push(payload);
@@ -32,6 +32,15 @@ mock.module("@/lib/client/meals", {
       }
       return { id: mealId, ...payload };
     },
+    deleteMeal: async () => ({
+      deleted: true,
+      status: "completed" as const,
+    }),
+  }),
+});
+
+mock.module("@/lib/client/meal-queries", {
+  ...mockModuleOptions({
     getMealById: async (mealId: string) =>
       mealId === "legacy"
         ? {
@@ -73,11 +82,13 @@ mock.module("@/lib/meal-form", {
   }),
 });
 
-mock.module("@/lib/qa/runtime", {
+mock.module("@/lib/qa/adapters/meals", {
   ...mockModuleOptions({
+    isQaMealsRuntimeActive: () => false,
     saveQaMeal: (meal: Meal) => {
       qaSavedMeals.push(meal);
     },
+    deleteQaMeal: () => undefined,
   }),
 });
 

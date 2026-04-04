@@ -64,6 +64,10 @@ const config = [
               group: ["@/lib/server/*", "@/lib/firebase-admin"],
               message: "UI layers must not import server-only modules directly.",
             },
+            {
+              group: ["@/lib/client/*"],
+              message: "UI layers must not import client data modules directly.",
+            },
           ],
         },
       ],
@@ -79,6 +83,29 @@ const config = [
             {
               group: ["@/lib/qa/runtime"],
               message: "Feature services must depend on runtime adapters instead of lib/qa/runtime directly.",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: ["lib/modules/**/*.{ts,tsx}"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: [
+                "@/lib/qa/runtime",
+                "@/lib/qa/fixtures",
+                "@/lib/qa/session",
+                "@/lib/qa/mode",
+                "@/lib/qa/storage",
+                "@/lib/client/meals",
+              ],
+              message: "Module runtime adapters must depend on feature-specific qa adapters and focused client adapters instead of qa internals or compat barrels directly.",
             },
           ],
         },
