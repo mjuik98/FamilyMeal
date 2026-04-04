@@ -9,7 +9,11 @@ import {
   VALID_MEAL_TYPES,
 } from "@/lib/domain/meal-policy";
 import { logError } from "@/lib/logging";
-import { getRouteErrorMessage, getRouteErrorStatus, RouteError } from "@/lib/route-errors";
+import {
+  getRouteErrorPayload,
+  getRouteErrorStatus,
+  RouteError,
+} from "@/lib/route-errors";
 import { listMealsForDate } from "@/lib/server/meals/meal-read-use-cases";
 import { deleteStorageObjectByUrl } from "@/lib/server/meals/meal-storage";
 import { createMealDocument } from "@/lib/server/meals/meal-write-use-cases";
@@ -42,7 +46,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ ok: true, meals });
   } catch (error) {
     return NextResponse.json(
-      { ok: false, error: getRouteErrorMessage(error) },
+      { ok: false, error: getRouteErrorPayload(error) },
       { status: getRouteErrorStatus(error) }
     );
   }
@@ -86,7 +90,7 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json(
-      { ok: false, error: getRouteErrorMessage(error) },
+      { ok: false, error: getRouteErrorPayload(error) },
       { status: getRouteErrorStatus(error) }
     );
   }

@@ -9,7 +9,11 @@ import {
   VALID_MEAL_TYPES,
 } from "@/lib/domain/meal-policy";
 import { logError } from "@/lib/logging";
-import { getRouteErrorMessage, getRouteErrorStatus } from "@/lib/route-errors";
+import {
+  getRouteErrorMessage,
+  getRouteErrorPayload,
+  getRouteErrorStatus,
+} from "@/lib/route-errors";
 import {
   deleteMealCommentsByMealId,
   deleteMealDocumentById,
@@ -105,7 +109,13 @@ export async function DELETE(
       }
     }
 
-    return NextResponse.json({ ok: false, error: message }, { status });
+    return NextResponse.json(
+      {
+        ok: false,
+        error: getRouteErrorPayload(error),
+      },
+      { status }
+    );
   }
 }
 
@@ -141,7 +151,7 @@ export async function PATCH(
     return NextResponse.json({ ok: true, meal });
   } catch (error) {
     return NextResponse.json(
-      { ok: false, error: getRouteErrorMessage(error) },
+      { ok: false, error: getRouteErrorPayload(error) },
       { status: getRouteErrorStatus(error) }
     );
   }

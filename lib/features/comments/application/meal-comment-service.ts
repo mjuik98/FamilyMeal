@@ -1,11 +1,15 @@
-import {
-  addMealComment,
-  deleteMealComment,
-  updateMealComment,
-} from "@/lib/client/comments";
-import { subscribeToMealComments } from "@/lib/meal-comments-store";
-import { isQaRuntimeActive } from "@/lib/qa/runtime";
 import type { MealComment, UserRole } from "@/lib/types";
+import {
+  createMealCommentInRuntime,
+  deleteMealCommentInRuntime,
+  updateMealCommentInRuntime,
+  watchMealCommentsForViewerInRuntime,
+} from "@/lib/modules/comments/infrastructure/comment-runtime";
+import type {
+  CreateMealCommentCommand,
+  DeleteMealCommentCommand,
+  UpdateMealCommentCommand,
+} from "@/lib/modules/comments/contracts";
 
 const normalizeCommentText = (text: string): string => {
   const trimmed = text.trim();
@@ -26,19 +30,12 @@ export const watchMealCommentsForViewer = ({
   onComments: (comments: MealComment[]) => void;
   onError?: (error: Error) => void;
 }) => {
-  if (isQaRuntimeActive()) {
-    onComments(fallbackComments);
-    return () => undefined;
-  }
-
-  return subscribeToMealComments(
+  return watchMealCommentsForViewerInRuntime({
     mealId,
-    {
-      fallbackComments,
-      onError,
-    },
-    onComments
-  );
+    fallbackComments,
+    onComments,
+    onError,
+  });
 };
 
 export const createMealCommentForViewer = async ({
@@ -58,23 +55,16 @@ export const createMealCommentForViewer = async ({
 }): Promise<MealComment> => {
   const trimmed = normalizeCommentText(text);
 
-  if (isQaRuntimeActive()) {
-    const now = Date.now();
-    return {
-      id: `qa-comment-${now}`,
-      author: authorRole,
-      authorUid,
-      text: trimmed,
-      ...(parentId ? { parentId } : {}),
-      ...(mentionedAuthor ? { mentionedAuthor } : {}),
-      createdAt: now,
-      updatedAt: now,
-      timestamp: now,
-      reactions: {},
-    };
-  }
+  const command: CreateMealCommentCommand = {
+    mealId,
+    authorRole,
+    authorUid,
+    text: trimmed,
+    parentId,
+    mentionedAuthor,
+  };
 
-  return addMealComment(mealId, authorRole, authorUid, trimmed, { parentId });
+  return createMealCommentInRuntime(command);
 };
 
 export const updateMealCommentForViewer = async ({
@@ -95,19 +85,14 @@ export const updateMealCommentForViewer = async ({
     throw new Error("Missing actor uid");
   }
 
-  if (isQaRuntimeActive()) {
-    const now = Date.now();
-    return {
-      ...existingComment,
-      id: commentId,
-      authorUid: actorUid,
-      text: trimmed,
-      updatedAt: now,
-      timestamp: now,
-    };
-  }
+  const command: UpdateMealCommentCommand = {
+    mealId,
+    commentId,
+    actorUid,
+    text: trimmed,
+  };
 
-  return updateMealComment(mealId, commentId, actorUid, trimmed);
+  return updateMealCommentInRuntime(command, existingComment);
 };
 
 export const deleteMealCommentForViewer = async ({
@@ -123,9 +108,11 @@ export const deleteMealCommentForViewer = async ({
     throw new Error("Missing actor uid");
   }
 
-  if (isQaRuntimeActive()) {
-    return;
-  }
+  const command: DeleteMealCommentCommand = {
+    mealId,
+    commentId,
+    actorUid,
+  };
 
-  await deleteMealComment(mealId, commentId, actorUid);
+  await deleteMealCommentInRuntime(command);
 };

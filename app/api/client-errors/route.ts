@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { serverEnv } from "@/lib/config/server-env";
 import { logError } from "@/lib/logging";
+import { getRouteErrorPayload, RouteError } from "@/lib/route-errors";
 
 const MAX_REQUEST_BYTES = 16 * 1024;
 const RATE_LIMIT_WINDOW_MS = 60_000;
@@ -119,7 +120,13 @@ const isRateLimited = async (clientKey: string): Promise<boolean> => {
 };
 
 const buildPayloadTooLargeResponse = (): NextResponse =>
-  NextResponse.json({ ok: false, error: "payload too large" }, { status: 413 });
+  NextResponse.json(
+    {
+      ok: false,
+      error: getRouteErrorPayload(new RouteError("payload too large", 413)),
+    },
+    { status: 413 }
+  );
 
 const validateContentLengthHeader = (request: Request): NextResponse | null => {
   const contentLengthHeader = request.headers.get("content-length");
@@ -147,7 +154,13 @@ export async function POST(request: Request) {
 
     const clientKey = getClientKey(request);
     if (await isRateLimited(clientKey)) {
-      return NextResponse.json({ ok: false, error: "rate limit exceeded" }, { status: 429 });
+      return NextResponse.json(
+        {
+          ok: false,
+          error: getRouteErrorPayload(new RouteError("rate limit exceeded", 429)),
+        },
+        { status: 429 }
+      );
     }
 
     const raw = await request.text();
@@ -158,18 +171,36 @@ export async function POST(request: Request) {
     try {
       json = JSON.parse(raw);
     } catch {
-      return NextResponse.json({ ok: false, error: "invalid json" }, { status: 400 });
+      return NextResponse.json(
+        {
+          ok: false,
+          error: getRouteErrorPayload(new RouteError("invalid json", 400)),
+        },
+        { status: 400 }
+      );
     }
 
     const parsed = ClientErrorSchema.safeParse(json);
     if (!parsed.success) {
-      return NextResponse.json({ ok: false, error: "invalid payload" }, { status: 400 });
+      return NextResponse.json(
+        {
+          ok: false,
+          error: getRouteErrorPayload(new RouteError("invalid payload", 400)),
+        },
+        { status: 400 }
+      );
     }
 
     logError("[client-error]", undefined, parsed.data);
     return NextResponse.json({ ok: true });
   } catch (error) {
     logError("[client-error] route failure", error);
-    return NextResponse.json({ ok: false }, { status: 500 });
+    return NextResponse.json(
+      {
+        ok: false,
+        error: getRouteErrorPayload(new RouteError("internal error", 500)),
+      },
+      { status: 500 }
+    );
   }
 }

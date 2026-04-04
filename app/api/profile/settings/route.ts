@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { getRouteErrorMessage, getRouteErrorStatus, RouteError } from "@/lib/route-errors";
+import {
+  getRouteErrorPayload,
+  getRouteErrorStatus,
+  RouteError,
+} from "@/lib/route-errors";
 import { saveUserNotificationPreferences } from "@/lib/server/profile/profile-use-cases";
 import { requireVerifiedUser } from "@/lib/server/route-auth";
 
@@ -44,7 +48,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true, profile });
   } catch (error) {
     return NextResponse.json(
-      { ok: false, error: getRouteErrorMessage(error) },
+      { ok: false, error: getRouteErrorPayload(error) },
       { status: getRouteErrorStatus(error) }
     );
   }

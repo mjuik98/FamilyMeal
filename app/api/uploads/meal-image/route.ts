@@ -2,7 +2,11 @@ import { NextResponse } from "next/server";
 
 import { MAX_MEAL_IMAGE_REQUEST_BYTES } from "@/lib/meal-image-policy";
 import { serverEnv } from "@/lib/config/server-env";
-import { getRouteErrorMessage, getRouteErrorStatus, RouteError } from "@/lib/route-errors";
+import {
+  getRouteErrorPayload,
+  getRouteErrorStatus,
+  RouteError,
+} from "@/lib/route-errors";
 import { deleteStorageObjectByUrl } from "@/lib/server/meals/meal-storage";
 import { requireVerifiedUser } from "@/lib/server/route-auth";
 import { storeMealImageFile } from "@/lib/server/uploads/meal-image-use-cases";
@@ -61,7 +65,7 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     return NextResponse.json(
-      { ok: false, error: getRouteErrorMessage(error) },
+      { ok: false, error: getRouteErrorPayload(error) },
       { status: getRouteErrorStatus(error) }
     );
   }
@@ -94,7 +98,7 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ ok: true });
   } catch (error) {
     return NextResponse.json(
-      { ok: false, error: getRouteErrorMessage(error) },
+      { ok: false, error: getRouteErrorPayload(error) },
       { status: getRouteErrorStatus(error) }
     );
   }
