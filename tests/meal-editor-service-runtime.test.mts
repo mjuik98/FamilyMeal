@@ -170,6 +170,7 @@ test("updateExistingMealRecord cleans up uploaded image when updating the meal f
         selectedUsers: ["엄마"],
         description: "updated meal",
         type: "저녁",
+        recordDate: new Date(TEST_NOW + 3_600_000),
         imageFile: {} as File,
         imagePreview: "blob:preview",
       }),
@@ -178,4 +179,5 @@ test("updateExistingMealRecord cleans up uploaded image when updating the meal f
 
   assert.equal(updateMealCalls.length, 1);
   assert.deepEqual(cleanupCalls, ["https://example.com/uploaded.jpg"]);
+  assert.equal(updateMealCalls[0]?.timestamp, TEST_NOW + 3_600_000);
 });

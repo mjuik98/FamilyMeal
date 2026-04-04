@@ -141,6 +141,7 @@ export const updateExistingMealRecord = async ({
   selectedUsers,
   description,
   type,
+  recordDate,
   imageFile,
   imagePreview,
   onPhaseChange,
@@ -149,6 +150,7 @@ export const updateExistingMealRecord = async ({
   selectedUsers: UserRole[];
   description: string;
   type: Meal["type"];
+  recordDate: Date;
   imageFile: File | null;
   imagePreview: string | null;
   onPhaseChange?: (phase: SubmitPhase) => void;
@@ -170,6 +172,7 @@ export const updateExistingMealRecord = async ({
       userIds: selectedUsers,
       description: description.trim(),
       type,
+      timestamp: recordDate.getTime(),
       ...(imageUrl !== undefined ? { imageUrl } : {}),
     });
   } catch (error) {

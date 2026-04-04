@@ -136,6 +136,23 @@ afterEach(() => {
   mealRecords.length = 0;
 });
 
+test("date utils expose explicit Korea day boundaries", async () => {
+  const dateUtils = await importFresh<typeof import("../lib/date-utils.ts")>(
+    "../lib/date-utils.ts"
+  );
+
+  const parsedDate = dateUtils.parseDateKey("2026-04-04");
+  assert.ok(parsedDate);
+
+  const dayRange = dateUtils.getDayRangeForDate(parsedDate);
+  assert.equal(dayRange.startOfDay.getTime(), Date.UTC(2026, 3, 3, 15, 0, 0, 0));
+  assert.equal(dayRange.endOfDay.getTime(), Date.UTC(2026, 3, 4, 14, 59, 59, 999));
+  assert.equal(
+    dateUtils.formatDateKey(new Date(Date.UTC(2026, 3, 3, 15, 30, 0, 0))),
+    "2026-04-04"
+  );
+});
+
 test("listMealsForDate returns only visible meals for the actor role including legacy meals", async () => {
   mealRecords.push(
     {

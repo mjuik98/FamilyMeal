@@ -35,6 +35,7 @@ const MealUpdateSchema = z.object({
   description: z.string().trim().min(1).max(MAX_MEAL_DESCRIPTION_LENGTH).optional(),
   type: z.enum(VALID_MEAL_TYPES).optional(),
   imageUrl: z.string().trim().url().max(MAX_MEAL_IMAGE_URL_LENGTH).nullable().optional(),
+  timestamp: z.number().int().positive().optional(),
 });
 
 const decodeMealId = async (params: Promise<Params>): Promise<string> => {

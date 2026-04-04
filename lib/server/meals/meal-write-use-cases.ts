@@ -104,6 +104,7 @@ export const updateMealDocument = async ({
     let nextUserIds = Array.isArray(current.userIds) ? current.userIds.filter(isUserRole) : [];
     let nextImageUrl = typeof current.imageUrl === "string" ? current.imageUrl : undefined;
     let nextOwnerUid = typeof current.ownerUid === "string" ? current.ownerUid : undefined;
+    let nextTimestamp = getTimestampMillis(current.timestamp);
 
     if ("userId" in current) {
       dataToUpdate.userId = FieldValue.delete();
@@ -133,6 +134,11 @@ export const updateMealDocument = async ({
     if ("userIds" in input && input.userIds !== undefined) {
       nextUserIds = normalizeMealParticipants(input.userIds);
       dataToUpdate.userIds = nextUserIds;
+    }
+
+    if ("timestamp" in input && input.timestamp !== undefined) {
+      nextTimestamp = getTimestampMillis(input.timestamp, nextTimestamp);
+      dataToUpdate.timestamp = Timestamp.fromMillis(nextTimestamp);
     }
 
     if ("imageUrl" in input) {
@@ -173,6 +179,7 @@ export const updateMealDocument = async ({
       ...("description" in dataToUpdate ? { description: nextDescription } : {}),
       ...("type" in dataToUpdate ? { type: nextType } : {}),
       ...("userIds" in dataToUpdate ? { userIds: nextUserIds } : {}),
+      ...("timestamp" in dataToUpdate ? { timestamp: nextTimestamp } : {}),
       ...("imageUrl" in input ? { imageUrl: nextImageUrl } : {}),
       ...("ownerUid" in dataToUpdate ? { ownerUid: nextOwnerUid } : {}),
       ...("userId" in dataToUpdate ? { userId: undefined } : {}),

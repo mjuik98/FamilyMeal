@@ -34,6 +34,7 @@ export type UpdateMealInput = {
   description?: unknown;
   type?: unknown;
   imageUrl?: unknown;
+  timestamp?: unknown;
 };
 
 export class MealRouteError extends Error {

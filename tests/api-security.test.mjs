@@ -189,6 +189,39 @@ test("meal routes delegate to extracted server meal modules", () => {
   assert.doesNotMatch(mealMutations, /await updateDoc\(mealRef/);
 });
 
+test("meal edit mutations preserve timestamp updates through the patch stack", () => {
+  const mealMutations = read("lib/client/meal-mutations.ts");
+  const mealRoute = read("app/api/meals/[id]/route.ts");
+  const mealTypes = read("lib/server/meals/meal-types.ts");
+  const mealWriteUseCases = read("lib/server/meals/meal-write-use-cases.ts");
+
+  assert.doesNotMatch(
+    mealMutations,
+    /delete \(nextUpdates as \{ timestamp\?: unknown \}\)\.timestamp;/
+  );
+  assert.match(mealRoute, /timestamp:\s*z\.number\(\)\.int\(\)\.positive\(\)\.optional\(\)/);
+  assert.match(mealTypes, /export type UpdateMealInput = \{[\s\S]*timestamp\?: unknown;/);
+  assert.match(
+    mealWriteUseCases,
+    /if \("timestamp" in input && input\.timestamp !== undefined\) \{[\s\S]*dataToUpdate\.timestamp = Timestamp\.fromMillis\(nextTimestamp\);/s
+  );
+});
+
+test("meal day reads use shared explicit date helpers instead of local clock math", () => {
+  const mealReadUseCases = read("lib/server/meals/meal-read-use-cases.ts");
+  const dateUtils = read("lib/date-utils.ts");
+
+  assert.match(mealReadUseCases, /from "@\/lib\/date-utils"/);
+  assert.match(mealReadUseCases, /getDayRangeForDate/);
+  assert.match(mealReadUseCases, /getWeekDatesForDate/);
+  assert.match(mealReadUseCases, /formatDateKey\(new Date\(meal\.timestamp\)\)/);
+  assert.doesNotMatch(mealReadUseCases, /const getDayRange =/);
+  assert.doesNotMatch(mealReadUseCases, /setHours\(0, 0, 0, 0\)/);
+  assert.doesNotMatch(mealReadUseCases, /setHours\(23, 59, 59, 999\)/);
+  assert.match(dateUtils, /export const getDayRangeForDate =/);
+  assert.match(dateUtils, /export const getWeekDatesForDate =/);
+});
+
 test("meal mutations fail closed for legacy records without ownerUid", () => {
   const mealWriteUseCases = read("lib/server/meals/meal-write-use-cases.ts");
   const mealDeleteUseCases = read("lib/server/meals/meal-delete-use-cases.ts");

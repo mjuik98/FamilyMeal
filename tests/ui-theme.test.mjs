@@ -40,6 +40,18 @@ test("comment and form inputs use shared input classes", () => {
   assert.match(surfaceSection, /export default function SurfaceSection/);
   assert.match(addPage, /className="input-base textarea-base"/);
   assert.match(editPage, /className="input-base textarea-base[^"]*"/);
+  assert.match(editPage, /type="date"/);
+  assert.match(editPage, /type="time"/);
+  assert.match(editPage, /data-testid="edit-meal-date-input"/);
+  assert.match(editPage, /data-testid="edit-meal-time-input"/);
+});
+
+test("edit page waits for auth loading before redirecting", () => {
+  const editPage = read("app/edit/[id]/page.tsx");
+
+  assert.match(editPage, /const \{ userProfile, loading: authLoading \} = useUser\(\);/);
+  assert.match(editPage, /if \(authLoading\) \{\s*return;\s*\}/s);
+  assert.match(editPage, /if \(authLoading \|\| mealLoading\) \{/);
 });
 
 test("login view uses the refreshed onboarding layout and shared CSS hooks", () => {

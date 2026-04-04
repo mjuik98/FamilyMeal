@@ -9,6 +9,7 @@ import PageHeader from "@/components/PageHeader";
 import SurfaceSection from "@/components/SurfaceSection";
 import { useToast } from "@/components/Toast";
 import { useUser } from "@/context/UserContext";
+import { combineDateAndTime, formatDateKey, formatTimeKey } from "@/lib/date-utils";
 import {
   loadEditableMeal,
   updateExistingMealRecord,
@@ -21,7 +22,7 @@ import { hasMealParticipants, toggleMealParticipant } from "@/lib/meal-form";
 import { Meal, UserRole } from "@/lib/types";
 
 export default function EditMealPage() {
-  const { userProfile } = useUser();
+  const { userProfile, loading: authLoading } = useUser();
   const router = useRouter();
   const params = useParams();
   const mealId = params.id as string;
@@ -32,9 +33,11 @@ export default function EditMealPage() {
   const [description, setDescription] = useState("");
   const [type, setType] = useState<Meal["type"]>("점심");
   const [selectedUsers, setSelectedUsers] = useState<UserRole[]>([]);
+  const [recordDateValue, setRecordDateValue] = useState("");
+  const [recordTimeValue, setRecordTimeValue] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitPhase, setSubmitPhase] = useState<"idle" | "uploading" | "saving">("idle");
-  const [loading, setLoading] = useState(true);
+  const [mealLoading, setMealLoading] = useState(true);
   const [requiresLegacyMigration, setRequiresLegacyMigration] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -48,6 +51,10 @@ export default function EditMealPage() {
   }, [showToast]);
 
   useEffect(() => {
+    if (authLoading) {
+      return;
+    }
+
     if (!currentRole) {
       router.replace("/");
       return;
@@ -55,7 +62,7 @@ export default function EditMealPage() {
 
     let active = true;
     const requestId = ++loadRequestSequenceRef.current;
-    setLoading(true);
+    setMealLoading(true);
 
     const loadMeal = async () => {
       try {
@@ -79,6 +86,9 @@ export default function EditMealPage() {
 
         setDescription(meal.description);
         setType(meal.type);
+        const mealDate = new Date(meal.timestamp);
+        setRecordDateValue(formatDateKey(mealDate));
+        setRecordTimeValue(formatTimeKey(mealDate));
         setRemoteImage(meal.imageUrl || null);
         setSelectedUsers(nextSelectedUsers);
         setRequiresLegacyMigration(nextRequiresLegacyMigration);
@@ -94,7 +104,7 @@ export default function EditMealPage() {
         router.push("/");
       } finally {
         if (active && requestId === loadRequestSequenceRef.current) {
-          setLoading(false);
+          setMealLoading(false);
         }
       }
     };
@@ -104,9 +114,9 @@ export default function EditMealPage() {
     return () => {
       active = false;
     };
-  }, [currentRole, currentUid, mealId, router, setRemoteImage]);
+  }, [authLoading, currentRole, currentUid, mealId, router, setRemoteImage]);
 
-  if (!currentRole) return null;
+  if (!authLoading && !currentRole) return null;
 
   const submissionLabel =
     submitPhase === "uploading" ? "사진 업로드 중..." : submitPhase === "saving" ? "저장 중..." : null;
@@ -149,6 +159,11 @@ export default function EditMealPage() {
       showToast("함께 먹은 사람을 1명 이상 선택해 주세요.", "error");
       return;
     }
+    const nextRecordDate = combineDateAndTime(recordDateValue, recordTimeValue);
+    if (!nextRecordDate) {
+      showToast("날짜와 시간을 올바르게 입력해 주세요.", "error");
+      return;
+    }
 
     setIsSubmitting(true);
     try {
@@ -157,13 +172,14 @@ export default function EditMealPage() {
         selectedUsers,
         description: normalizedDescription,
         type,
+        recordDate: nextRecordDate,
         imageFile: imageSelection.imageFile,
         imagePreview: imageSelection.imagePreview,
         onPhaseChange: setSubmitPhase,
       });
 
       showToast("수정되었습니다.", "success");
-      router.push("/");
+      router.push(`/?date=${formatDateKey(nextRecordDate)}`);
       router.refresh();
     } catch (error) {
       logError("Failed to update meal", error);
@@ -175,7 +191,7 @@ export default function EditMealPage() {
     }
   };
 
-  if (loading) {
+  if (authLoading || mealLoading) {
     return (
       <div className="loading-shell">
         <div className="spinner" />
@@ -305,6 +321,44 @@ export default function EditMealPage() {
                       {role}
                     </button>
                   ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="form-label">언제 먹었나요</label>
+                <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
+                  <input
+                    type="date"
+                    value={recordDateValue}
+                    onChange={(e) => setRecordDateValue(e.target.value)}
+                    required
+                    disabled={requiresLegacyMigration}
+                    className="input-base"
+                    data-testid="edit-meal-date-input"
+                    style={{
+                      flex: "1 1 220px",
+                      minHeight: "48px",
+                      borderRadius: "14px",
+                      padding: "0 14px",
+                      outline: "none",
+                    }}
+                  />
+                  <input
+                    type="time"
+                    value={recordTimeValue}
+                    onChange={(e) => setRecordTimeValue(e.target.value)}
+                    required
+                    disabled={requiresLegacyMigration}
+                    className="input-base"
+                    data-testid="edit-meal-time-input"
+                    style={{
+                      flex: "1 1 160px",
+                      minHeight: "48px",
+                      borderRadius: "14px",
+                      padding: "0 14px",
+                      outline: "none",
+                    }}
+                  />
                 </div>
               </div>
 

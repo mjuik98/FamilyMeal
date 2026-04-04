@@ -60,7 +60,6 @@ export const updateMeal = async (
   delete (nextUpdates as { comments?: unknown }).comments;
   delete (nextUpdates as { commentCount?: unknown }).commentCount;
   delete (nextUpdates as { reactions?: unknown }).reactions;
-  delete (nextUpdates as { timestamp?: unknown }).timestamp;
   delete (nextUpdates as { userId?: unknown }).userId;
 
   const encodedMealId = encodeURIComponent(id);
