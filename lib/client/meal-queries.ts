@@ -1,13 +1,10 @@
-import { doc, getDoc } from "firebase/firestore";
-
 import { fetchAuthedJson } from "@/lib/client/auth-http";
 import { formatDateKey } from "@/lib/date-utils";
-import { db } from "@/lib/firebase";
 import { SEARCH_FALLBACK_LIMIT, SEARCH_INDEX_LIMIT } from "@/lib/domain/meal-policy";
 import { logError } from "@/lib/logging";
 import type { Meal, WeeklyMealStat } from "@/lib/types";
 
-import { dedupeAndSortMeals, serializeMealSnapshot } from "@/lib/client/serializers";
+import { dedupeAndSortMeals } from "@/lib/client/serializers";
 import type { UserRole } from "@/lib/types";
 
 const MEAL_REFRESH_INTERVAL_MS = 60_000;
@@ -96,11 +93,11 @@ export const subscribeMealsForDate = (
 };
 
 export const getMealById = async (id: string): Promise<Meal | null> => {
-  const mealRef = doc(db, "meals", id);
-  const snapshot = await getDoc(mealRef);
-  if (!snapshot.exists()) return null;
-
-  return serializeMealSnapshot(snapshot.id, snapshot.data());
+  const encodedMealId = encodeURIComponent(id);
+  const response = await fetchAuthedJson<{ ok: true; meal: Meal | null }>(
+    `/api/meals/${encodedMealId}`
+  );
+  return response.meal ?? null;
 };
 
 export const getWeeklyStats = async (referenceDate: Date = new Date()): Promise<WeeklyMealStat[]> => {

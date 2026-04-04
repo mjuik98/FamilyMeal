@@ -4,15 +4,15 @@ import {
   getWeeklyStats,
   listArchiveMeals,
   subscribeMealsForDate,
-} from "@/lib/client/meals";
+} from "@/lib/client/meal-queries";
 import {
   getQaArchiveMeals,
   getQaMealDetail,
   getQaMealsForDate,
   getQaSameDayMeals,
   getQaWeeklyStats,
-  isQaRuntimeActive,
-} from "@/lib/qa/runtime";
+  isQaMealsRuntimeActive,
+} from "@/lib/qa/adapters/meals";
 import type { Meal, UserRole, WeeklyMealStat } from "@/lib/types";
 
 import type { ArchiveMealsQuery, MealParticipantFilter, MealTypeFilter } from "@/lib/modules/meals/contracts";
@@ -36,7 +36,7 @@ export const createMealRuntimeState = ({
   referenceDate?: Date;
   anchorHour?: number;
 } = {}): MealRuntimeState => ({
-  qaMode: isQaRuntimeActive(),
+  qaMode: isQaMealsRuntimeActive(),
   qaAnchorDate: getQaAnchorDate(referenceDate, anchorHour),
 });
 

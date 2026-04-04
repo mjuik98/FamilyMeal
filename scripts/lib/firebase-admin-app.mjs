@@ -1,6 +1,5 @@
 import admin from "firebase-admin";
 
-const DEFAULT_PROJECT_ID = "family-meal-91736";
 const PROJECT_ID_ENV_KEYS = [
   "FIREBASE_ADMIN_PROJECT_ID",
   "FIREBASE_PROJECT_ID",
@@ -25,7 +24,7 @@ export const resolveAdminProjectId = () => {
     }
   }
 
-  return DEFAULT_PROJECT_ID;
+  throw new Error("Firebase project id is required for admin scripts");
 };
 
 export const getAdminDbContext = () => {

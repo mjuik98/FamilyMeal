@@ -5,10 +5,10 @@ import { LogOut } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 import { DEFAULT_NOTIFICATION_PREFERENCES } from "@/lib/activity";
+import { USER_ROLES } from "@/lib/domain/meal-policy";
 import PageHeader from "@/components/PageHeader";
 import SurfaceSection from "@/components/SurfaceSection";
 import { useUser } from "@/context/UserContext";
-import { users } from "@/lib/client/profile";
 
 const roleEmoji: Record<string, string> = {
   아빠: "👨",
@@ -43,7 +43,7 @@ export default function ProfilePage() {
   const notificationPreferences =
     userProfile?.notificationPreferences ?? DEFAULT_NOTIFICATION_PREFERENCES;
 
-  const handleSelectRole = async (role: (typeof users)[number]) => {
+  const handleSelectRole = async (role: (typeof USER_ROLES)[number]) => {
     if (roleLocked || savingRole) return;
     setSavingRole(true);
     try {
@@ -112,7 +112,7 @@ export default function ProfilePage() {
         </SurfaceSection>
 
         <SurfaceSection title="역할 선택" bodyClassName="profile-role-list">
-            {users.map((role) => {
+            {USER_ROLES.map((role) => {
               const isSelected = userProfile?.role === role;
 
               return (

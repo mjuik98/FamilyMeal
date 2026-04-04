@@ -78,9 +78,52 @@ mock.module("@/lib/meal-comments-store", {
   }),
 });
 
-mock.module("@/lib/qa/runtime", {
+mock.module("@/lib/qa/adapters/comments", {
   ...mockModuleOptions({
-    isQaRuntimeActive: () => qaMode,
+    isQaCommentRuntimeActive: () => qaMode,
+    watchQaMealComments: ({
+      fallbackComments = [],
+      onComments,
+    }: {
+      mealId: string;
+      fallbackComments?: MealComment[];
+      onComments: (comments: MealComment[]) => void;
+    }) => {
+      onComments(fallbackComments);
+      return () => undefined;
+    },
+    createQaMealComment: async (command: {
+      authorRole: string;
+      authorUid: string;
+      text: string;
+      parentId?: string;
+      mentionedAuthor?: string;
+    }) => ({
+      id: `qa-comment-${Date.now()}`,
+      author: command.authorRole,
+      authorUid: command.authorUid,
+      text: command.text,
+      ...(command.parentId ? { parentId: command.parentId } : {}),
+      ...(command.mentionedAuthor
+        ? { mentionedAuthor: command.mentionedAuthor }
+        : {}),
+      createdAt: TEST_NOW,
+      updatedAt: TEST_NOW,
+      timestamp: TEST_NOW,
+      reactions: {},
+    }),
+    updateQaMealComment: async (
+      command: { commentId: string; actorUid: string; text: string },
+      existingComment: MealComment
+    ) => ({
+      ...existingComment,
+      id: command.commentId,
+      authorUid: command.actorUid,
+      text: command.text,
+      updatedAt: TEST_NOW + 1_000,
+      timestamp: TEST_NOW + 1_000,
+    }),
+    deleteQaMealComment: async () => undefined,
   }),
 });
 

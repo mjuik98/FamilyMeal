@@ -493,6 +493,16 @@ export const addQaCustomMeal = (meal: Meal) => {
   writeJsonToStorage(QA_CUSTOM_MEALS_KEY, [meal, ...currentMeals]);
 };
 
+export const deleteQaCustomMeal = (mealId: string) => {
+  const currentMeals = normalizeQaCustomMeals(
+    readJsonFromStorage(QA_CUSTOM_MEALS_KEY, [])
+  );
+  writeJsonToStorage(
+    QA_CUSTOM_MEALS_KEY,
+    currentMeals.filter((meal) => meal.id !== mealId)
+  );
+};
+
 export const createQaMockWeeklyStats = (
   referenceDate: Date,
   role: UserRole = getQaDefaultRole(),

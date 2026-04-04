@@ -15,7 +15,24 @@ import {
 } from "@/lib/server/meals/meal-types";
 
 const isMealVisibleToRole = (meal: Meal, actorRole: UserRole): boolean =>
-  Array.isArray(meal.userIds) && meal.userIds.includes(actorRole);
+  (Array.isArray(meal.userIds) && meal.userIds.includes(actorRole)) ||
+  meal.userId === actorRole;
+
+export const getMealByIdForActor = async ({
+  mealId,
+  actorRole,
+}: {
+  mealId: string;
+  actorRole: UserRole;
+}): Promise<Meal | null> => {
+  const mealSnap = await adminDb.collection("meals").doc(mealId).get();
+  if (!mealSnap.exists) {
+    return null;
+  }
+
+  const meal = serializeMealDocument(mealId, mealSnap.data() as StoredMealDoc);
+  return isMealVisibleToRole(meal, actorRole) ? meal : null;
+};
 
 export const listMealsForDate = async ({
   actorRole,

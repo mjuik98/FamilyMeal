@@ -1,11 +1,17 @@
-import { addMeal, getMealById, updateMeal } from "@/lib/client/meals";
+import { addMeal, deleteMeal, updateMeal } from "@/lib/client/meal-mutations";
+import { getMealById } from "@/lib/client/meal-queries";
 import { readMealImageDataUrl } from "@/lib/meal-form";
-import { saveQaMeal } from "@/lib/qa/runtime";
+import {
+  deleteQaMeal,
+  isQaMealsRuntimeActive,
+  saveQaMeal,
+} from "@/lib/qa/adapters/meals";
 import type { Meal, UserRole } from "@/lib/types";
 import { cleanupUploadedMealImage, uploadImage } from "@/lib/uploadImage";
 
 import type {
   CreateMealCommand,
+  MealDeleteResult,
   UpdateMealCommand,
 } from "@/lib/modules/meals/contracts";
 import type { MealRuntimeState } from "@/lib/modules/meals/infrastructure/meal-read-runtime";
@@ -147,4 +153,18 @@ export const updateExistingMealRecordInRuntime = async ({
     }
     throw error;
   }
+};
+
+export const deleteMealRecordInRuntime = async (
+  mealId: string
+): Promise<MealDeleteResult> => {
+  if (isQaMealsRuntimeActive()) {
+    deleteQaMeal(mealId);
+    return {
+      deleted: true,
+      status: "completed",
+    };
+  }
+
+  return deleteMeal(mealId);
 };

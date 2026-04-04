@@ -102,7 +102,31 @@ mock.module("@/lib/firebase-admin", {
         if (name !== "meals") {
           throw new Error(`Unsupported collection: ${name}`);
         }
-        return new MockMealQuery(mealRecords);
+        const mealsQuery = new MockMealQuery(mealRecords) as MockMealQuery & {
+          doc: (id: string) => { get: () => Promise<{ exists: boolean; data: () => unknown }> };
+        };
+        mealsQuery.doc = (id: string) => ({
+          async get() {
+            const record = mealRecords.find((meal) => meal.id === id);
+            return {
+              exists: Boolean(record),
+              data: () =>
+                record
+                  ? {
+                      ownerUid: record.ownerUid,
+                      userId: record.userId,
+                      userIds: record.userIds,
+                      description: record.description,
+                      type: record.type,
+                      imageUrl: record.imageUrl,
+                      timestamp: { toMillis: () => record.timestamp },
+                      commentCount: record.commentCount ?? 0,
+                    }
+                  : undefined,
+            };
+          },
+        });
+        return mealsQuery;
       },
     },
   }),
@@ -269,4 +293,43 @@ test("meal route exposes authenticated GET date reads", async () => {
   const payload = (await response.json()) as { ok?: boolean; meals?: Array<{ id: string }> };
   assert.equal(payload.ok, true);
   assert.deepEqual(payload.meals?.map((meal) => meal.id), ["route-visible"]);
+});
+
+test("meal detail route exposes authenticated GET reads for a visible meal", async () => {
+  mealRecords.push(
+    {
+      id: "detail-visible",
+      ownerUid: "owner-1",
+      userIds: ["엄마"],
+      description: "상세 조회 가능한 기록",
+      type: "점심",
+      timestamp: TEST_NOW,
+      commentCount: 0,
+    },
+    {
+      id: "detail-hidden",
+      ownerUid: "owner-2",
+      userIds: ["아들"],
+      description: "보이면 안 되는 상세 기록",
+      type: "저녁",
+      timestamp: TEST_NOW - 60_000,
+      commentCount: 0,
+    }
+  );
+
+  const mealRoute = await importFresh<typeof import("../app/api/meals/[id]/route.ts")>(
+    "../app/api/meals/[id]/route.ts"
+  );
+
+  const response = await mealRoute.GET!(
+    new Request("http://localhost/api/meals/detail-visible"),
+    {
+      params: Promise.resolve({ id: "detail-visible" }),
+    }
+  );
+
+  assert.equal(response.status, 200);
+  const payload = (await response.json()) as { ok?: boolean; meal?: { id: string } | null };
+  assert.equal(payload.ok, true);
+  assert.equal(payload.meal?.id, "detail-visible");
 });

@@ -1,35 +1,16 @@
-import { normalizeReactionMap } from "@/lib/reactions";
+import {
+  countCommentReactions,
+  countMealReactions,
+  getMealCommentCount,
+} from "@/lib/domain/meal-engagement";
 import type { Meal, MealComment, UserRole } from "@/lib/types";
 
 export type MealSortOrder = "recent" | "comments" | "reactions" | "activity";
-
-export const countMealReactions = (meal: Meal): number =>
-  Object.values(normalizeReactionMap(meal.reactions)).reduce(
-    (sum, users) => sum + (users?.length ?? 0),
-    0
-  );
-
-export const countCommentReactions = (comments: MealComment[]): number =>
-  comments.reduce(
-    (sum, comment) =>
-      sum +
-      Object.values(normalizeReactionMap(comment.reactions)).reduce(
-        (inner, users) => inner + (users?.length ?? 0),
-        0
-      ),
-    0
-  );
 
 const getMealCommentsSnapshot = (
   meal: Meal,
   commentsByMeal?: Record<string, MealComment[]>
 ): MealComment[] => commentsByMeal?.[meal.id] ?? meal.comments ?? [];
-
-export const getMealCommentCount = (
-  meal: Meal,
-  commentsByMeal?: Record<string, MealComment[]>
-): number =>
-  commentsByMeal?.[meal.id]?.length ?? meal.commentCount ?? meal.comments?.length ?? 0;
 
 type DerivedMealMetrics = {
   meal: Meal;
@@ -44,8 +25,7 @@ const deriveMealMetrics = (
 ): DerivedMealMetrics => {
   const comments = getMealCommentsSnapshot(meal, commentsByMeal);
   const reactionCount = countMealReactions(meal);
-  const commentCount =
-    commentsByMeal?.[meal.id]?.length ?? meal.commentCount ?? comments.length;
+  const commentCount = getMealCommentCount(meal, commentsByMeal);
 
   return {
     meal,

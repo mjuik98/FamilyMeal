@@ -4,8 +4,10 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { useUser } from "@/context/UserContext";
-import { deleteMeal } from "@/lib/client/meals";
-import type { MealDeleteResult } from "@/lib/client/meal-mutations";
+import {
+  deleteMealRecord,
+  type MealDeleteResult,
+} from "@/lib/features/meals/application/meal-editor-service";
 import { useMealCommentsController as useMealComments } from "@/lib/features/comments/ui/useMealCommentsController";
 import { useMealReactionsController as useMealReactions } from "@/lib/features/reactions/ui/useMealReactionsController";
 import { logError } from "@/lib/logging";
@@ -94,7 +96,7 @@ export default function MealCard({
       });
       if (!confirmed) return;
 
-      const result = await deleteMeal(meal.id);
+      const result = await deleteMealRecord(meal.id);
       switch (result.status) {
         case "already_processing":
           showToast("삭제 작업이 이미 진행 중입니다.", "info");

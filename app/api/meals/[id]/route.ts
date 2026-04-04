@@ -20,6 +20,7 @@ import {
   markMealDeleteJob,
   planMealDeleteOperation,
 } from "@/lib/server/meals/meal-delete-use-cases";
+import { getMealByIdForActor } from "@/lib/server/meals/meal-read-use-cases";
 import { deleteStorageObjectByUrl } from "@/lib/server/meals/meal-storage";
 import { MealRouteError, type UpdateMealInput } from "@/lib/server/meals/meal-types";
 import { updateMealDocument } from "@/lib/server/meals/meal-write-use-cases";
@@ -55,6 +56,27 @@ const decodeMealId = async (params: Promise<Params>): Promise<string> => {
   }
   return mealId;
 };
+
+export async function GET(
+  request: Request,
+  context: { params: Promise<Params> }
+) {
+  try {
+    const { role } = await requireValidatedUserRole(request);
+    const mealId = await decodeMealId(context.params);
+    const meal = await getMealByIdForActor({
+      mealId,
+      actorRole: role,
+    });
+
+    return NextResponse.json({ ok: true, meal });
+  } catch (error) {
+    return NextResponse.json(
+      { ok: false, error: getRouteErrorPayload(error) },
+      { status: getRouteErrorStatus(error) }
+    );
+  }
+}
 
 export async function DELETE(
   request: Request,

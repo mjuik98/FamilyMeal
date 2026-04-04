@@ -1,8 +1,9 @@
 import { DEFAULT_NOTIFICATION_PREFERENCES, normalizeNotificationPreferences } from "@/lib/activity";
+import { isUserRole } from "@/lib/domain/meal-policy";
 import { adminAuth, adminDb } from "@/lib/firebase-admin";
 import { RouteError } from "@/lib/route-errors";
 import type { VerifiedUser } from "@/lib/server-auth";
-import type { NotificationPreferences, UserRole } from "@/lib/types";
+import type { NotificationPreferences, UserProfile, UserRole } from "@/lib/types";
 
 type UserProfileDoc = {
   uid?: unknown;
@@ -14,6 +15,29 @@ type UserProfileDoc = {
 
 const toStringOrNull = (value: unknown): string | null =>
   typeof value === "string" && value.trim().length > 0 ? value : null;
+
+export const loadUserProfileSession = async ({
+  user,
+}: {
+  user: VerifiedUser;
+}): Promise<UserProfile | null> => {
+  const userRef = adminDb.collection("users").doc(user.uid);
+  const snapshot = await userRef.get();
+  if (!snapshot.exists) {
+    return null;
+  }
+
+  const data = (snapshot.data() ?? {}) as UserProfileDoc;
+  return {
+    uid: user.uid,
+    email: toStringOrNull(data.email) ?? user.email,
+    displayName: toStringOrNull(data.displayName),
+    role: isUserRole(data.role) ? data.role : null,
+    notificationPreferences: normalizeNotificationPreferences(
+      data.notificationPreferences ?? DEFAULT_NOTIFICATION_PREFERENCES
+    ),
+  };
+};
 
 export const saveUserRoleProfile = async ({
   user,

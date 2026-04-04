@@ -2,15 +2,19 @@ import { logError } from "@/lib/logging";
 import type { Meal, UserRole } from "@/lib/types";
 import {
   createMealRecordInRuntime,
+  deleteMealRecordInRuntime,
   loadEditableMealInRuntime,
   updateExistingMealRecordInRuntime,
 } from "@/lib/modules/meals/infrastructure/meal-editor-runtime";
 import type {
   CreateMealCommand,
+  MealDeleteResult,
   UpdateMealCommand,
 } from "@/lib/modules/meals/contracts";
 
 import type { MealRuntimeState } from "@/lib/features/meals/application/meal-read-service";
+
+export type { MealDeleteResult } from "@/lib/modules/meals/contracts";
 
 type SubmitPhase = "uploading" | "saving";
 
@@ -122,3 +126,6 @@ export const updateExistingMealRecord = async ({
     },
   });
 };
+
+export const deleteMealRecord = async (mealId: string): Promise<MealDeleteResult> =>
+  deleteMealRecordInRuntime(mealId);
