@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import { parseDateKey } from "@/lib/date-utils";
 import { getRouteErrorMessage, getRouteErrorStatus, RouteError } from "@/lib/route-errors";
-import { listWeeklyMealStats } from "@/lib/server/meals/meal-use-cases";
+import { listWeeklyMealStats } from "@/lib/server/meals/meal-read-use-cases";
 import { requireValidatedUserRole } from "@/lib/server/route-auth";
 
 export const runtime = "nodejs";

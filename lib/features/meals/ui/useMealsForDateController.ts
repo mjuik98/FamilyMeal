@@ -2,62 +2,63 @@
 
 import { useEffect, useMemo, useState } from "react";
 
-import { subscribeMealsForDate } from "@/lib/client/meals";
+import {
+  type MealRuntimeState,
+  watchMealsForViewerDate,
+} from "@/lib/features/meals/application/meal-read-service";
 import { formatDateKey } from "@/lib/date-utils";
 import { logError } from "@/lib/logging";
-import { getQaMealsForDate } from "@/lib/qa/runtime";
 import type { Meal, UserRole } from "@/lib/types";
 
 export const useMealsForDateController = ({
   effectiveSelectedDate,
-  qaMode,
-  qaAnchorDate,
+  runtimeState,
   role,
 }: {
   effectiveSelectedDate: Date;
-  qaMode: boolean;
-  qaAnchorDate: Date;
+  runtimeState: MealRuntimeState;
   role?: UserRole | null;
 }) => {
   const [remoteMeals, setRemoteMeals] = useState<Meal[]>([]);
   const [loadedDateKey, setLoadedDateKey] = useState<string | null>(null);
+  const [loadedRole, setLoadedRole] = useState<UserRole | null>(null);
   const currentDateKey = useMemo(
     () => formatDateKey(effectiveSelectedDate),
     [effectiveSelectedDate]
   );
 
   useEffect(() => {
-    if (!role || qaMode) {
+    if (!role) {
       return;
     }
 
-    return subscribeMealsForDate(
-      effectiveSelectedDate,
-      (data) => {
+    return watchMealsForViewerDate({
+      date: effectiveSelectedDate,
+      role,
+      runtimeState,
+      onMeals: (data) => {
         setRemoteMeals(data);
         setLoadedDateKey(currentDateKey);
+        setLoadedRole(role);
       },
-      (error) => {
+      onError: (error) => {
         logError("Failed to load meals", error);
         setRemoteMeals([]);
         setLoadedDateKey(currentDateKey);
-      }
-    );
-  }, [currentDateKey, effectiveSelectedDate, qaMode, role]);
+        setLoadedRole(role);
+      },
+    });
+  }, [currentDateKey, effectiveSelectedDate, role, runtimeState]);
 
   const meals = useMemo(
     () =>
-      qaMode && role
-        ? getQaMealsForDate(role, effectiveSelectedDate, qaAnchorDate)
-        : loadedDateKey === currentDateKey && role
-          ? remoteMeals
-          : [],
+      loadedDateKey === currentDateKey && loadedRole === role && role
+        ? remoteMeals
+        : [],
     [
       currentDateKey,
-      effectiveSelectedDate,
       loadedDateKey,
-      qaAnchorDate,
-      qaMode,
+      loadedRole,
       remoteMeals,
       role,
     ]
@@ -65,7 +66,9 @@ export const useMealsForDateController = ({
 
   return {
     meals,
-    loadingMeals: qaMode ? false : Boolean(role) && loadedDateKey !== currentDateKey,
+    loadingMeals:
+      Boolean(role) &&
+      (loadedDateKey !== currentDateKey || loadedRole !== role),
   };
 };
 

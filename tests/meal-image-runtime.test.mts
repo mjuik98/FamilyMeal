@@ -126,8 +126,8 @@ test("createMealDocument rejects image URLs outside the caller upload prefix", a
     return { id: "meal-1" };
   };
 
-  const { createMealDocument } = await importFresh<typeof import("../lib/server/meals/meal-use-cases.ts")>(
-    "../lib/server/meals/meal-use-cases.ts"
+  const { createMealDocument } = await importFresh<typeof import("../lib/server/meals/meal-write-use-cases.ts")>(
+    "../lib/server/meals/meal-write-use-cases.ts"
   );
 
   await assert.rejects(

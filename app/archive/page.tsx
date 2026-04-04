@@ -9,9 +9,11 @@ import FilterChips from "@/components/FilterChips";
 import MealPreviewCard from "@/components/MealPreviewCard";
 import PageHeader from "@/components/PageHeader";
 import { useUser } from "@/context/UserContext";
-import { listArchiveMeals } from "@/lib/client/meals";
+import {
+  createMealRuntimeState,
+  loadArchiveMealsForViewer,
+} from "@/lib/features/meals/application/meal-read-service";
 import { logError } from "@/lib/logging";
-import { getQaArchiveMeals, isQaRuntimeActive } from "@/lib/qa/runtime";
 import type { Meal, UserRole } from "@/lib/types";
 
 const TYPE_OPTIONS = ["전체", "아침", "점심", "저녁", "간식"] as const;
@@ -31,6 +33,7 @@ const formatArchiveMonth = (monthKey: string) => {
 export default function ArchivePage() {
   const { userProfile, loading } = useUser();
   const router = useRouter();
+  const [runtimeState] = useState(() => createMealRuntimeState());
 
   const [sourceMeals, setSourceMeals] = useState<Meal[]>([]);
   const [loadingMeals, setLoadingMeals] = useState(true);
@@ -61,30 +64,12 @@ export default function ArchivePage() {
       setLoadingMeals(true);
       setLoadingMore(false);
       try {
-        if (isQaRuntimeActive()) {
-          if (!active || requestId !== requestSequenceRef.current) {
-            return;
-          }
-          const qaMeals = getQaArchiveMeals({
-            role: currentRole,
-            referenceDate: new Date(),
-            focalDate: new Date(),
-            query: deferredQuery,
-            type: typeFilter,
-            participant:
-              userFilter === "전체" ? "전체" : (userFilter as UserRole),
-          });
-          setSourceMeals(qaMeals);
-          setNextCursor(null);
-          setHasMore(false);
-          setIsPartial(false);
-          return;
-        }
-
-        const response = await listArchiveMeals({
+        const response = await loadArchiveMealsForViewer({
+          role: currentRole,
+          runtimeState,
           query: deferredQuery,
           type: typeFilter,
-          participant: userFilter,
+          participant: userFilter === "전체" ? "전체" : (userFilter as UserRole),
           limit: ARCHIVE_PAGE_SIZE,
         });
         if (!active || requestId !== requestSequenceRef.current) {
@@ -115,7 +100,7 @@ export default function ArchivePage() {
     return () => {
       active = false;
     };
-  }, [deferredQuery, typeFilter, userFilter, userProfile?.role]);
+  }, [deferredQuery, runtimeState, typeFilter, userFilter, userProfile?.role]);
 
   const groupedMeals = useMemo(() => {
     const groups = new Map<string, Meal[]>();
@@ -146,17 +131,19 @@ export default function ArchivePage() {
   }, [sourceMeals, userFilter]);
 
   const loadMoreMeals = async () => {
-    if (!hasMore || !nextCursor || loadingMore || isQaRuntimeActive()) {
+    if (!hasMore || !nextCursor || loadingMore || runtimeState.qaMode) {
       return;
     }
 
     const requestId = requestSequenceRef.current;
     setLoadingMore(true);
     try {
-      const response = await listArchiveMeals({
+      const response = await loadArchiveMealsForViewer({
+        role: userProfile?.role,
+        runtimeState,
         query: deferredQuery,
         type: typeFilter,
-        participant: userFilter,
+        participant: userFilter === "전체" ? "전체" : (userFilter as UserRole),
         cursor: nextCursor,
         limit: ARCHIVE_PAGE_SIZE,
       });

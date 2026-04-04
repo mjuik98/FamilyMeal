@@ -12,9 +12,9 @@ import WeekDateStrip from "@/components/WeekDateStrip";
 import { useSelectedDate } from "@/components/hooks/useSelectedDate";
 import { useUser } from "@/context/UserContext";
 import { formatDateKey } from "@/lib/date-utils";
+import { createMealRuntimeState } from "@/lib/features/meals/application/meal-read-service";
 import { useMealsForDateController as useMealsForDate } from "@/lib/features/meals/ui/useMealsForDateController";
 import { useWeeklyStatsController as useWeeklyStats } from "@/lib/features/meals/ui/useWeeklyStatsController";
-import { isQaRuntimeActive } from "@/lib/qa/runtime";
 
 const roleEmoji: Record<string, string> = {
   아빠: "👨",
@@ -28,13 +28,6 @@ const isSameDay = (left: Date, right: Date) =>
   left.getMonth() === right.getMonth() &&
   left.getDate() === right.getDate();
 
-const getQaAnchorDate = () => {
-  const date = new Date();
-  date.setHours(0, 0, 0, 0);
-  date.setDate(date.getDate() + (6 - date.getDay()));
-  return date;
-};
-
 const formatLongDate = (date: Date) =>
   date.toLocaleDateString("ko-KR", {
     month: "long",
@@ -46,23 +39,20 @@ const LazyCalendar = dynamic(() => import("@/components/LazyCalendar"));
 
 function HomeContent() {
   const { user, userProfile, loading, signOut } = useUser();
-  const qaMode = isQaRuntimeActive();
-  const [qaAnchorDate] = useState(getQaAnchorDate);
+  const [runtimeState] = useState(() => createMealRuntimeState({ anchorHour: 0 }));
   const { effectiveSelectedDate, showCalendar, setShowCalendar, selectDate, onDateChange } =
     useSelectedDate({
-      qaMode,
-      qaAnchorDate,
+      qaMode: runtimeState.qaMode,
+      qaAnchorDate: runtimeState.qaAnchorDate,
     });
   const { meals, loadingMeals } = useMealsForDate({
     effectiveSelectedDate,
-    qaMode,
-    qaAnchorDate,
+    runtimeState,
     role: userProfile?.role,
   });
   const weeklyStats = useWeeklyStats({
     effectiveSelectedDate,
-    qaMode,
-    qaAnchorDate,
+    runtimeState,
     role: userProfile?.role,
   });
 

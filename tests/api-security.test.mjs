@@ -146,19 +146,25 @@ test("meal routes delegate to extracted server meal modules", () => {
   const mealMutations = read("lib/client/meal-mutations.ts");
   const createRoute = read("app/api/meals/route.ts");
   const mealRoute = read("app/api/meals/[id]/route.ts");
-  const mealUseCases = read("lib/server/meals/meal-use-cases.ts");
+  const mealReadUseCases = read("lib/server/meals/meal-read-use-cases.ts");
+  const mealWriteUseCases = read("lib/server/meals/meal-write-use-cases.ts");
+  const mealDeleteUseCases = read("lib/server/meals/meal-delete-use-cases.ts");
   const mealStorage = read("lib/server/meals/meal-storage.ts");
   const serverMealsBarrelPath = path.join(process.cwd(), "lib", "server-meals.ts");
 
   assert.match(mealMutations, /fetchAuthedJson<\{ ok: true; meal: Meal \}>\("\/api\/meals"/);
   assert.match(mealMutations, /\/api\/meals\/\$\{encodedMealId\}/);
   assert.match(createRoute, /requireValidatedUserRole/);
-  assert.match(createRoute, /from "@\/lib\/server\/meals\/meal-use-cases"/);
+  assert.match(createRoute, /from "@\/lib\/server\/meals\/meal-read-use-cases"/);
+  assert.match(createRoute, /from "@\/lib\/server\/meals\/meal-write-use-cases"/);
   assert.match(createRoute, /createMealDocument/);
+  assert.match(createRoute, /listMealsForDate/);
   assert.doesNotMatch(createRoute, /@\/lib\/server-meals/);
   assert.match(mealRoute, /export async function PATCH/);
-  assert.match(mealRoute, /from "@\/lib\/server\/meals\/meal-use-cases"/);
+  assert.match(mealRoute, /from "@\/lib\/server\/meals\/meal-write-use-cases"/);
+  assert.match(mealRoute, /from "@\/lib\/server\/meals\/meal-delete-use-cases"/);
   assert.match(mealRoute, /from "@\/lib\/server\/meals\/meal-storage"/);
+  assert.match(mealRoute, /from "@\/lib\/server\/route-auth"/);
   assert.match(mealRoute, /updateMealDocument/);
   assert.match(mealRoute, /planMealDeleteOperation/);
   assert.match(mealRoute, /deleteMealCommentsByMealId/);
@@ -167,27 +173,32 @@ test("meal routes delegate to extracted server meal modules", () => {
   assert.doesNotMatch(mealRoute, /from "@\/lib\/firebase-admin"/);
   assert.doesNotMatch(mealRoute, /const planDeleteOperation = async/);
   assert.doesNotMatch(mealRoute, /const deleteMealComments = async/);
+  assert.doesNotMatch(mealRoute, /verifyRequestUser/);
+  assert.doesNotMatch(mealRoute, /getUserRole/);
   assert.equal(fs.existsSync(serverMealsBarrelPath), false);
-  assert.match(mealUseCases, /export const createMealDocument = async/);
-  assert.match(mealUseCases, /export const updateMealDocument = async/);
-  assert.match(mealUseCases, /export const planMealDeleteOperation = async/);
-  assert.match(mealUseCases, /export const deleteMealCommentsByMealId = async/);
-  assert.match(mealUseCases, /export const deleteMealDocumentById = async/);
-  assert.match(mealUseCases, /export const markMealDeleteJob = async/);
-  assert.match(mealUseCases, /buildMealKeywords/);
+  assert.match(mealReadUseCases, /export const listMealsForDate = async/);
+  assert.match(mealReadUseCases, /export const listWeeklyMealStats = async/);
+  assert.match(mealWriteUseCases, /export const createMealDocument = async/);
+  assert.match(mealWriteUseCases, /export const updateMealDocument = async/);
+  assert.match(mealDeleteUseCases, /export const planMealDeleteOperation = async/);
+  assert.match(mealDeleteUseCases, /export const deleteMealCommentsByMealId = async/);
+  assert.match(mealDeleteUseCases, /export const deleteMealDocumentById = async/);
+  assert.match(mealDeleteUseCases, /export const markMealDeleteJob = async/);
   assert.match(mealStorage, /export const deleteStorageObjectByUrl = async/);
   assert.doesNotMatch(mealMutations, /await addDoc\(mealsRef/);
   assert.doesNotMatch(mealMutations, /await updateDoc\(mealRef/);
 });
 
 test("meal mutations fail closed for legacy records without ownerUid", () => {
-  const mealUseCases = read("lib/server/meals/meal-use-cases.ts");
+  const mealWriteUseCases = read("lib/server/meals/meal-write-use-cases.ts");
+  const mealDeleteUseCases = read("lib/server/meals/meal-delete-use-cases.ts");
   const mealTypes = read("lib/server/meals/meal-types.ts");
   const serverMealsBarrelPath = path.join(process.cwd(), "lib", "server-meals.ts");
 
-  assert.match(mealUseCases, /Legacy meals must be migrated before mutation/);
-  assert.doesNotMatch(mealUseCases, /legacyAllowed/);
-  assert.doesNotMatch(mealUseCases, /isLegacyParticipant/);
+  assert.match(mealWriteUseCases, /Legacy meals must be migrated before mutation/);
+  assert.match(mealDeleteUseCases, /Legacy meals must be migrated before mutation/);
+  assert.doesNotMatch(mealWriteUseCases, /legacyAllowed/);
+  assert.doesNotMatch(mealDeleteUseCases, /legacyAllowed/);
   assert.doesNotMatch(mealTypes, /export const isLegacyParticipant =/);
   assert.equal(fs.existsSync(serverMealsBarrelPath), false);
 });
@@ -253,11 +264,11 @@ test("server meal serialization normalizes legacy userId into userIds", () => {
 });
 
 test("server meal updates remove deprecated userId from modern write paths", () => {
-  const mealUseCases = read("lib/server/meals/meal-use-cases.ts");
+  const mealWriteUseCases = read("lib/server/meals/meal-write-use-cases.ts");
 
-  assert.match(mealUseCases, /dataToUpdate\.userId = FieldValue\.delete\(\);/);
+  assert.match(mealWriteUseCases, /dataToUpdate\.userId = FieldValue\.delete\(\);/);
   assert.doesNotMatch(
-    mealUseCases,
+    mealWriteUseCases,
     /userId: isUserRole\(current\.userId\) \? current\.userId : undefined/
   );
 });

@@ -10,8 +10,9 @@ import {
 } from "@/lib/domain/meal-policy";
 import { logError } from "@/lib/logging";
 import { getRouteErrorMessage, getRouteErrorStatus, RouteError } from "@/lib/route-errors";
-import { createMealDocument, listMealsForDate } from "@/lib/server/meals/meal-use-cases";
+import { listMealsForDate } from "@/lib/server/meals/meal-read-use-cases";
 import { deleteStorageObjectByUrl } from "@/lib/server/meals/meal-storage";
+import { createMealDocument } from "@/lib/server/meals/meal-write-use-cases";
 import { requireValidatedUserRole } from "@/lib/server/route-auth";
 import { MealRouteError } from "@/lib/server/meals/meal-types";
 

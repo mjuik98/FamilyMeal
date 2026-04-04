@@ -8,13 +8,12 @@ import { ChevronLeft, Images } from "lucide-react";
 import MealCard from "@/components/MealCard";
 import PageHeader from "@/components/PageHeader";
 import { useUser } from "@/context/UserContext";
-import { getMealById, getMealsForDate } from "@/lib/client/meals";
-import { logError } from "@/lib/logging";
 import {
-  getQaMealDetail,
-  getQaSameDayMeals,
-  isQaRuntimeActive,
-} from "@/lib/qa/runtime";
+  createMealRuntimeState,
+  loadMealForViewer,
+  loadSameDayMealsForViewer,
+} from "@/lib/features/meals/application/meal-read-service";
+import { logError } from "@/lib/logging";
 import type { Meal } from "@/lib/types";
 
 export default function MealDetailPage() {
@@ -22,6 +21,7 @@ export default function MealDetailPage() {
   const params = useParams();
   const router = useRouter();
   const mealId = params.id as string;
+  const [runtimeState] = useState(() => createMealRuntimeState());
 
   const [meal, setMeal] = useState<Meal | null>(null);
   const [sameDayMeals, setSameDayMeals] = useState<Meal[]>([]);
@@ -46,15 +46,11 @@ export default function MealDetailPage() {
 
     const loadMeal = async () => {
       try {
-        if (isQaRuntimeActive()) {
-          if (!active || requestId !== mealRequestSequenceRef.current) {
-            return;
-          }
-          setMeal(getQaMealDetail(currentRole, mealId));
-          return;
-        }
-
-        const nextMeal = await getMealById(mealId);
+        const nextMeal = await loadMealForViewer({
+          role: currentRole,
+          mealId,
+          runtimeState,
+        });
         if (!active || requestId !== mealRequestSequenceRef.current) {
           return;
         }
@@ -77,7 +73,7 @@ export default function MealDetailPage() {
     return () => {
       active = false;
     };
-  }, [mealId, userProfile?.role]);
+  }, [mealId, runtimeState, userProfile?.role]);
 
   useEffect(() => {
     if (!meal || !userProfile?.role) return;
@@ -89,15 +85,11 @@ export default function MealDetailPage() {
 
     const loadSameDayMeals = async () => {
       try {
-        if (isQaRuntimeActive()) {
-          if (!active || requestId !== sameDayRequestSequenceRef.current) {
-            return;
-          }
-          setSameDayMeals(getQaSameDayMeals(currentRole, mealDate));
-          return;
-        }
-
-        const nextMeals = await getMealsForDate(mealDate);
+        const nextMeals = await loadSameDayMealsForViewer({
+          role: currentRole,
+          mealDate,
+          runtimeState,
+        });
         if (!active || requestId !== sameDayRequestSequenceRef.current) {
           return;
         }
@@ -116,7 +108,7 @@ export default function MealDetailPage() {
     return () => {
       active = false;
     };
-  }, [meal, userProfile?.role]);
+  }, [meal, runtimeState, userProfile?.role]);
 
   if (loading) {
     return (

@@ -9,31 +9,24 @@ import PageHeader from "@/components/PageHeader";
 import SurfaceSection from "@/components/SurfaceSection";
 import { useToast } from "@/components/Toast";
 import { useUser } from "@/context/UserContext";
-import { addMeal } from "@/lib/client/meals";
 import { formatDateKey, parseDateKey } from "@/lib/date-utils";
+import { createMealRecord } from "@/lib/features/meals/application/meal-editor-service";
+import { createMealRuntimeState } from "@/lib/features/meals/application/meal-read-service";
 import { MEAL_IMAGE_INPUT_ACCEPT } from "@/lib/meal-image-policy";
 import { USER_ROLES, VALID_MEAL_TYPES } from "@/lib/domain/meal-policy";
 import { logError } from "@/lib/logging";
 import { getMealDraftDefaults, saveMealDraftDefaults } from "@/lib/meal-draft";
 import { buildAutoMealDescription } from "@/lib/meal-copy";
 import { toMealCreateErrorMessage } from "@/lib/meal-errors";
-import { hasMealParticipants, readMealImageDataUrl, toggleMealParticipant } from "@/lib/meal-form";
-import { isQaRuntimeActive, saveQaMeal } from "@/lib/qa/runtime";
+import { hasMealParticipants, toggleMealParticipant } from "@/lib/meal-form";
 import { Meal, UserRole } from "@/lib/types";
-import { cleanupUploadedMealImage, uploadImage } from "@/lib/uploadImage";
-
-const getQaAnchorDate = () => {
-  const date = new Date();
-  date.setHours(12, 0, 0, 0);
-  date.setDate(date.getDate() + (6 - date.getDay()));
-  return date;
-};
 
 function AddMealPageContent() {
   const { userProfile, loading } = useUser();
   const router = useRouter();
   const searchParams = useSearchParams();
   const { showToast } = useToast();
+  const [runtimeState] = useState(() => createMealRuntimeState());
 
   const [description, setDescription] = useState("");
   const [type, setType] = useState<Meal["type"]>("점심");
@@ -47,8 +40,8 @@ function AddMealPageContent() {
   const recordDate = useMemo(
     () =>
       parseDateKey(searchParams.get("date")) ??
-      (isQaRuntimeActive() ? getQaAnchorDate() : new Date()),
-    [searchParams]
+      (runtimeState.qaMode ? runtimeState.qaAnchorDate : new Date()),
+    [runtimeState, searchParams]
   );
   const autoDescription = useMemo(
     () => buildAutoMealDescription(type, selectedUsers),
@@ -125,73 +118,25 @@ function AddMealPageContent() {
 
     setIsSubmitting(true);
     try {
-      const timestamp = recordDate.getTime();
-      const cleanupUploadedImage = async (imageUrl: string | null) => {
-        if (!imageUrl) {
-          return;
-        }
-
-        try {
-          await cleanupUploadedMealImage(imageUrl);
-        } catch (cleanupError) {
-          logError("Failed to cleanup uploaded meal image after save error", cleanupError);
-        }
-      };
-
-      if (isQaRuntimeActive()) {
-        setSubmitPhase("saving");
-        const qaImageUrl = await readMealImageDataUrl(imageSelection.imageFile);
-        saveQaMeal({
-          id: `qa-custom-${Date.now()}`,
-          ownerUid: userProfile.uid,
-          userIds: selectedUsers,
-          description: normalizedDescription,
-          type,
-          imageUrl: qaImageUrl,
-          timestamp,
-          commentCount: 0,
-          comments: [],
-          reactions: {},
-        });
-      } else {
-        let imageUrl = "";
-        let uploadedImageUrl: string | null = null;
-        try {
-          setSubmitPhase("uploading");
-          uploadedImageUrl = await uploadImage(imageSelection.imageFile);
-          imageUrl = uploadedImageUrl;
-        } catch (error) {
-          logError("Failed to upload meal image", error);
-          showToast(toMealCreateErrorMessage(error, "upload"), "error");
-          return;
-        }
-
-        try {
-          setSubmitPhase("saving");
-          await addMeal({
-            ownerUid: userProfile.uid,
-            userIds: selectedUsers,
-            description: normalizedDescription,
-            type,
-            imageUrl,
-            timestamp,
-            commentCount: 0,
-            reactions: {},
-          });
-        } catch (error) {
-          await cleanupUploadedImage(uploadedImageUrl);
-          logError("Failed to save meal document", error);
-          showToast(toMealCreateErrorMessage(error, "save"), "error");
-          return;
-        }
-      }
+      await createMealRecord({
+        userUid: userProfile.uid,
+        selectedUsers,
+        description: normalizedDescription,
+        autoDescription,
+        type,
+        imageFile: imageSelection.imageFile,
+        recordDate,
+        runtimeState,
+        onPhaseChange: setSubmitPhase,
+      });
 
       showToast("식사 기록이 저장되었습니다.", "success");
       router.push(`/?date=${formatDateKey(recordDate)}`);
       router.refresh();
     } catch (error) {
       logError("Failed to add meal", error);
-      showToast(toMealCreateErrorMessage(error, "save"), "error");
+      const step = submitPhase === "uploading" ? "upload" : "save";
+      showToast(toMealCreateErrorMessage(error, step), "error");
     } finally {
       setIsSubmitting(false);
       setSubmitPhase("idle");

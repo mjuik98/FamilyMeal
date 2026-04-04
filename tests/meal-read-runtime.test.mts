@@ -167,11 +167,11 @@ test("listMealsForDate returns only visible meals for the actor role including l
     }
   );
 
-  const mealUseCases = await importFresh<typeof import("../lib/server/meals/meal-use-cases.ts")>(
-    "../lib/server/meals/meal-use-cases.ts"
+  const mealReadUseCases = await importFresh<typeof import("../lib/server/meals/meal-read-use-cases.ts")>(
+    "../lib/server/meals/meal-read-use-cases.ts"
   );
 
-  const meals = await mealUseCases.listMealsForDate({
+  const meals = await mealReadUseCases.listMealsForDate({
     actorRole: "엄마",
     date: new Date(TEST_NOW),
   });
@@ -214,11 +214,11 @@ test("listWeeklyMealStats aggregates only visible meals within the selected week
     }
   );
 
-  const mealUseCases = await importFresh<typeof import("../lib/server/meals/meal-use-cases.ts")>(
-    "../lib/server/meals/meal-use-cases.ts"
+  const mealReadUseCases = await importFresh<typeof import("../lib/server/meals/meal-read-use-cases.ts")>(
+    "../lib/server/meals/meal-read-use-cases.ts"
   );
 
-  const stats = await mealUseCases.listWeeklyMealStats({
+  const stats = await mealReadUseCases.listWeeklyMealStats({
     actorRole: "엄마",
     referenceDate: new Date(TEST_NOW),
   });

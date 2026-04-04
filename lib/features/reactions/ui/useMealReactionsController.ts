@@ -4,11 +4,10 @@ import type { Dispatch, SetStateAction } from "react";
 import { useEffect, useState } from "react";
 
 import {
-  toggleMealCommentReaction,
-  toggleMealReaction,
-} from "@/lib/client/reactions";
+  toggleCommentReactionForViewer,
+  toggleMealReactionForViewer,
+} from "@/lib/features/reactions/application/meal-reaction-service";
 import { logError } from "@/lib/logging";
-import { isQaRuntimeActive } from "@/lib/qa/runtime";
 import { normalizeReactionMap, toggleReactionInMap } from "@/lib/reactions";
 import type { Meal, MealComment, ReactionEmoji } from "@/lib/types";
 
@@ -48,13 +47,14 @@ export const useMealReactionsController = ({
     const next = toggleReactionInMap(previous, emoji, userUid);
     setMealReactions(next);
 
-    if (isQaRuntimeActive()) {
-      return;
-    }
-
     setPendingMealReaction(emoji);
     try {
-      const serverReactions = await toggleMealReaction(meal.id, emoji);
+      const serverReactions = await toggleMealReactionForViewer({
+        mealId: meal.id,
+        emoji,
+        userUid,
+        currentReactions: previous,
+      });
       setMealReactions(serverReactions);
     } catch (error) {
       logError("Failed to toggle meal reaction", error);
@@ -72,8 +72,11 @@ export const useMealReactionsController = ({
     if (!userUid) return;
 
     let previous: MealComment[] = [];
+    let currentReactions = {};
     setComments((prev) => {
       previous = prev;
+      currentReactions =
+        prev.find((comment) => comment.id === commentId)?.reactions ?? {};
       return prev.map((comment) =>
         comment.id === commentId
           ? {
@@ -88,17 +91,15 @@ export const useMealReactionsController = ({
       );
     });
 
-    if (isQaRuntimeActive()) {
-      return;
-    }
-
     setPendingCommentReactionId(commentId);
     try {
-      const serverReactions = await toggleMealCommentReaction(
-        meal.id,
+      const serverReactions = await toggleCommentReactionForViewer({
+        mealId: meal.id,
         commentId,
-        emoji
-      );
+        emoji,
+        userUid,
+        currentReactions,
+      });
       setComments((prev) =>
         prev.map((comment) =>
           comment.id === commentId

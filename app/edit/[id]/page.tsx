@@ -9,14 +9,16 @@ import PageHeader from "@/components/PageHeader";
 import SurfaceSection from "@/components/SurfaceSection";
 import { useToast } from "@/components/Toast";
 import { useUser } from "@/context/UserContext";
-import { getMealById, updateMeal } from "@/lib/client/meals";
+import {
+  loadEditableMeal,
+  updateExistingMealRecord,
+} from "@/lib/features/meals/application/meal-editor-service";
 import { MEAL_IMAGE_INPUT_ACCEPT } from "@/lib/meal-image-policy";
 import { USER_ROLES, VALID_MEAL_TYPES } from "@/lib/domain/meal-policy";
 import { logError } from "@/lib/logging";
 import { toMealUpdateErrorMessage } from "@/lib/meal-errors";
 import { hasMealParticipants, toggleMealParticipant } from "@/lib/meal-form";
 import { Meal, UserRole } from "@/lib/types";
-import { cleanupUploadedMealImage, uploadImage } from "@/lib/uploadImage";
 
 export default function EditMealPage() {
   const { userProfile } = useUser();
@@ -57,7 +59,15 @@ export default function EditMealPage() {
 
     const loadMeal = async () => {
       try {
-        const meal = await getMealById(mealId);
+        const {
+          meal,
+          selectedUsers: nextSelectedUsers,
+          requiresLegacyMigration: nextRequiresLegacyMigration,
+        } = await loadEditableMeal({
+          mealId,
+          currentUid,
+          currentRole,
+        });
         if (!active || requestId !== loadRequestSequenceRef.current) {
           return;
         }
@@ -67,23 +77,20 @@ export default function EditMealPage() {
           return;
         }
 
-        if (meal.ownerUid && meal.ownerUid !== currentUid) {
-          showToastRef.current("작성자만 수정할 수 있습니다.", "error");
-          router.push("/");
-          return;
-        }
-
         setDescription(meal.description);
         setType(meal.type);
         setRemoteImage(meal.imageUrl || null);
-        setSelectedUsers(meal.userIds?.length ? meal.userIds : currentRole ? [currentRole] : []);
-        setRequiresLegacyMigration(!meal.ownerUid);
+        setSelectedUsers(nextSelectedUsers);
+        setRequiresLegacyMigration(nextRequiresLegacyMigration);
       } catch (error) {
         if (!active || requestId !== loadRequestSequenceRef.current) {
           return;
         }
         logError("Failed to load meal", error);
-        showToastRef.current("기록을 불러오지 못했습니다.", "error");
+        showToastRef.current(
+          error instanceof Error ? error.message : "기록을 불러오지 못했습니다.",
+          "error"
+        );
         router.push("/");
       } finally {
         if (active && requestId === loadRequestSequenceRef.current) {
@@ -145,56 +152,23 @@ export default function EditMealPage() {
 
     setIsSubmitting(true);
     try {
-      const cleanupUploadedImage = async (imageUrl: string | null) => {
-        if (!imageUrl) {
-          return;
-        }
-
-        try {
-          await cleanupUploadedMealImage(imageUrl);
-        } catch (cleanupError) {
-          logError("Failed to cleanup uploaded meal image after update error", cleanupError);
-        }
-      };
-
-      let imageUrl: string | null | undefined;
-      let uploadedImageUrl: string | null = null;
-      if (imageSelection.imageFile) {
-        try {
-          setSubmitPhase("uploading");
-          uploadedImageUrl = await uploadImage(imageSelection.imageFile);
-          imageUrl = uploadedImageUrl;
-        } catch (error) {
-          logError("Failed to upload updated meal image", error);
-          showToast(toMealUpdateErrorMessage(error, "upload"), "error");
-          return;
-        }
-      } else if (!imageSelection.imagePreview) {
-        imageUrl = null;
-      }
-
-      try {
-        setSubmitPhase("saving");
-        const nextUpdates = {
-          userIds: selectedUsers,
-          description: normalizedDescription,
-          type,
-          ...(imageUrl !== undefined ? { imageUrl } : {}),
-        };
-        await updateMeal(mealId, nextUpdates);
-      } catch (error) {
-        await cleanupUploadedImage(uploadedImageUrl);
-        logError("Failed to save updated meal", error);
-        showToast(toMealUpdateErrorMessage(error, "save"), "error");
-        return;
-      }
+      await updateExistingMealRecord({
+        mealId,
+        selectedUsers,
+        description: normalizedDescription,
+        type,
+        imageFile: imageSelection.imageFile,
+        imagePreview: imageSelection.imagePreview,
+        onPhaseChange: setSubmitPhase,
+      });
 
       showToast("수정되었습니다.", "success");
       router.push("/");
       router.refresh();
     } catch (error) {
       logError("Failed to update meal", error);
-      showToast(toMealUpdateErrorMessage(error, "save"), "error");
+      const step = submitPhase === "uploading" ? "upload" : "save";
+      showToast(toMealUpdateErrorMessage(error, step), "error");
     } finally {
       setIsSubmitting(false);
       setSubmitPhase("idle");

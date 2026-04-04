@@ -2,20 +2,20 @@
 
 import { useEffect, useMemo, useState } from "react";
 
-import { getWeeklyStats } from "@/lib/client/meals";
+import {
+  loadWeeklyStatsForViewer,
+  type MealRuntimeState,
+} from "@/lib/features/meals/application/meal-read-service";
 import { logError } from "@/lib/logging";
-import { getQaWeeklyStats } from "@/lib/qa/runtime";
 import type { UserRole, WeeklyMealStat } from "@/lib/types";
 
 export const useWeeklyStatsController = ({
   effectiveSelectedDate,
-  qaMode,
-  qaAnchorDate,
+  runtimeState,
   role,
 }: {
   effectiveSelectedDate: Date;
-  qaMode: boolean;
-  qaAnchorDate: Date;
+  runtimeState: MealRuntimeState;
   role?: UserRole | null;
 }) => {
   const [remoteWeeklyStats, setRemoteWeeklyStats] = useState<WeeklyMealStat[]>([]);
@@ -30,7 +30,7 @@ export const useWeeklyStatsController = ({
   }, [effectiveSelectedDate]);
 
   useEffect(() => {
-    if (!role || qaMode) {
+    if (!role) {
       setRemoteWeeklyStats([]);
       setLoadedWeekKey(null);
       return;
@@ -42,7 +42,11 @@ export const useWeeklyStatsController = ({
     const loadWeeklyStats = async () => {
       const requestId = ++requestSequence;
       try {
-        const stats = await getWeeklyStats(effectiveSelectedDate);
+        const stats = await loadWeeklyStatsForViewer({
+          role,
+          date: effectiveSelectedDate,
+          runtimeState,
+        });
         if (!active || requestId !== requestSequence) {
           return;
         }
@@ -85,18 +89,16 @@ export const useWeeklyStatsController = ({
       window.removeEventListener("focus", handleFocus);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, [effectiveSelectedDate, qaMode, role, weekKey]);
+  }, [effectiveSelectedDate, role, runtimeState, weekKey]);
 
   const weeklyStats = useMemo(
     () =>
-      qaMode && role
-        ? getQaWeeklyStats(effectiveSelectedDate, role, qaAnchorDate)
-        : role
-          ? loadedWeekKey === weekKey
-            ? remoteWeeklyStats
-            : []
-          : [],
-    [effectiveSelectedDate, loadedWeekKey, qaAnchorDate, qaMode, remoteWeeklyStats, role, weekKey]
+      role
+        ? loadedWeekKey === weekKey
+          ? remoteWeeklyStats
+          : []
+        : [],
+    [loadedWeekKey, remoteWeeklyStats, role, weekKey]
   );
 
   return weeklyStats;

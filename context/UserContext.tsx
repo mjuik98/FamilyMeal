@@ -12,16 +12,15 @@ import {
 
 import { auth } from "@/lib/firebase";
 import {
-  clearQaRuntimeSession,
-  getQaUserContextValue,
-  isQaRuntimeActive,
-  saveQaRuntimeNotificationPreferences,
-  setQaRuntimeRole,
-} from "@/lib/qa/runtime";
+  clearRuntimeUserSession,
+  getRuntimeUserContextValue,
+  isUserSessionQaMode,
+  loadUserProfileWithFallback,
+  saveSelectedUserRole,
+  saveUserNotificationSelection,
+} from "@/lib/features/profile/application/user-session-service";
 import { logError } from "@/lib/logging";
 import { NotificationPreferences, UserProfile, UserRole } from "@/lib/types";
-import { updateNotificationPreferences as saveNotificationPreferences } from "@/lib/client/activity";
-import { buildFallbackUserProfile, loadUserProfile, saveUserRole } from "@/lib/client/profile-session";
 
 type UserContextType = {
   user: User | null;
@@ -50,11 +49,11 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       const requestId = ++authRequestSequenceRef.current;
-      if (isQaRuntimeActive()) {
+      if (isUserSessionQaMode()) {
         if (!active || requestId !== authRequestSequenceRef.current) {
           return;
         }
-        const qaValue = getQaUserContextValue();
+        const qaValue = getRuntimeUserContextValue();
         setUser(qaValue.user);
         setUserProfile(qaValue.userProfile);
         setAuthError(null);
@@ -70,19 +69,21 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         setAuthError(null);
 
         try {
-          const nextProfile = await loadUserProfile(firebaseUser);
+          const { userProfile: nextProfile, authError: nextAuthError } =
+            await loadUserProfileWithFallback(firebaseUser);
           if (!active || requestId !== authRequestSequenceRef.current) {
             return;
           }
           setUserProfile(nextProfile);
+          setAuthError(nextAuthError);
         } catch (error) {
           if (!active || requestId !== authRequestSequenceRef.current) {
             return;
           }
           logError("Error fetching user profile", error);
-          setUserProfile(buildFallbackUserProfile(firebaseUser));
+          setUserProfile(null);
           setAuthError(
-            "\uB85C\uADF8\uC778 \uC815\uBCF4\uB97C \uBD88\uB7EC\uC624\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4. \uC7A0\uC2DC \uD6C4 \uB2E4\uC2DC \uC2DC\uB3C4\uD574 \uC8FC\uC138\uC694."
+            "로그인 정보를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요."
           );
         }
       } else {
@@ -106,8 +107,8 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signInWithGoogle = async () => {
-    if (isQaRuntimeActive()) {
-      const qaValue = getQaUserContextValue();
+    if (isUserSessionQaMode()) {
+      const qaValue = getRuntimeUserContextValue();
       setUser(qaValue.user);
       setUserProfile(qaValue.userProfile);
       setAuthError(null);
@@ -151,8 +152,8 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signOut = async () => {
-    if (isQaRuntimeActive()) {
-      clearQaRuntimeSession();
+    if (isUserSessionQaMode()) {
+      clearRuntimeUserSession();
       setUser(null);
       setUserProfile(null);
       setAuthError(null);
@@ -168,15 +169,14 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   };
 
   const selectRole = async (role: UserRole) => {
-    if (isQaRuntimeActive()) {
-      setUserProfile((prev) => setQaRuntimeRole(role, prev));
-      return;
-    }
-
-    if (!user) return;
-
     try {
-      setUserProfile(await saveUserRole(role));
+      setUserProfile(
+        await saveSelectedUserRole({
+          user,
+          role,
+          previousProfile: userProfile,
+        })
+      );
       setAuthError(null);
     } catch (error) {
       logError("Error saving user role", error);
@@ -192,19 +192,11 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   const updateNotificationPreferences = async (
     preferences: NotificationPreferences
   ) => {
-    if (isQaRuntimeActive()) {
-      setUserProfile((prev) =>
-        saveQaRuntimeNotificationPreferences(preferences, prev)
-      );
-      return;
-    }
-
-    const savedPreferences = await saveNotificationPreferences(preferences);
-    setUserProfile((prev) =>
-      prev
-        ? { ...prev, notificationPreferences: savedPreferences }
-        : prev
-    );
+    const nextProfile = await saveUserNotificationSelection({
+      preferences,
+      previousProfile: userProfile,
+    });
+    setUserProfile(nextProfile);
     setAuthError(null);
   };
 

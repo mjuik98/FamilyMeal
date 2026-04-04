@@ -15,12 +15,12 @@ import {
   deleteMealDocumentById,
   markMealDeleteJob,
   planMealDeleteOperation,
-  updateMealDocument,
-} from "@/lib/server/meals/meal-use-cases";
-import { AuthError, getUserRole, verifyRequestUser } from "@/lib/server-auth";
+} from "@/lib/server/meals/meal-delete-use-cases";
 import { deleteStorageObjectByUrl } from "@/lib/server/meals/meal-storage";
-import { MealRouteError } from "@/lib/server/meals/meal-types";
-import type { Meal } from "@/lib/types";
+import { MealRouteError, type UpdateMealInput } from "@/lib/server/meals/meal-types";
+import { updateMealDocument } from "@/lib/server/meals/meal-write-use-cases";
+import { requireValidatedUserRole } from "@/lib/server/route-auth";
+import { AuthError } from "@/lib/server-auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -58,9 +58,8 @@ export async function DELETE(
   let mealId: string | null = null;
 
   try {
-    const user = await verifyRequestUser(request);
+    const { user } = await requireValidatedUserRole(request);
     mealId = await decodeMealId(context.params);
-    await getUserRole(user.uid);
 
     const plan = await planMealDeleteOperation(mealId, user.uid);
     if (plan.action === "already_deleted") {
@@ -114,9 +113,8 @@ export async function PATCH(
   context: { params: Promise<Params> }
 ) {
   try {
-    const user = await verifyRequestUser(request);
+    const { user, role } = await requireValidatedUserRole(request);
     const mealId = await decodeMealId(context.params);
-    const role = await getUserRole(user.uid);
     if (!isUserRole(role)) {
       throw new MealRouteError("Valid user role is required", 403);
     }
@@ -136,7 +134,7 @@ export async function PATCH(
     const meal = await updateMealDocument({
       mealId,
       uid: user.uid,
-      input: parsed.data as Partial<Omit<Meal, "id">>,
+      input: parsed.data as UpdateMealInput,
     });
 
     return NextResponse.json({ ok: true, meal });

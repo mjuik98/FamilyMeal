@@ -3,14 +3,13 @@
 import { useEffect, useMemo, useState } from "react";
 
 import {
-  addMealComment,
-  deleteMealComment,
-  updateMealComment,
-} from "@/lib/client/comments";
+  createMealCommentForViewer,
+  deleteMealCommentForViewer,
+  updateMealCommentForViewer,
+  watchMealCommentsForViewer,
+} from "@/lib/features/comments/application/meal-comment-service";
 import type { ReplyTarget } from "@/lib/features/comments/ui/types";
 import { logError } from "@/lib/logging";
-import { subscribeToMealComments } from "@/lib/meal-comments-store";
-import { isQaRuntimeActive } from "@/lib/qa/runtime";
 import type { Meal, MealComment, UserProfile } from "@/lib/types";
 
 type ToastFn = (
@@ -89,22 +88,14 @@ export const useMealCommentsController = ({
     }
 
     const fallbackComments = meal.comments ?? [];
-    setComments(fallbackComments);
     setCommentCount(meal.commentCount ?? fallbackComments.length);
-
-    if (isQaRuntimeActive()) {
-      return;
-    }
-
-    return subscribeToMealComments(
-      meal.id,
-      {
-        fallbackComments,
-        onError: () => {
-          // Preserve local state when the subscription fails.
-        },
+    return watchMealCommentsForViewer({
+      mealId: meal.id,
+      fallbackComments,
+      onError: () => {
+        // Preserve local state when the subscription fails.
       },
-      (nextComments) => {
+      onComments: (nextComments) => {
         if (nextComments.length === 0 && fallbackComments.length > 0) {
           setComments(fallbackComments);
           setCommentCount(fallbackComments.length);
@@ -113,8 +104,8 @@ export const useMealCommentsController = ({
 
         setComments(nextComments);
         setCommentCount(nextComments.length);
-      }
-    );
+      },
+    });
   }, [commentsOpen, meal.commentCount, meal.comments, meal.id]);
 
   const commentThreads = useMemo(() => {
@@ -161,28 +152,20 @@ export const useMealCommentsController = ({
       reactions: {},
     };
 
-    if (isQaRuntimeActive()) {
-      setCommentText("");
-      setComments((prev) => [...prev, optimisticComment]);
-      setCommentCount((prev) => prev + 1);
-      setReplyTarget(null);
-      showToast("댓글이 등록되었습니다.", "success");
-      return;
-    }
-
     setIsSubmittingComment(true);
     setCommentText("");
     setComments((prev) => [...prev, optimisticComment]);
     setCommentCount((prev) => prev + 1);
 
     try {
-      const created = await addMealComment(
-        meal.id,
-        userProfile.role,
-        userProfile.uid,
-        trimmed,
-        { parentId: replyTarget?.id }
-      );
+      const created = await createMealCommentForViewer({
+        mealId: meal.id,
+        authorRole: userProfile.role,
+        authorUid: userProfile.uid,
+        text: trimmed,
+        parentId: replyTarget?.id,
+        mentionedAuthor: replyTarget?.author,
+      });
       setComments((prev) =>
         prev.map((comment) => (comment.id === optimisticId ? created : comment))
       );
@@ -220,10 +203,12 @@ export const useMealCommentsController = ({
     if (!trimmed) return;
 
     let previous: MealComment[] = [];
+    let existingComment: MealComment | undefined;
     const now = Date.now();
 
     setComments((prev) => {
       previous = prev;
+      existingComment = prev.find((comment) => comment.id === commentId);
       return prev.map((comment) =>
         comment.id === commentId
           ? { ...comment, text: trimmed, updatedAt: now, timestamp: now }
@@ -231,20 +216,20 @@ export const useMealCommentsController = ({
       );
     });
 
-    if (isQaRuntimeActive()) {
-      cancelEditingComment();
-      showToast("댓글이 수정되었습니다.", "success");
+    if (!existingComment) {
+      setComments(previous);
       return;
     }
 
     setCommentActionId(commentId);
     try {
-      const updated = await updateMealComment(
-        meal.id,
+      const updated = await updateMealCommentForViewer({
+        mealId: meal.id,
         commentId,
-        userProfile.uid,
-        trimmed
-      );
+        actorUid: userProfile.uid,
+        text: trimmed,
+        existingComment,
+      });
       setComments((prev) =>
         prev.map((comment) => (comment.id === commentId ? updated : comment))
       );
@@ -274,17 +259,13 @@ export const useMealCommentsController = ({
     });
     setCommentCount((prev) => Math.max(0, prev - 1));
 
-    if (isQaRuntimeActive()) {
-      if (editingCommentId === commentId) {
-        cancelEditingComment();
-      }
-      showToast("댓글이 삭제되었습니다.", "success");
-      return;
-    }
-
     setCommentActionId(commentId);
     try {
-      await deleteMealComment(meal.id, commentId, userProfile.uid);
+      await deleteMealCommentForViewer({
+        mealId: meal.id,
+        commentId,
+        actorUid: userProfile.uid,
+      });
       if (editingCommentId === commentId) {
         cancelEditingComment();
       }
