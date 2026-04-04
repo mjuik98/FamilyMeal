@@ -100,6 +100,8 @@ test("meal image uploads are handled by authenticated server route", () => {
   assert.match(uploadRoute, /requireVerifiedUser/);
   assert.match(uploadRoute, /serverEnv\.storageBucket/);
   assert.match(uploadRoute, /from "@\/lib\/server\/uploads\/meal-image-use-cases"/);
+  assert.match(uploadRoute, /export async function DELETE/);
+  assert.match(uploadRoute, /deleteStorageObjectByUrl/);
   assert.match(uploadRoute, /validateUploadContentLength/);
   assert.match(uploadRoute, /validateUploadContentType/);
   assert.match(uploadRoute, /request\.headers\.get\("content-length"\)/);
@@ -118,6 +120,8 @@ test("meal image uploads are handled by authenticated server route", () => {
   assert.match(uploadHelper, /\/api\/uploads\/meal-image/);
   assert.match(uploadHelper, /new FormData\(\)/);
   assert.match(uploadHelper, /formData\.append\("file", imageFile, imageFile\.name\)/);
+  assert.match(uploadHelper, /method:\s*"DELETE"/);
+  assert.match(uploadHelper, /cleanupUploadedMealImage/);
   assert.doesNotMatch(uploadHelper, /canvas\.toBlob/);
   assert.doesNotMatch(uploadHelper, /canvas\.toDataURL/);
   assert.doesNotMatch(uploadHelper, /new Image\(/);
@@ -407,6 +411,7 @@ test("server config and meal policy are centralized in shared modules", () => {
   const mealPolicy = read("lib/domain/meal-policy.ts");
   const firebaseAdmin = read("lib/firebase-admin.ts");
   const serverAuth = read("lib/server-auth.ts");
+  const mealImageUrl = read("lib/server/meals/meal-image-url.ts");
   const mealStorage = read("lib/server/meals/meal-storage.ts");
   const mealTypes = read("lib/server/meals/meal-types.ts");
   const uploadRoute = read("app/api/uploads/meal-image/route.ts");
@@ -424,7 +429,8 @@ test("server config and meal policy are centralized in shared modules", () => {
 
   assert.match(firebaseAdmin, /from "@\/lib\/config\/server-env"/);
   assert.match(serverAuth, /from "@\/lib\/config\/server-env"/);
-  assert.match(mealStorage, /from "@\/lib\/config\/server-env"/);
+  assert.match(mealImageUrl, /from "@\/lib\/config\/server-env"/);
+  assert.match(mealStorage, /from "@\/lib\/server\/meals\/meal-image-url"/);
   assert.match(mealTypes, /from "@\/lib\/domain\/meal-policy"/);
   assert.match(uploadRoute, /from "@\/lib\/config\/server-env"/);
   assert.match(profilePage, /from "@\/lib\/client\/profile"/);

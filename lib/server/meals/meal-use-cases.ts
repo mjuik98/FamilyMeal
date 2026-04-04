@@ -3,6 +3,7 @@ import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import { isMealType, isUserRole } from "@/lib/domain/meal-policy";
 import { adminDb } from "@/lib/firebase-admin";
 import { logError } from "@/lib/logging";
+import { isOwnedMealImageUrl } from "@/lib/server/meals/meal-image-url";
 import { deleteStorageObjectByUrl } from "@/lib/server/meals/meal-storage";
 import {
   buildMealKeywords,
@@ -33,6 +34,15 @@ export type MealDeletePlan =
   | { action: "wait_for_inflight" }
   | { action: "delete_now"; mealImageUrl?: string };
 
+const normalizeOwnedMealImageUrl = (imageUrl: unknown, uid: string): string => {
+  const normalizedImageUrl = normalizeImageUrl(imageUrl);
+  if (!isOwnedMealImageUrl(normalizedImageUrl, uid)) {
+    throw new MealRouteError("Invalid meal image URL", 400);
+  }
+
+  return normalizedImageUrl;
+};
+
 const toMillis = (value: unknown): number | null => {
   if (typeof value === "number" && Number.isFinite(value)) return value;
   if (
@@ -62,7 +72,7 @@ export const createMealDocument = async ({
 
   const description = normalizeMealDescription(input.description);
   const type = normalizeMealType(input.type);
-  const imageUrl = normalizeImageUrl(input.imageUrl);
+  const imageUrl = normalizeOwnedMealImageUrl(input.imageUrl, uid);
   const timestampMillis = getTimestampMillis(input.timestamp);
 
   const payload = {
@@ -158,7 +168,7 @@ export const updateMealDocument = async ({
         nextImageUrl = undefined;
         dataToUpdate.imageUrl = FieldValue.delete();
       } else {
-        const normalizedImageUrl = normalizeImageUrl(input.imageUrl);
+        const normalizedImageUrl = normalizeOwnedMealImageUrl(input.imageUrl, uid);
         if (nextImageUrl && nextImageUrl !== normalizedImageUrl) {
           staleImageUrl = nextImageUrl;
         }
@@ -203,7 +213,7 @@ export const updateMealDocument = async ({
 
   if (staleImageUrl) {
     try {
-      await deleteStorageObjectByUrl(staleImageUrl);
+      await deleteStorageObjectByUrl(staleImageUrl, { uid });
     } catch (error) {
       logError("Failed to delete stale meal image", error);
     }

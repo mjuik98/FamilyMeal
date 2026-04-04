@@ -33,4 +33,37 @@ const uploadViaServer = async (imageFile: File): Promise<string> => {
   return payload.imageUrl;
 };
 
+const cleanupViaServer = async (imageUrl: string): Promise<void> => {
+  const requestCleanup = async (forceRefresh = false): Promise<Response> => {
+    const token = await getAccessToken(forceRefresh);
+
+    return fetch("/api/uploads/meal-image", {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      cache: "no-store",
+      body: JSON.stringify({ imageUrl }),
+    });
+  };
+
+  let response = await requestCleanup(false);
+  if (response.status === 401) {
+    response = await requestCleanup(true);
+  }
+
+  if (!response.ok) {
+    const message = await parseErrorMessage(response, `Image cleanup failed (${response.status})`);
+    throw new Error(message);
+  }
+};
+
 export const uploadImage = async (imageFile: File): Promise<string> => uploadViaServer(imageFile);
+export const cleanupUploadedMealImage = async (imageUrl: string): Promise<void> => {
+  if (!imageUrl.trim()) {
+    return;
+  }
+
+  await cleanupViaServer(imageUrl);
+};

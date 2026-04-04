@@ -16,7 +16,7 @@ import { logError } from "@/lib/logging";
 import { toMealUpdateErrorMessage } from "@/lib/meal-errors";
 import { toggleMealParticipant } from "@/lib/meal-form";
 import { Meal, UserRole } from "@/lib/types";
-import { uploadImage } from "@/lib/uploadImage";
+import { cleanupUploadedMealImage, uploadImage } from "@/lib/uploadImage";
 
 export default function EditMealPage() {
   const { userProfile } = useUser();
@@ -141,11 +141,25 @@ export default function EditMealPage() {
 
     setIsSubmitting(true);
     try {
-      let imageUrl: string | null | undefined = imageSelection.imagePreview || undefined;
+      const cleanupUploadedImage = async (imageUrl: string | null) => {
+        if (!imageUrl) {
+          return;
+        }
+
+        try {
+          await cleanupUploadedMealImage(imageUrl);
+        } catch (cleanupError) {
+          logError("Failed to cleanup uploaded meal image after update error", cleanupError);
+        }
+      };
+
+      let imageUrl: string | null | undefined;
+      let uploadedImageUrl: string | null = null;
       if (imageSelection.imageFile) {
         try {
           setSubmitPhase("uploading");
-          imageUrl = await uploadImage(imageSelection.imageFile);
+          uploadedImageUrl = await uploadImage(imageSelection.imageFile);
+          imageUrl = uploadedImageUrl;
         } catch (error) {
           logError("Failed to upload updated meal image", error);
           showToast(toMealUpdateErrorMessage(error, "upload"), "error");
@@ -157,13 +171,15 @@ export default function EditMealPage() {
 
       try {
         setSubmitPhase("saving");
-        await updateMeal(mealId, {
+        const nextUpdates = {
           userIds: selectedUsers,
           description: normalizedDescription,
           type,
-          imageUrl,
-        });
+          ...(imageUrl !== undefined ? { imageUrl } : {}),
+        };
+        await updateMeal(mealId, nextUpdates);
       } catch (error) {
+        await cleanupUploadedImage(uploadedImageUrl);
         logError("Failed to save updated meal", error);
         showToast(toMealUpdateErrorMessage(error, "save"), "error");
         return;

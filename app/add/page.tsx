@@ -20,7 +20,7 @@ import { toMealCreateErrorMessage } from "@/lib/meal-errors";
 import { readMealImageDataUrl, toggleMealParticipant } from "@/lib/meal-form";
 import { isQaRuntimeActive, saveQaMeal } from "@/lib/qa/runtime";
 import { Meal, UserRole } from "@/lib/types";
-import { uploadImage } from "@/lib/uploadImage";
+import { cleanupUploadedMealImage, uploadImage } from "@/lib/uploadImage";
 
 const getQaAnchorDate = () => {
   const date = new Date();
@@ -122,6 +122,17 @@ function AddMealPageContent() {
     setIsSubmitting(true);
     try {
       const timestamp = recordDate.getTime();
+      const cleanupUploadedImage = async (imageUrl: string | null) => {
+        if (!imageUrl) {
+          return;
+        }
+
+        try {
+          await cleanupUploadedMealImage(imageUrl);
+        } catch (cleanupError) {
+          logError("Failed to cleanup uploaded meal image after save error", cleanupError);
+        }
+      };
 
       if (isQaRuntimeActive()) {
         setSubmitPhase("saving");
@@ -140,9 +151,11 @@ function AddMealPageContent() {
         });
       } else {
         let imageUrl = "";
+        let uploadedImageUrl: string | null = null;
         try {
           setSubmitPhase("uploading");
-          imageUrl = await uploadImage(imageSelection.imageFile);
+          uploadedImageUrl = await uploadImage(imageSelection.imageFile);
+          imageUrl = uploadedImageUrl;
         } catch (error) {
           logError("Failed to upload meal image", error);
           showToast(toMealCreateErrorMessage(error, "upload"), "error");
@@ -162,6 +175,7 @@ function AddMealPageContent() {
             reactions: {},
           });
         } catch (error) {
+          await cleanupUploadedImage(uploadedImageUrl);
           logError("Failed to save meal document", error);
           showToast(toMealCreateErrorMessage(error, "save"), "error");
           return;

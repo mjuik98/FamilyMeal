@@ -7,8 +7,10 @@ import {
   USER_ROLES,
   VALID_MEAL_TYPES,
 } from "@/lib/domain/meal-policy";
+import { logError } from "@/lib/logging";
 import { getRouteErrorMessage, getRouteErrorStatus } from "@/lib/route-errors";
 import { createMealDocument } from "@/lib/server/meals/meal-use-cases";
+import { deleteStorageObjectByUrl } from "@/lib/server/meals/meal-storage";
 import { requireValidatedUserRole } from "@/lib/server/route-auth";
 import { MealRouteError } from "@/lib/server/meals/meal-types";
 
@@ -24,8 +26,12 @@ const MealCreateSchema = z.object({
 });
 
 export async function POST(request: Request) {
+  let uid: string | null = null;
+  let uploadedImageUrl: string | null = null;
+
   try {
     const { user, role } = await requireValidatedUserRole(request);
+    uid = user.uid;
 
     let body: unknown;
     try {
@@ -38,6 +44,7 @@ export async function POST(request: Request) {
     if (!parsed.success) {
       throw new MealRouteError("Invalid payload", 400);
     }
+    uploadedImageUrl = parsed.data.imageUrl;
 
     const meal = await createMealDocument({
       uid: user.uid,
@@ -47,6 +54,14 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ ok: true, meal }, { status: 201 });
   } catch (error) {
+    if (uid && uploadedImageUrl) {
+      try {
+        await deleteStorageObjectByUrl(uploadedImageUrl, { uid });
+      } catch (cleanupError) {
+        logError("Failed to cleanup uploaded meal image after create error", cleanupError);
+      }
+    }
+
     return NextResponse.json(
       { ok: false, error: getRouteErrorMessage(error) },
       { status: getRouteErrorStatus(error) }
