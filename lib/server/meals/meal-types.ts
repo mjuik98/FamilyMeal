@@ -4,6 +4,7 @@ import {
   MAX_MEAL_DESCRIPTION_LENGTH,
   MAX_MEAL_IMAGE_URL_LENGTH,
 } from "@/lib/domain/meal-policy";
+import { normalizeErrorCode } from "@/lib/platform/errors/error-contract";
 import { normalizeReactionMap } from "@/lib/reactions";
 import type { Meal, UserRole } from "@/lib/types";
 
@@ -38,11 +39,13 @@ export type UpdateMealInput = {
 };
 
 export class MealRouteError extends Error {
+  code: string;
   status: number;
 
-  constructor(message: string, status = 400) {
+  constructor(message: string, status = 400, code?: string) {
     super(message);
     this.name = "MealRouteError";
+    this.code = code ?? normalizeErrorCode(message, status >= 500 ? "internal_error" : "meal_request_invalid");
     this.status = status;
   }
 }

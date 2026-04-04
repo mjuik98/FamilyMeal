@@ -53,6 +53,39 @@ const config = [
     },
   },
   {
+    files: ["app/**/*.{ts,tsx}", "components/**/*.{ts,tsx}", "context/**/*.{ts,tsx}"],
+    ignores: ["app/api/**/*.{ts,tsx}"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["@/lib/server/*", "@/lib/firebase-admin"],
+              message: "UI layers must not import server-only modules directly.",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: ["lib/features/**/*.{ts,tsx}"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["@/lib/qa/runtime"],
+              message: "Feature services must depend on runtime adapters instead of lib/qa/runtime directly.",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
     files: ["lib/logging.ts"],
     rules: {
       "no-console": "off",

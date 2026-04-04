@@ -2,13 +2,16 @@ import type { DecodedIdToken } from "firebase-admin/auth";
 
 import { serverEnv } from "@/lib/config/server-env";
 import { adminAuth, adminDb } from "@/lib/firebase-admin";
+import { normalizeErrorCode } from "@/lib/platform/errors/error-contract";
 
 export class AuthError extends Error {
+  code: string;
   status: number;
 
-  constructor(message: string, status = 401) {
+  constructor(message: string, status = 401, code?: string) {
     super(message);
     this.name = "AuthError";
+    this.code = code ?? normalizeErrorCode(message, status >= 500 ? "internal_error" : "auth_error");
     this.status = status;
   }
 }

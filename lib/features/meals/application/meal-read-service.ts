@@ -1,50 +1,25 @@
-import {
-  getMealById,
-  getMealsForDate,
-  getWeeklyStats,
-  listArchiveMeals,
-  subscribeMealsForDate,
-} from "@/lib/client/meals";
-import {
-  getQaArchiveMeals,
-  getQaMealDetail,
-  getQaMealsForDate,
-  getQaSameDayMeals,
-  getQaWeeklyStats,
-  isQaRuntimeActive,
-} from "@/lib/qa/runtime";
 import type { Meal, UserRole, WeeklyMealStat } from "@/lib/types";
+import {
+  createMealRuntimeState,
+  loadArchiveMealsForViewerInRuntime,
+  loadMealForViewerInRuntime,
+  loadSameDayMealsForViewerInRuntime,
+  loadWeeklyStatsForViewerInRuntime,
+  type MealRuntimeState,
+  watchMealsForViewerDateInRuntime,
+} from "@/lib/modules/meals/infrastructure/meal-read-runtime";
+import type { MealParticipantFilter, MealTypeFilter } from "@/lib/modules/meals/contracts";
 
-export type MealRuntimeState = {
-  qaMode: boolean;
-  qaAnchorDate: Date;
-};
+export { createMealRuntimeState };
+export type { MealRuntimeState };
 
 type ArchiveMealFilters = {
   query: string;
-  type: Meal["type"] | "전체";
-  participant: UserRole | "전체";
+  type: MealTypeFilter;
+  participant: MealParticipantFilter;
   cursor?: string | null;
   limit?: number;
 };
-
-const getQaAnchorDate = (referenceDate: Date, anchorHour: number): Date => {
-  const anchor = new Date(referenceDate);
-  anchor.setHours(anchorHour, 0, 0, 0);
-  anchor.setDate(anchor.getDate() + (6 - anchor.getDay()));
-  return anchor;
-};
-
-export const createMealRuntimeState = ({
-  referenceDate = new Date(),
-  anchorHour = 12,
-}: {
-  referenceDate?: Date;
-  anchorHour?: number;
-} = {}): MealRuntimeState => ({
-  qaMode: isQaRuntimeActive(),
-  qaAnchorDate: getQaAnchorDate(referenceDate, anchorHour),
-});
 
 export const watchMealsForViewerDate = ({
   date,
@@ -59,17 +34,13 @@ export const watchMealsForViewerDate = ({
   onMeals: (meals: Meal[]) => void;
   onError?: (error: Error) => void;
 }) => {
-  if (!role) {
-    onMeals([]);
-    return () => undefined;
-  }
-
-  if (runtimeState.qaMode) {
-    onMeals(getQaMealsForDate(role, date, runtimeState.qaAnchorDate));
-    return () => undefined;
-  }
-
-  return subscribeMealsForDate(date, onMeals, onError);
+  return watchMealsForViewerDateInRuntime({
+    date,
+    role,
+    runtimeState,
+    onMeals,
+    onError,
+  });
 };
 
 export const loadWeeklyStatsForViewer = async ({
@@ -81,15 +52,11 @@ export const loadWeeklyStatsForViewer = async ({
   date: Date;
   runtimeState: MealRuntimeState;
 }): Promise<WeeklyMealStat[]> => {
-  if (!role) {
-    return [];
-  }
-
-  if (runtimeState.qaMode) {
-    return getQaWeeklyStats(date, role, runtimeState.qaAnchorDate);
-  }
-
-  return getWeeklyStats(date);
+  return loadWeeklyStatsForViewerInRuntime({
+    role,
+    date,
+    runtimeState,
+  });
 };
 
 export const loadArchiveMealsForViewer = async ({
@@ -109,32 +76,9 @@ export const loadArchiveMealsForViewer = async ({
   hasMore: boolean;
   isPartial: boolean;
 }> => {
-  if (!role) {
-    return {
-      meals: [],
-      nextCursor: null,
-      hasMore: false,
-      isPartial: false,
-    };
-  }
-
-  if (runtimeState.qaMode) {
-    return {
-      meals: getQaArchiveMeals({
-        role,
-        referenceDate: runtimeState.qaAnchorDate,
-        focalDate: runtimeState.qaAnchorDate,
-        query,
-        type,
-        participant,
-      }),
-      nextCursor: null,
-      hasMore: false,
-      isPartial: false,
-    };
-  }
-
-  return listArchiveMeals({
+  return loadArchiveMealsForViewerInRuntime({
+    role,
+    runtimeState,
     query,
     type,
     participant,
@@ -152,20 +96,11 @@ export const loadMealForViewer = async ({
   mealId: string;
   runtimeState: MealRuntimeState;
 }): Promise<Meal | null> => {
-  if (!role) {
-    return null;
-  }
-
-  if (runtimeState.qaMode) {
-    return getQaMealDetail(
-      role,
-      mealId,
-      runtimeState.qaAnchorDate,
-      runtimeState.qaAnchorDate
-    );
-  }
-
-  return getMealById(mealId);
+  return loadMealForViewerInRuntime({
+    role,
+    mealId,
+    runtimeState,
+  });
 };
 
 export const loadSameDayMealsForViewer = async ({
@@ -177,13 +112,9 @@ export const loadSameDayMealsForViewer = async ({
   mealDate: Date;
   runtimeState: MealRuntimeState;
 }): Promise<Meal[]> => {
-  if (!role) {
-    return [];
-  }
-
-  if (runtimeState.qaMode) {
-    return getQaSameDayMeals(role, mealDate);
-  }
-
-  return getMealsForDate(mealDate);
+  return loadSameDayMealsForViewerInRuntime({
+    role,
+    mealDate,
+    runtimeState,
+  });
 };

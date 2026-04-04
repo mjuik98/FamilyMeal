@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 
-import { getRouteErrorMessage, getRouteErrorStatus, RouteError } from "@/lib/route-errors";
+import {
+  getRouteErrorPayload,
+  getRouteErrorStatus,
+  RouteError,
+} from "@/lib/route-errors";
 import { parseArchiveQueryParams } from "@/lib/server/meals/archive-types";
 import { listArchiveMeals } from "@/lib/server/meals/archive-use-cases";
 import { requireValidatedUserRole } from "@/lib/server/route-auth";
@@ -32,7 +36,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ ok: true, ...result });
   } catch (error) {
     return NextResponse.json(
-      { ok: false, error: getRouteErrorMessage(error) },
+      { ok: false, error: getRouteErrorPayload(error) },
       { status: getRouteErrorStatus(error) }
     );
   }

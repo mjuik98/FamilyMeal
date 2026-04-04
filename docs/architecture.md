@@ -4,7 +4,7 @@
 
 이 프로젝트는 Next.js App Router 를 중심으로 클라이언트 UI와 서버 API 를 한 저장소에서 운영합니다.  
 읽기 중심 데이터는 클라이언트 Firebase SDK 를 사용하고, 쓰기/보안 민감 작업은 Next.js Route Handler 를 통해 Firebase Admin SDK 로 처리합니다.
-최근 리팩터링으로 `lib/` 내부를 역할별 경계로 나눴습니다. 현재 기준 핵심 축은 `lib/client/*`(클라이언트 데이터 접근), `lib/config/*`(공개/서버 설정), `lib/domain/*`(공통 정책), `lib/server/*`(서버 유스케이스), `lib/qa/runtime.ts`(QA adapter), `lib/logging.ts`(공통 로깅) 입니다.
+최근 리팩터링으로 `lib/` 내부를 역할별 경계와 모듈 계약 기준으로 다시 정리했습니다. 현재 기준 핵심 축은 `lib/client/*`(클라이언트 데이터 접근), `lib/config/*`(공개/서버 설정), `lib/domain/*`(공통 정책), `lib/server/*`(서버 유스케이스), `lib/modules/*`(도메인별 contract/runtime adapter), `lib/platform/errors/*`(공통 에러 계약), `lib/logging.ts`(공통 로깅) 입니다.
 
 ## 주요 흐름
 
@@ -15,13 +15,15 @@
 - 운영 환경에서는 `ALLOWED_EMAILS` allowlist 가 비어 있으면 fail-closed 입니다.
 - 역할 선택과 프로필 설정은 `/api/profile/*` 경로에서 처리합니다.
 - 프로필 role 변경과 알림 설정 저장은 `lib/server/profile/profile-use-cases.ts` 로 추출돼 있고, 라우트는 입력 검증과 HTTP 응답만 담당합니다.
-- 클라이언트 세션/프로필 읽기와 역할 저장은 `context/UserContext.tsx` 에 직접 남기지 않고 `lib/client/profile-session.ts` 로 위임합니다.
+- 클라이언트 세션/프로필 읽기와 역할 저장은 `context/UserContext.tsx` 에 직접 남기지 않고 `lib/features/profile/application/*` 과 `lib/modules/profile/infrastructure/*` 를 통해 위임합니다.
 - `ALLOW_ROLE_REASSIGN`, Upstash 설정 같은 서버 옵션은 `lib/config/server-env.ts` 를 통해서만 읽습니다.
 
 ### 식사 기록
 
 - 클라이언트 식사 읽기/검색/정렬/주간 통계는 `lib/client/meals.ts` 가 담당합니다.
 - 식사 생성/수정/삭제는 `/api/meals` 와 `/api/meals/[id]` 에서 처리합니다.
+- `lib/modules/meals/contracts.ts` 가 생성/수정/archive 조회에 필요한 최소 계약을 정의합니다.
+- `lib/features/meals/application/*` 는 orchestration 만 담당하고, QA/운영 런타임 선택은 `lib/modules/meals/infrastructure/*` 로 밀어냈습니다.
 - 서버 측 직렬화와 필드 보정은 `lib/server/meals/*` 가 담당하고, 라우트는 필요한 모듈을 직접 import 합니다.
 - 댓글은 `meals/{mealId}/comments` 서브컬렉션에 저장됩니다.
 
@@ -31,6 +33,8 @@
 - 댓글 상태 orchestration 은 `lib/features/comments/ui/useMealCommentsController.ts` 로 분리돼 있고, 실시간 목록 캐시는 `lib/meal-comments-store.ts` 가 담당합니다.
 - 반응 상태 orchestration 은 `lib/features/reactions/ui/useMealReactionsController.ts` 로 분리돼 있습니다.
 - 댓글 클라이언트 호출은 `lib/client/comments.ts`, 반응 클라이언트 호출은 `lib/client/reactions.ts` 로 분리했습니다.
+- `lib/modules/comments/contracts.ts`, `lib/modules/profile/contracts.ts` 가 feature 계층이 사용하는 입력 계약을 고정합니다.
+- 댓글/반응/프로필 feature service 는 더 이상 `lib/qa/runtime.ts` 를 직접 참조하지 않고 각 모듈 runtime adapter 를 통해 QA/운영 구현을 고릅니다.
 - 알림 activity 문서는 서버에서 계속 기록하지만, 현재 클라이언트는 피드 UI 를 두지 않고 `lib/client/activity.ts` 를 통해 알림 설정 저장만 수행합니다.
 - 댓글 생성/수정/삭제의 서버 트랜잭션 로직은 `lib/server/comments/comment-use-cases.ts` 로 추출했고, API 라우트는 얇은 컨트롤러 역할만 수행합니다.
 - 반응 변경의 서버 트랜잭션과 activity 동기화는 `lib/server/reactions/reaction-use-cases.ts` 로 추출했고, payload/route param 검증은 `lib/server/reactions/reaction-policy.ts` 가 맡습니다.
@@ -47,6 +51,14 @@
 - `proxy.ts` 가 `/qa/*` 라우트를 제어합니다.
 - 개발 환경에서는 QA 라우트가 열려 있습니다.
 - 운영 환경에서는 `lib/config/public-env.ts` 와 `lib/config/server-env.ts` 를 통해 읽은 QA 플래그/토큰이 함께 만족될 때만 접근 가능합니다.
+- QA fixture 접근은 애플리케이션 서비스가 직접 하지 않고 `lib/modules/*/infrastructure/*` 내부 runtime adapter 에서만 수행합니다.
+
+### 에러 계약
+
+- 모든 인증/인가/검증 실패는 `lib/route-errors.ts` 와 `lib/platform/errors/error-contract.ts` 를 통해 `{ code, message }` 형태의 공통 payload 로 응답합니다.
+- 클라이언트 공통 fetch helper 는 `lib/client/auth-http.ts` 의 `ApiError` 로 이 payload 를 다시 던집니다.
+- UI 계층의 실패 메시지 매핑은 raw 문자열 비교만 하지 않고 error code 를 우선 사용합니다.
+- 이 규칙으로 route message 문구가 바뀌어도 클라이언트의 분기 안정성이 더 높아집니다.
 
 ### PWA / 업데이트
 
@@ -75,6 +87,8 @@
 - `lib/client/`: 클라이언트 데이터 접근과 API 호출
 - `lib/config/`: 공개/서버 환경변수 접근
 - `lib/domain/`: 공통 정책과 상수
+- `lib/modules/`: 모듈별 contract 와 runtime adapter
+- `lib/platform/`: 모듈 공통 에러 계약, 이후 공통 플랫폼 concern 의 수용 지점
 - `lib/server/`: 서버 유스케이스와 라우트 보조 로직
 - `lib/features/`: 화면별 상태 orchestration 훅
 - `lib/qa/`: QA 모드, fixture, session, runtime adapter
@@ -87,11 +101,16 @@
 - `app/`, `components/`, `context/`, `lib/features/*` 는 `console.*` 를 직접 호출하지 않고 `lib/logging.ts` 를 사용합니다.
 - 삭제된 호환 경로(`@/lib/data`, `@/lib/server-meals`, `@/lib/client/http`, `@/lib/env`, `@/lib/qa`) 재도입을 금지하고, 실제 모듈을 직접 import 합니다.
 - 공개 런타임 설정은 `lib/config/public-env.ts`, 서버 전용 설정은 `lib/config/server-env.ts` 를 통해서만 읽습니다.
+- `app/api/*` 를 제외한 UI 레이어(`app/*`, `components/*`, `context/*`) 는 `@/lib/server/*`, `@/lib/firebase-admin` 을 직접 import 하지 않습니다.
+- `lib/features/*` 는 `@/lib/qa/runtime` 를 직접 import 하지 않고 각 모듈의 runtime adapter 만 의존합니다.
+- 에러 응답은 가능하면 문자열 대신 `{ code, message }` payload 를 반환하고, 클라이언트도 이를 우선 해석합니다.
 
 ## 검증 전략
 
 - `tests/ui-theme.test.mjs`: UI 구조/회귀를 소스 문자열 기준으로 고정
 - `tests/api-security.test.mjs`: API 보안/서버 경계 회귀를 고정
+- `tests/architecture-boundaries.test.mjs`: lint guard 와 모듈 contract/runtime adapter 경계를 고정
+- `tests/auth-http-runtime.test.mts`: 구조화된 API 에러 payload 가 `ApiError` 로 승격되는지 실행 기반으로 검증
 - `tests/meal-image-runtime.test.mts`: multipart 업로드, `sharp` 정규화, cleanup API, 이미지 선택 훅을 실행 기반으로 검증
 - `tests/firestore.rules.test.mjs`: Firestore Rules 검증
 - `tests/e2e/*`: 브라우저 플로우 검증

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { getRouteErrorMessage, getRouteErrorStatus } from "@/lib/route-errors";
+import { getRouteErrorPayload, getRouteErrorStatus } from "@/lib/route-errors";
 import {
   getCommentRouteParams,
   parseCommentUpdatePayload,
@@ -38,7 +38,7 @@ export async function PATCH(
     return NextResponse.json({ ok: true, comment });
   } catch (error) {
     return NextResponse.json(
-      { ok: false, error: getRouteErrorMessage(error) },
+      { ok: false, error: getRouteErrorPayload(error) },
       { status: getRouteErrorStatus(error) }
     );
   }
@@ -61,7 +61,7 @@ export async function DELETE(
     return NextResponse.json({ ok: true });
   } catch (error) {
     return NextResponse.json(
-      { ok: false, error: getRouteErrorMessage(error) },
+      { ok: false, error: getRouteErrorPayload(error) },
       { status: getRouteErrorStatus(error) }
     );
   }

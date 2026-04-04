@@ -1,12 +1,14 @@
-import { addMeal, getMealById, updateMeal } from "@/lib/client/meals";
 import { logError } from "@/lib/logging";
-import { readMealImageDataUrl } from "@/lib/meal-form";
-import { saveQaMeal } from "@/lib/qa/runtime";
 import type { Meal, UserRole } from "@/lib/types";
 import {
-  cleanupUploadedMealImage,
-  uploadImage,
-} from "@/lib/uploadImage";
+  createMealRecordInRuntime,
+  loadEditableMealInRuntime,
+  updateExistingMealRecordInRuntime,
+} from "@/lib/modules/meals/infrastructure/meal-editor-runtime";
+import type {
+  CreateMealCommand,
+  UpdateMealCommand,
+} from "@/lib/modules/meals/contracts";
 
 import type { MealRuntimeState } from "@/lib/features/meals/application/meal-read-service";
 
@@ -16,18 +18,6 @@ const normalizeMealDescription = (
   description: string,
   autoDescription: string
 ): string => description.trim() || autoDescription;
-
-const cleanupUploadedImage = async (imageUrl: string | null, contextMessage: string) => {
-  if (!imageUrl) {
-    return;
-  }
-
-  try {
-    await cleanupUploadedMealImage(imageUrl);
-  } catch (cleanupError) {
-    logError(contextMessage, cleanupError);
-  }
-};
 
 export const createMealRecord = async ({
   userUid,
@@ -55,47 +45,24 @@ export const createMealRecord = async ({
     autoDescription
   );
   const timestamp = recordDate.getTime();
+  const command: CreateMealCommand = {
+    userIds: selectedUsers,
+    description: normalizedDescription,
+    type,
+    imageUrl: "",
+    timestamp,
+  };
 
-  if (runtimeState.qaMode) {
-    onPhaseChange?.("saving");
-    const qaImageUrl = await readMealImageDataUrl(imageFile);
-    saveQaMeal({
-      id: `qa-custom-${Date.now()}`,
-      ownerUid: userUid,
-      userIds: selectedUsers,
-      description: normalizedDescription,
-      type,
-      imageUrl: qaImageUrl,
-      timestamp,
-      commentCount: 0,
-      comments: [],
-      reactions: {},
-    });
-    return;
-  }
-
-  let uploadedImageUrl: string | null = null;
-  try {
-    onPhaseChange?.("uploading");
-    uploadedImageUrl = await uploadImage(imageFile);
-    onPhaseChange?.("saving");
-    await addMeal({
-      ownerUid: userUid,
-      userIds: selectedUsers,
-      description: normalizedDescription,
-      type,
-      imageUrl: uploadedImageUrl,
-      timestamp,
-      commentCount: 0,
-      reactions: {},
-    });
-  } catch (error) {
-    await cleanupUploadedImage(
-      uploadedImageUrl,
-      "Failed to cleanup uploaded meal image after save error"
-    );
-    throw error;
-  }
+  await createMealRecordInRuntime({
+    userUid,
+    command,
+    imageFile,
+    runtimeState,
+    onPhaseChange,
+    onCleanupError: (cleanupError) => {
+      logError("Failed to cleanup uploaded meal image after save error", cleanupError);
+    },
+  });
 };
 
 export const loadEditableMeal = async ({
@@ -111,29 +78,11 @@ export const loadEditableMeal = async ({
   selectedUsers: UserRole[];
   requiresLegacyMigration: boolean;
 }> => {
-  const meal = await getMealById(mealId);
-  if (!meal) {
-    return {
-      meal: null,
-      selectedUsers: [],
-      requiresLegacyMigration: false,
-    };
-  }
-
-  if (meal.ownerUid && currentUid && meal.ownerUid !== currentUid) {
-    throw new Error("작성자만 수정할 수 있습니다.");
-  }
-
-  return {
-    meal,
-    selectedUsers:
-      meal.userIds?.length
-        ? meal.userIds
-        : currentRole
-          ? [currentRole]
-          : [],
-    requiresLegacyMigration: !meal.ownerUid,
-  };
+  return loadEditableMealInRuntime({
+    mealId,
+    currentUid,
+    currentRole,
+  });
 };
 
 export const updateExistingMealRecord = async ({
@@ -155,31 +104,21 @@ export const updateExistingMealRecord = async ({
   imagePreview: string | null;
   onPhaseChange?: (phase: SubmitPhase) => void;
 }) => {
-  let imageUrl: string | null | undefined;
-  let uploadedImageUrl: string | null = null;
+  const command: UpdateMealCommand = {
+    userIds: selectedUsers,
+    description: description.trim(),
+    type,
+    timestamp: recordDate.getTime(),
+  };
 
-  try {
-    if (imageFile) {
-      onPhaseChange?.("uploading");
-      uploadedImageUrl = await uploadImage(imageFile);
-      imageUrl = uploadedImageUrl;
-    } else if (!imagePreview) {
-      imageUrl = null;
-    }
-
-    onPhaseChange?.("saving");
-    await updateMeal(mealId, {
-      userIds: selectedUsers,
-      description: description.trim(),
-      type,
-      timestamp: recordDate.getTime(),
-      ...(imageUrl !== undefined ? { imageUrl } : {}),
-    });
-  } catch (error) {
-    await cleanupUploadedImage(
-      uploadedImageUrl,
-      "Failed to cleanup uploaded meal image after update error"
-    );
-    throw error;
-  }
+  await updateExistingMealRecordInRuntime({
+    mealId,
+    command,
+    imageFile,
+    imagePreview,
+    onPhaseChange,
+    onCleanupError: (cleanupError) => {
+      logError("Failed to cleanup uploaded meal image after update error", cleanupError);
+    },
+  });
 };

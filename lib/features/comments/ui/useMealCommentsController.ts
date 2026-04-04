@@ -10,6 +10,7 @@ import {
 } from "@/lib/features/comments/application/meal-comment-service";
 import type { ReplyTarget } from "@/lib/features/comments/ui/types";
 import { logError } from "@/lib/logging";
+import { getErrorCode } from "@/lib/platform/errors/error-contract";
 import type { Meal, MealComment, UserProfile } from "@/lib/types";
 
 type ToastFn = (
@@ -20,20 +21,29 @@ type ToastFn = (
 
 const toCommentCreateErrorMessage = (error: unknown): string => {
   const raw = error instanceof Error ? error.message.trim() : "";
+  const code = getErrorCode(error);
 
-  if (raw === "Not allowed") {
+  if (code === "not_allowed" || raw === "Not allowed") {
     return "이 식사 참여자만 댓글을 작성할 수 있어요.";
   }
-  if (raw === "Valid user role is required" || raw === "User profile is required") {
+  if (
+    code === "valid_user_role_required" ||
+    code === "user_profile_required" ||
+    raw === "Valid user role is required" ||
+    raw === "User profile is required"
+  ) {
     return "프로필에서 역할을 먼저 설정해 주세요.";
   }
-  if (raw === "Parent comment not found") {
+  if (code === "parent_comment_not_found" || raw === "Parent comment not found") {
     return "답글 대상 댓글을 찾지 못했습니다.";
   }
-  if (raw === "Nested replies are not supported") {
+  if (code === "nested_replies_not_supported" || raw === "Nested replies are not supported") {
     return "답글에는 다시 답글을 달 수 없어요.";
   }
   if (
+    code === "server_allowlist_not_configured" ||
+    code === "server_auth_not_configured" ||
+    code === "server_firebase_project_mismatch" ||
     raw === "Server allowlist is not configured" ||
     raw === "Server auth is not configured" ||
     raw === "Server Firebase project mismatch"
@@ -41,6 +51,10 @@ const toCommentCreateErrorMessage = (error: unknown): string => {
     return "서버 인증 설정을 확인해 주세요.";
   }
   if (
+    code === "missing_bearer_token" ||
+    code === "empty_bearer_token" ||
+    code === "invalid_auth_token" ||
+    code === "auth_token_expired" ||
     raw === "Missing bearer token" ||
     raw === "Empty bearer token" ||
     raw === "Invalid auth token" ||

@@ -1,4 +1,4 @@
-import { getAccessToken, parseErrorMessage } from "@/lib/client/auth-http";
+import { getAccessToken, toApiError } from "@/lib/client/auth-http";
 
 const uploadViaServer = async (imageFile: File): Promise<string> => {
   const requestUpload = async (forceRefresh = false): Promise<Response> => {
@@ -22,8 +22,7 @@ const uploadViaServer = async (imageFile: File): Promise<string> => {
   }
 
   if (!response.ok) {
-    const message = await parseErrorMessage(response, `Image upload failed (${response.status})`);
-    throw new Error(message);
+    throw await toApiError(response, `Image upload failed (${response.status})`);
   }
 
   const payload = (await response.json()) as { imageUrl?: unknown };
@@ -54,8 +53,7 @@ const cleanupViaServer = async (imageUrl: string): Promise<void> => {
   }
 
   if (!response.ok) {
-    const message = await parseErrorMessage(response, `Image cleanup failed (${response.status})`);
-    throw new Error(message);
+    throw await toApiError(response, `Image cleanup failed (${response.status})`);
   }
 };
 

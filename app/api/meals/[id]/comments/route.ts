@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { getRouteErrorMessage, getRouteErrorStatus } from "@/lib/route-errors";
+import { getRouteErrorPayload, getRouteErrorStatus } from "@/lib/route-errors";
 import {
   getMealId,
   parseCommentCreatePayload,
@@ -41,7 +41,7 @@ export async function POST(
     return NextResponse.json({ ok: true, comment });
   } catch (error) {
     return NextResponse.json(
-      { ok: false, error: getRouteErrorMessage(error) },
+      { ok: false, error: getRouteErrorPayload(error) },
       { status: getRouteErrorStatus(error) }
     );
   }

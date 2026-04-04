@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
 
 import { parseDateKey } from "@/lib/date-utils";
-import { getRouteErrorMessage, getRouteErrorStatus, RouteError } from "@/lib/route-errors";
+import {
+  getRouteErrorPayload,
+  getRouteErrorStatus,
+  RouteError,
+} from "@/lib/route-errors";
 import { listWeeklyMealStats } from "@/lib/server/meals/meal-read-use-cases";
 import { requireValidatedUserRole } from "@/lib/server/route-auth";
 
@@ -30,7 +34,7 @@ export async function GET(request: Request) {
     });
   } catch (error) {
     return NextResponse.json(
-      { ok: false, error: getRouteErrorMessage(error) },
+      { ok: false, error: getRouteErrorPayload(error) },
       { status: getRouteErrorStatus(error) }
     );
   }

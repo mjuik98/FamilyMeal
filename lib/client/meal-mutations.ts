@@ -1,11 +1,13 @@
 import { MAX_MEAL_DESCRIPTION_LENGTH } from "@/lib/domain/meal-policy";
 import type { Meal } from "@/lib/types";
+import type {
+  CreateMealCommand,
+  UpdateMealCommand,
+} from "@/lib/modules/meals/contracts";
 
 import { fetchAuthedJson } from "@/lib/client/auth-http";
 
-export type MealUpdateInput = Partial<Omit<Meal, "id" | "imageUrl">> & {
-  imageUrl?: string | null;
-};
+export type MealUpdateInput = UpdateMealCommand;
 
 export type MealDeleteStatus = "completed" | "already_deleted" | "already_processing";
 
@@ -30,11 +32,7 @@ const normalizeMealDescription = (description: string): string => {
   return trimmed;
 };
 
-export const addMeal = async (meal: Omit<Meal, "id">): Promise<Meal> => {
-  if (!meal.ownerUid) {
-    throw new Error("ownerUid is required");
-  }
-
+export const addMeal = async (meal: CreateMealCommand): Promise<Meal> => {
   const response = await fetchAuthedJson<{ ok: true; meal: Meal }>("/api/meals", {
     method: "POST",
     body: JSON.stringify({
@@ -51,16 +49,12 @@ export const addMeal = async (meal: Omit<Meal, "id">): Promise<Meal> => {
 
 export const updateMeal = async (
   id: string,
-  updates: MealUpdateInput
+  updates: UpdateMealCommand
 ): Promise<Meal> => {
   const nextUpdates = { ...updates };
   if (typeof nextUpdates.description === "string") {
     nextUpdates.description = normalizeMealDescription(nextUpdates.description);
   }
-  delete (nextUpdates as { comments?: unknown }).comments;
-  delete (nextUpdates as { commentCount?: unknown }).commentCount;
-  delete (nextUpdates as { reactions?: unknown }).reactions;
-  delete (nextUpdates as { userId?: unknown }).userId;
 
   const encodedMealId = encodeURIComponent(id);
   const response = await fetchAuthedJson<{ ok: true; meal: Meal }>(
