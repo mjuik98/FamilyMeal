@@ -61,6 +61,8 @@
 - 업로드 라우트는 multipart 파싱 전에 `content-length` 기반 용량 제한을 먼저 확인합니다.
 - 서버 정규화, 파일 경로 생성, Storage 저장은 `lib/server/uploads/meal-image-use-cases.ts` 로 분리돼 있습니다.
 - 서버는 `sharp` 로 EXIF 회전을 보정하고, 제한된 크기의 JPEG 로 재인코딩한 결과만 Storage 에 저장합니다.
+- 식사 생성/수정은 서버가 발급한 Firebase Storage URL 이면서 현재 사용자 소유의 `meals/<uid>/...` 경로만 허용합니다.
+- 저장 단계가 실패하면 add/edit 화면은 업로드 직후 생성된 파일을 `/api/uploads/meal-image` 의 cleanup 경로로 되돌립니다. 생성 API 도 실패 시 같은 정리를 한 번 더 시도합니다.
 - 라우트는 버킷 설정 확인과 HTTP 에러 변환만 맡습니다.
 
 ## 디렉터리 책임
@@ -90,6 +92,7 @@
 
 - `tests/ui-theme.test.mjs`: UI 구조/회귀를 소스 문자열 기준으로 고정
 - `tests/api-security.test.mjs`: API 보안/서버 경계 회귀를 고정
+- `tests/meal-image-runtime.test.mts`: multipart 업로드, `sharp` 정규화, cleanup API, 이미지 선택 훅을 실행 기반으로 검증
 - `tests/firestore.rules.test.mjs`: Firestore Rules 검증
 - `tests/e2e/*`: 브라우저 플로우 검증
 

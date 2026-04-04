@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { MAX_MEAL_IMAGE_REQUEST_BYTES } from "@/lib/meal-image-policy";
 import { serverEnv } from "@/lib/config/server-env";
 import { getRouteErrorMessage, getRouteErrorStatus, RouteError } from "@/lib/route-errors";
+import { deleteStorageObjectByUrl } from "@/lib/server/meals/meal-storage";
 import { requireVerifiedUser } from "@/lib/server/route-auth";
 import { storeMealImageFile } from "@/lib/server/uploads/meal-image-use-cases";
 
@@ -58,6 +59,39 @@ export async function POST(request: Request) {
       imageUrl: uploaded.imageUrl,
       path: uploaded.path,
     });
+  } catch (error) {
+    return NextResponse.json(
+      { ok: false, error: getRouteErrorMessage(error) },
+      { status: getRouteErrorStatus(error) }
+    );
+  }
+}
+
+export async function DELETE(request: Request) {
+  try {
+    const user = await requireVerifiedUser(request);
+
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      throw new RouteError("Invalid JSON body", 400);
+    }
+
+    const imageUrl =
+      body &&
+      typeof body === "object" &&
+      "imageUrl" in body &&
+      typeof (body as { imageUrl?: unknown }).imageUrl === "string"
+        ? (body as { imageUrl: string }).imageUrl
+        : "";
+
+    const deleted = await deleteStorageObjectByUrl(imageUrl, { uid: user.uid });
+    if (!deleted) {
+      throw new RouteError("Invalid meal image URL", 400);
+    }
+
+    return NextResponse.json({ ok: true });
   } catch (error) {
     return NextResponse.json(
       { ok: false, error: getRouteErrorMessage(error) },

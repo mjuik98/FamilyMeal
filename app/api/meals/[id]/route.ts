@@ -78,7 +78,7 @@ export async function DELETE(
     await deleteMealDocumentById(mealId);
     if (plan.action === "delete_now" && plan.mealImageUrl) {
       try {
-        await deleteStorageObjectByUrl(plan.mealImageUrl);
+        await deleteStorageObjectByUrl(plan.mealImageUrl, { uid: user.uid });
       } catch (error) {
         logError("Failed to delete meal image during delete cleanup", error);
       }

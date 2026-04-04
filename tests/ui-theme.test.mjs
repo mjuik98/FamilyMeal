@@ -825,7 +825,10 @@ test("meal editor pages reuse focused meal form helpers and direct public env co
   assert.doesNotMatch(addPage, /const imagePreviewRequestSequenceRef = useRef\(0\)/);
   assert.doesNotMatch(editPage, /const imagePreviewRequestSequenceRef = useRef\(0\)/);
   assert.match(addPage, /await uploadImage\(imageSelection\.imageFile\)/);
-  assert.match(editPage, /imageUrl = await uploadImage\(imageSelection\.imageFile\)/);
+  assert.match(editPage, /uploadedImageUrl = await uploadImage\(imageSelection\.imageFile\)/);
+  assert.match(addPage, /cleanupUploadedMealImage/);
+  assert.match(editPage, /cleanupUploadedMealImage/);
+  assert.match(editPage, /\.\.\.\(imageUrl !== undefined \? \{ imageUrl \} : \{\}\)/);
   assert.match(addPage, /readMealImageDataUrl\(imageSelection\.imageFile\)/);
   assert.doesNotMatch(addPage, /const toggleUser =/);
   assert.doesNotMatch(editPage, /const toggleUser =/);
