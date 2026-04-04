@@ -2,18 +2,18 @@
 
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Camera, Send } from "lucide-react";
+import { Send } from "lucide-react";
 
 import { useMealImageSelection } from "@/components/hooks/useMealImageSelection";
+import { MealDetailsSection } from "@/components/meal-editor/MealDetailsSection";
+import { MealImageField } from "@/components/meal-editor/MealImageField";
 import PageHeader from "@/components/PageHeader";
-import SurfaceSection from "@/components/SurfaceSection";
 import { useToast } from "@/components/Toast";
 import { useUser } from "@/context/UserContext";
 import { formatDateKey, parseDateKey } from "@/lib/date-utils";
 import { createMealRecord } from "@/lib/features/meals/application/meal-editor-service";
 import { createMealRuntimeState } from "@/lib/features/meals/application/meal-read-service";
 import { MEAL_IMAGE_INPUT_ACCEPT } from "@/lib/meal-image-policy";
-import { USER_ROLES, VALID_MEAL_TYPES } from "@/lib/domain/meal-policy";
 import { logError } from "@/lib/logging";
 import { getMealDraftDefaults, saveMealDraftDefaults } from "@/lib/meal-draft";
 import { buildAutoMealDescription } from "@/lib/meal-copy";
@@ -84,6 +84,12 @@ function AddMealPageContent() {
 
   const submissionLabel =
     submitPhase === "uploading" ? "사진 업로드 중..." : submitPhase === "saving" ? "저장 중..." : null;
+  const handleClearImage = () => {
+    imageSelection.clearImage();
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
 
   const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -161,135 +167,45 @@ function AddMealPageContent() {
         <PageHeader title="새 식사 기록" subtitle="사진 한 장과 식사 종류만 있으면 바로 저장할 수 있어요." />
 
         <form onSubmit={handleSubmit} className="form-stack">
-          <SurfaceSection
-            title="사진"
+          <MealImageField
             caption="설명은 비워둬도 됩니다. 사진을 올리면 자동 문구로 바로 저장할 수 있어요."
-            actions={
-              imageSelection.imagePreview ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    imageSelection.clearImage();
-                    if (fileInputRef.current) {
-                      fileInputRef.current.value = "";
-                    }
-                  }}
-                  className="link-button"
-                >
-                  삭제
-                </button>
-              ) : undefined
-            }
-            bodyClassName=""
-          >
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="media-picker"
-            >
-              {imageSelection.imagePreview && !imageSelection.previewUnavailable ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={imageSelection.imagePreview}
-                  alt="Preview"
-                  className="media-preview"
-                  onError={() => imageSelection.markPreviewUnavailable()}
-                />
-              ) : (
-                <div className="media-placeholder">
-                  <Camera size={36} strokeWidth={1.5} />
-                  <span style={{ fontSize: "0.85rem" }}>
-                    {imageSelection.previewUnavailable
-                      ? "미리보기를 표시하지 못했습니다"
-                      : "눌러서 식사 사진 추가"}
-                  </span>
-                </div>
-              )}
-            </button>
-            {imageSelection.localImageSummary ? (
-              <p className="surface-note" style={{ marginTop: "10px" }}>
-                {imageSelection.localImageSummary} · 업로드 시 서버에서 자동 최적화됩니다.
-              </p>
-            ) : null}
-            {imageSelection.previewUnavailable ? (
-              <p className="surface-note" style={{ marginTop: "8px", color: "var(--danger)" }}>
-                미리보기를 표시하지 못했습니다. 업로드 시 서버에서 변환을 시도합니다.
-              </p>
-            ) : null}
-            {imageSelection.validationError ? (
-              <p className="surface-note" style={{ marginTop: "8px", color: "var(--danger)" }}>
-                {imageSelection.validationError.message}
-              </p>
-            ) : null}
-          </SurfaceSection>
-
-          <input
-            type="file"
-            ref={fileInputRef}
-            onChange={(event) => {
+            emptyStateLabel="눌러서 식사 사진 추가"
+            fileInputRef={fileInputRef}
+            imagePreview={imageSelection.imagePreview}
+            inputAccept={MEAL_IMAGE_INPUT_ACCEPT}
+            inputTestId="add-photo-input"
+            localImageSummary={imageSelection.localImageSummary}
+            onClearImage={handleClearImage}
+            onImageChange={(event) => {
               void handleImageChange(event);
             }}
-            accept={MEAL_IMAGE_INPUT_ACCEPT}
-            style={{ display: "none" }}
-            data-testid="add-photo-input"
+            onPreviewError={() => imageSelection.markPreviewUnavailable()}
+            previewUnavailable={imageSelection.previewUnavailable}
+            previewStatusMessage={
+              imageSelection.previewUnavailable
+                ? "미리보기를 표시하지 못했습니다. 업로드 시 서버에서 변환을 시도합니다."
+                : null
+            }
+            validationError={imageSelection.validationError}
           />
 
-          <SurfaceSection title="식사 정보" bodyClassName="surface-body form-stack">
-              <div>
-                <label className="form-label">식사 종류</label>
-                <div className="chip-group">
-                  {VALID_MEAL_TYPES.map((value) => (
-                    <button
-                      key={value}
-                      type="button"
-                      onClick={() => setType(value)}
-                      className={`chip-button${type === value ? " chip-button-active" : ""}`}
-                      data-testid={`add-meal-type-${value}`}
-                    >
-                      {value}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <label className="form-label">함께 먹은 사람</label>
-                <div className="chip-group">
-                  {USER_ROLES.map((role) => (
-                    <button
-                      key={role}
-                      type="button"
-                      onClick={() => setSelectedUsers((prev) => toggleMealParticipant(prev, role))}
-                      className={`chip-button${selectedUsers.includes(role) ? " chip-button-active" : ""}`}
-                      data-testid={`add-meal-user-${role}`}
-                    >
-                      {role}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <label className="form-label">설명</label>
-                <textarea
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder={`${autoDescription}처럼 자동으로 저장돼요`}
-                  maxLength={300}
-                  className="input-base textarea-base"
-                  style={{
-                    width: "100%",
-                    minHeight: "116px",
-                    padding: "14px 14px 16px",
-                    resize: "vertical",
-                    outline: "none",
-                  }}
-                />
-                <p className="surface-note" style={{ marginTop: "8px" }}>
-                  비워두면 <strong>{autoDescription}</strong> 문구로 저장됩니다.
-                </p>
-              </div>
-          </SurfaceSection>
+          <MealDetailsSection
+            description={description}
+            descriptionNote={
+              <>
+                비워두면 <strong>{autoDescription}</strong> 문구로 저장됩니다.
+              </>
+            }
+            descriptionPlaceholder={`${autoDescription}처럼 자동으로 저장돼요`}
+            onDescriptionChange={setDescription}
+            onToggleUser={(role) =>
+              setSelectedUsers((prev) => toggleMealParticipant(prev, role))
+            }
+            onTypeChange={setType}
+            selectedUsers={selectedUsers}
+            testIdPrefix="add"
+            type={type}
+          />
 
           <div className="surface-row" style={{ gap: "10px", alignItems: "stretch" }}>
             <button

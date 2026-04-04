@@ -53,9 +53,7 @@ jobs:
         run: npm run test:smoke
 
       - name: Smoke Test (QA Route Blocked)
-        run: npm run test:smoke
-        env:
-          SMOKE_ASSERT_QA_BLOCKED: "true"
+        run: npm run test:smoke:qa-token-required
 
       - name: Dependency Audit Report
         run: npm audit --json > audit-report.json || true

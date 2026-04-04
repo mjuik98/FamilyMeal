@@ -15,17 +15,19 @@ test("lint config blocks direct server imports from UI layers and direct QA runt
   assert.match(eslintConfig, /Feature services must depend on runtime adapters instead of lib\/qa\/runtime directly/);
 });
 
-test("module-scoped contracts exist and meal mutations depend on contracts instead of broad Meal-shaped inputs", () => {
+test("module-scoped contracts exist only where shared runtime contracts are needed", () => {
   const mealContractsPath = path.join(process.cwd(), "lib", "modules", "meals", "contracts.ts");
   const commentContractsPath = path.join(process.cwd(), "lib", "modules", "comments", "contracts.ts");
   const profileContractsPath = path.join(process.cwd(), "lib", "modules", "profile", "contracts.ts");
   const mealMutations = read("lib/client/meal-mutations.ts");
+  const userSessionService = read("lib/features/profile/application/user-session-service.ts");
 
   assert.equal(fs.existsSync(mealContractsPath), true);
   assert.equal(fs.existsSync(commentContractsPath), true);
-  assert.equal(fs.existsSync(profileContractsPath), true);
+  assert.equal(fs.existsSync(profileContractsPath), false);
   assert.match(mealMutations, /from "@\/lib\/modules\/meals\/contracts"/);
   assert.doesNotMatch(mealMutations, /Partial<Omit<Meal, "id" \| "imageUrl">>/);
+  assert.doesNotMatch(userSessionService, /modules\/profile\/contracts/);
 });
 
 test("feature services delegate runtime selection to infrastructure adapters", () => {

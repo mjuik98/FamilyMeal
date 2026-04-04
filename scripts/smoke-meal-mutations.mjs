@@ -1,25 +1,22 @@
-import { spawn, spawnSync } from "node:child_process";
 import fs from "node:fs";
-import net from "node:net";
 
 import { cert, getApps, initializeApp } from "firebase-admin/app";
 import { getAuth as getAdminAuth } from "firebase-admin/auth";
 import { getFirestore as getAdminDb } from "firebase-admin/firestore";
 import { initializeApp as initializeClientApp } from "firebase/app";
 import { getAuth, signInWithCustomToken } from "firebase/auth";
+import sharp from "sharp";
+import {
+  must,
+  resolvePort,
+  startNpmScript,
+  waitForServer,
+} from "./lib/smoke-server.mjs";
 
 const host = process.env.SMOKE_HOST || "127.0.0.1";
 const explicitPort = process.env.SMOKE_PORT ? Number(process.env.SMOKE_PORT) : null;
 const envPath = process.env.SMOKE_ENV_PATH || ".env.local";
 const cwd = process.cwd();
-
-const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-
-const must = (condition, message) => {
-  if (!condition) {
-    throw new Error(message);
-  }
-};
 
 const readEnvFile = (filePath) => {
   const raw = fs.readFileSync(filePath, "utf8").replace(/^\uFEFF/, "");
@@ -33,48 +30,6 @@ const readEnvFile = (filePath) => {
       process.env[key] = value;
     }
   }
-};
-
-const resolvePort = async () => {
-  if (typeof explicitPort === "number" && Number.isFinite(explicitPort) && explicitPort > 0) {
-    return explicitPort;
-  }
-
-  return await new Promise((resolve, reject) => {
-    const server = net.createServer();
-    server.unref();
-    server.on("error", reject);
-    server.listen(0, host, () => {
-      const address = server.address();
-      if (!address || typeof address === "string") {
-        reject(new Error("Failed to resolve random smoke port"));
-        return;
-      }
-      server.close((error) => {
-        if (error) {
-          reject(error);
-          return;
-        }
-        resolve(address.port);
-      });
-    });
-  });
-};
-
-const waitForServer = async (url, timeoutMs = 30_000) => {
-  const startedAt = Date.now();
-  while (Date.now() - startedAt < timeoutMs) {
-    try {
-      const res = await fetch(url, { redirect: "manual" });
-      if (res.status >= 200 && res.status < 500) {
-        return;
-      }
-    } catch {
-      // server not ready yet
-    }
-    await wait(500);
-  }
-  throw new Error(`Meal smoke timeout: server did not respond at ${url}`);
 };
 
 const createAdminContext = () => {
@@ -158,19 +113,36 @@ const createIdToken = async (customToken) => {
 };
 
 const uploadTinyImage = async (baseUrl, idToken) => {
-  const tinyPng =
-    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9p2Yb2QAAAAASUVORK5CYII=";
+  const tinyPngBuffer = await sharp({
+    create: {
+      width: 32,
+      height: 32,
+      channels: 3,
+      background: { r: 220, g: 80, b: 60 },
+    },
+  })
+    .png()
+    .toBuffer();
+  const formData = new FormData();
+  formData.append(
+    "file",
+    new File([tinyPngBuffer], "meal-smoke.png", {
+      type: "image/png",
+    })
+  );
 
   const response = await fetch(`${baseUrl}/api/uploads/meal-image`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${idToken}`,
-      "Content-Type": "application/json",
     },
-    body: JSON.stringify({ imageData: tinyPng }),
+    body: formData,
   });
   const payload = await response.json();
-  must(response.ok, `Image upload failed: ${payload?.error || response.status}`);
+  must(
+    response.ok,
+    `Image upload failed: ${payload?.error?.message || payload?.error || response.status}`
+  );
   must(typeof payload.imageUrl === "string", "Upload route did not return imageUrl");
   return payload.imageUrl;
 };
@@ -231,39 +203,13 @@ const deleteMeal = async (baseUrl, idToken, mealId) => {
 const run = async () => {
   readEnvFile(`${cwd}/${envPath}`);
 
-  const port = await resolvePort();
+  const port = await resolvePort({ host, explicitPort });
   const baseUrl = `http://${host}:${port}`;
-  const server =
-    process.platform === "win32"
-      ? spawn("cmd.exe", ["/d", "/s", "/c", `npm run dev -- --hostname ${host} --port ${port}`], {
-          stdio: "inherit",
-          env: process.env,
-          cwd,
-        })
-      : spawn("npm", ["run", "dev", "--", "--hostname", host, "--port", String(port)], {
-          stdio: "inherit",
-          env: process.env,
-          cwd,
-        });
-
-  const cleanup = () => {
-    if (server.exitCode === null && !server.killed) {
-      if (process.platform === "win32" && server.pid) {
-        spawnSync("taskkill", ["/pid", String(server.pid), "/T", "/F"], { stdio: "ignore" });
-        return;
-      }
-      server.kill("SIGTERM");
-    }
-  };
-
-  process.on("SIGINT", () => {
-    cleanup();
-    process.exit(130);
-  });
-
-  process.on("SIGTERM", () => {
-    cleanup();
-    process.exit(143);
+  const { cleanup, dispose } = startNpmScript({
+    script: "dev",
+    args: ["--hostname", host, "--port", String(port)],
+    env: process.env,
+    cwd,
   });
 
   let createdMealId = null;
@@ -290,6 +236,7 @@ const run = async () => {
         // Best effort cleanup.
       }
     }
+    dispose();
     cleanup();
   }
 };

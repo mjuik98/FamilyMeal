@@ -1,45 +1,5 @@
 {
-  "updatedAt": "2026-02-21",
-  "advisories": {
-    "1113371": {
-      "package": "minimatch",
-      "range": "<10.2.1",
-      "reason": "Transitive ReDoS in workbox chain via next-pwa; waiting for upstream fix.",
-      "expiresOn": "2026-06-30"
-    }
-  },
-  "packages": {
-    "@ducanh2912/next-pwa": {
-      "reason": "Direct dependency pinned for PWA support; vulnerable transitive chain currently unresolved upstream.",
-      "expiresOn": "2026-06-30"
-    },
-    "@surma/rollup-plugin-off-main-thread": {
-      "reason": "Transitive via workbox-build; blocked by upstream remediation.",
-      "expiresOn": "2026-06-30"
-    },
-    "ejs": {
-      "reason": "Transitive via workbox-build dependency chain; blocked by upstream remediation.",
-      "expiresOn": "2026-06-30"
-    },
-    "filelist": {
-      "reason": "Transitive via workbox-build dependency chain; blocked by upstream remediation.",
-      "expiresOn": "2026-06-30"
-    },
-    "glob": {
-      "reason": "Transitive via workbox-build dependency chain; blocked by upstream remediation.",
-      "expiresOn": "2026-06-30"
-    },
-    "jake": {
-      "reason": "Transitive via workbox-build dependency chain; blocked by upstream remediation.",
-      "expiresOn": "2026-06-30"
-    },
-    "workbox-build": {
-      "reason": "Transitive dependency with unresolved high findings in current ecosystem versions.",
-      "expiresOn": "2026-06-30"
-    },
-    "workbox-webpack-plugin": {
-      "reason": "Transitive dependency used by next-pwa; fix is blocked by upstream compatibility.",
-      "expiresOn": "2026-06-30"
-    }
-  }
+  "updatedAt": "2026-04-04",
+  "advisories": {},
+  "packages": {}
 }

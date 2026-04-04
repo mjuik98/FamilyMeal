@@ -18,7 +18,7 @@
     "test:e2e:install": "playwright install --with-deps chromium",
     "audit:report": "npm audit --json",
     "audit:prod:check": "node scripts/audit-prod-check.mjs",
-    "ci:verify": "npm run lint && npm run typecheck && npm run build && npm run test:smoke && npm run test:ui && npm run test:api && npm run test:api:runtime && npm run test:rules && npm run test:e2e",
+    "ci:verify": "npm run lint && npm run typecheck && npm run build && npm run test:smoke && npm run test:smoke:qa-token-required && npm run test:ui && npm run test:api && npm run test:api:runtime && npm run test:rules && npm run test:e2e",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test:rules": "node scripts/run-firestore-rules.mjs",
@@ -30,8 +30,6 @@
     "migrate:owners:dry": "node scripts/backfill-meal-owners.mjs --dry-run"
   },
   "dependencies": {
-    "@ducanh2912/next-pwa": "^10.2.9",
-    "@opentelemetry/api": "^1.9.1",
     "@upstash/ratelimit": "^2.0.8",
     "@upstash/redis": "^1.36.2",
     "firebase": "^12.9.0",
@@ -44,6 +42,7 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@ducanh2912/next-pwa": "^10.2.9",
     "@firebase/rules-unit-testing": "^5.0.0",
     "@playwright/test": "^1.56.1",
     "@types/node": "^20",

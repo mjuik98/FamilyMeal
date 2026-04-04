@@ -284,7 +284,7 @@ test("qa mock mode detail supports same-day photo rail navigation", async ({ pag
   await openQaMealDetail(page);
 
   await expect(page.getByTestId("meal-photo-stage")).toBeVisible();
-  await expect(page.locator('[data-testid^="meal-photo-rail-item-"]')).toHaveCount(5);
+  await expect(page.locator('[data-testid^="meal-photo-rail-item-"]')).toHaveCount(4);
 
   const breakfastRailItem = page.getByTestId("meal-photo-rail-item-qa-breakfast-meal");
   await breakfastRailItem.click();

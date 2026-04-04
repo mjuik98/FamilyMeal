@@ -23,6 +23,7 @@ test("comment and form inputs use shared input classes", () => {
   const commentComposer = read("components/comments/CommentComposer.tsx");
   const addPage = read("app/add/page.tsx");
   const editPage = read("app/edit/[id]/page.tsx");
+  const mealDetailsSection = read("components/meal-editor/MealDetailsSection.tsx");
   const profilePage = read("app/profile/page.tsx");
   const homePage = read("app/page.tsx");
   const pageHeader = read("components/PageHeader.tsx");
@@ -38,8 +39,7 @@ test("comment and form inputs use shared input classes", () => {
   assert.match(homePage, /surface-card/);
   assert.match(pageHeader, /export default function PageHeader/);
   assert.match(surfaceSection, /export default function SurfaceSection/);
-  assert.match(addPage, /className="input-base textarea-base"/);
-  assert.match(editPage, /className="input-base textarea-base[^"]*"/);
+  assert.match(mealDetailsSection, /className="input-base textarea-base"/);
   assert.match(editPage, /type="date"/);
   assert.match(editPage, /type="time"/);
   assert.match(editPage, /data-testid="edit-meal-date-input"/);
@@ -399,15 +399,26 @@ test("next config is kept minimal and avoids placeholder comments", () => {
 
 test("default build script preserves cache and exposes explicit clean build", () => {
   const packageJson = read("package.json");
+  const packageJsonData = JSON.parse(packageJson);
+  const gitignore = read(".gitignore");
+  const cleanNextDir = read("scripts/clean-next-dir.mjs");
 
   assert.match(packageJson, /"build":\s*"next build --webpack"/);
   assert.match(packageJson, /"build:clean":\s*"node scripts\/clean-next-dir\.mjs && next build --webpack"/);
   assert.doesNotMatch(packageJson, /"build":\s*"node scripts\/clean-next-dir\.mjs/);
+  assert.doesNotMatch(packageJson, /"@opentelemetry\/api"/);
   assert.match(
     packageJson,
     /"test:api":\s*"node --test tests\/api-security\.test\.mjs tests\/architecture-boundaries\.test\.mjs tests\/archive-query\.test\.mjs tests\/meal-image-policy\.test\.mjs"/
   );
   assert.match(packageJson, /"ci:verify":\s*"[^"]*npm run test:e2e"/);
+  assert.match(packageJson, /"ci:verify":\s*"[^"]*npm run test:smoke:qa-token-required[^"]*"/);
+  assert.match(gitignore, /\/public\/sw\.js/);
+  assert.match(cleanNextDir, /workbox-/);
+  assert.match(cleanNextDir, /swe-worker-/);
+  assert.match(cleanNextDir, /sw\\\.js/);
+  assert.equal(packageJsonData.dependencies?.["@ducanh2912/next-pwa"], undefined);
+  assert.match(packageJsonData.devDependencies?.["@ducanh2912/next-pwa"] ?? "", /^\^/);
 });
 
 test("archive search defers remote querying until input settles", () => {
@@ -447,6 +458,7 @@ test("public runtime env is centralized for pwa and qa UI gates", () => {
   assert.match(publicEnv, /enablePwa:/);
   assert.match(publicEnv, /enableQa:/);
   assert.match(publicEnv, /appVersion:/);
+  assert.doesNotMatch(publicEnv, /from "zod"/);
   assert.match(nextConfig, /from "@\/lib\/config\/public-env"/);
   assert.match(updateBanner, /from "@\/lib\/config\/public-env"/);
   assert.match(cleanup, /from "@\/lib\/config\/public-env"/);
@@ -461,6 +473,28 @@ test("public runtime env is centralized for pwa and qa UI gates", () => {
   assert.doesNotMatch(cleanup, /process\.env\.NEXT_PUBLIC_APP_VERSION/);
   assert.doesNotMatch(qaMode, /process\.env\.NEXT_PUBLIC_ENABLE_QA/);
   assert.doesNotMatch(qaPage, /process\.env\.NEXT_PUBLIC_ENABLE_QA/);
+});
+
+test("maintenance scripts share smoke and admin helpers", () => {
+  const backfillOwners = read("scripts/backfill-meal-owners.mjs");
+  const migrateMeals = read("scripts/migrate-meals-schema.mjs");
+  const migrateComments = read("scripts/migrate-comments-to-subcollection.mjs");
+  const smokeTest = read("scripts/smoke-test.mjs");
+  const smokeMealMutations = read("scripts/smoke-meal-mutations.mjs");
+  const firebaseAdminHelper = read("scripts/lib/firebase-admin-app.mjs");
+  const smokeHelper = read("scripts/lib/smoke-server.mjs");
+
+  assert.match(backfillOwners, /\.\/lib\/firebase-admin-app\.mjs/);
+  assert.match(migrateMeals, /\.\/lib\/firebase-admin-app\.mjs/);
+  assert.match(migrateComments, /\.\/lib\/firebase-admin-app\.mjs/);
+  assert.match(smokeTest, /\.\/lib\/smoke-server\.mjs/);
+  assert.match(smokeMealMutations, /\.\/lib\/smoke-server\.mjs/);
+  assert.match(smokeMealMutations, /new FormData\(\)/);
+  assert.match(smokeMealMutations, /formData\.append\(\s*"file"/s);
+  assert.doesNotMatch(smokeMealMutations, /JSON\.stringify\(\{ imageData/);
+  assert.match(firebaseAdminHelper, /getAdminDbContext/);
+  assert.match(smokeHelper, /startNpmScript/);
+  assert.match(smokeHelper, /waitForServer/);
 });
 
 test("qa fixtures use readable Korean literals in source", () => {
@@ -540,12 +574,14 @@ test("client error route rejects oversized content-length before reading the bod
 
 test("update polling only runs when a service worker registration is available", () => {
   const updateBanner = read("components/AppUpdateBanner.tsx");
+  const updateMonitor = read("components/hooks/useAppUpdateMonitor.ts");
 
-  assert.match(updateBanner, /if \(!registration\) return;/);
-  assert.match(updateBanner, /await setupServiceWorker\(\);/);
-  assert.match(updateBanner, /if \(registration\) \{/);
-  assert.match(updateBanner, /window\.setInterval/);
-  assert.doesNotMatch(updateBanner, /void checkForUpdate\(\);\s*\n\s*intervalId = window\.setInterval/);
+  assert.match(updateBanner, /useAppUpdateMonitor/);
+  assert.match(updateMonitor, /if \(!registration\) return;/);
+  assert.match(updateMonitor, /await setupServiceWorker\(\);/);
+  assert.match(updateMonitor, /if \(registration\) \{/);
+  assert.match(updateMonitor, /window\.setInterval/);
+  assert.doesNotMatch(updateMonitor, /void checkForUpdate\(\);\s*\n\s*intervalId = window\.setInterval/);
 });
 
 test("profile notification settings stay wired after removing dead activity feed ui", () => {
@@ -569,6 +605,7 @@ test("profile notification settings stay wired after removing dead activity feed
 
 test("add flow remembers recent meal draft defaults", () => {
   const addPage = read("app/add/page.tsx");
+  const mealImageField = read("components/meal-editor/MealImageField.tsx");
   const mealDraft = read("lib/meal-draft.ts");
   const mealCopy = read("lib/meal-copy.ts");
   const mealErrors = read("lib/meal-errors.ts");
@@ -582,7 +619,7 @@ test("add flow remembers recent meal draft defaults", () => {
   assert.match(addPage, /saveMealDraftDefaults/);
   assert.match(addPage, /buildAutoMealDescription/);
   assert.match(addPage, /createMealRecord/);
-  assert.match(addPage, /data-testid="add-photo-input"/);
+  assert.match(mealImageField, /data-testid=\{inputTestId\}/);
   assert.match(addPage, /data-testid="add-quick-save"/);
   assert.match(addPage, /toMealCreateErrorMessage/);
   assert.match(mealEditorRuntime, /uploadImage/);
@@ -845,6 +882,8 @@ test("eslint guards forbid compat barrels and direct console usage", () => {
 test("meal editor pages reuse focused meal form helpers and direct public env config", () => {
   const addPage = read("app/add/page.tsx");
   const editPage = read("app/edit/[id]/page.tsx");
+  const mealImageField = read("components/meal-editor/MealImageField.tsx");
+  const mealDetailsSection = read("components/meal-editor/MealDetailsSection.tsx");
   const mealForm = read("lib/meal-form.ts");
   const imagePolicy = read("lib/meal-image-policy.ts");
   const imageHook = read("components/hooks/useMealImageSelection.ts");
@@ -878,10 +917,16 @@ test("meal editor pages reuse focused meal form helpers and direct public env co
   assert.match(imageHook, /warningMessage\?: string/);
   assert.match(imageHook, /setPreviewUnavailable\(true\)/);
 
-  assert.match(addPage, /from "@\/components\/hooks\/useMealImageSelection"/);
-  assert.match(editPage, /from "@\/components\/hooks\/useMealImageSelection"/);
+  assert.match(addPage, /from "@\/components\/meal-editor\/MealImageField"/);
+  assert.match(addPage, /from "@\/components\/meal-editor\/MealDetailsSection"/);
+  assert.match(editPage, /from "@\/components\/meal-editor\/MealImageField"/);
+  assert.match(editPage, /from "@\/components\/meal-editor\/MealDetailsSection"/);
   assert.match(addPage, /from "@\/lib\/features\/meals\/application\/meal-editor-service"/);
   assert.match(editPage, /from "@\/lib\/features\/meals\/application\/meal-editor-service"/);
+  assert.match(mealImageField, /data-testid=\{inputTestId\}/);
+  assert.match(mealImageField, /className="media-picker"/);
+  assert.match(mealDetailsSection, /USER_ROLES\.map/);
+  assert.match(mealDetailsSection, /VALID_MEAL_TYPES\.map/);
   assert.doesNotMatch(addPage, /new FileReader\(/);
   assert.doesNotMatch(editPage, /new FileReader\(/);
   assert.match(addPage, /const imageSelection = useMealImageSelection\(\)/);

@@ -33,7 +33,7 @@
 - 댓글 상태 orchestration 은 `lib/features/comments/ui/useMealCommentsController.ts` 로 분리돼 있고, 실시간 목록 캐시는 `lib/meal-comments-store.ts` 가 담당합니다.
 - 반응 상태 orchestration 은 `lib/features/reactions/ui/useMealReactionsController.ts` 로 분리돼 있습니다.
 - 댓글 클라이언트 호출은 `lib/client/comments.ts`, 반응 클라이언트 호출은 `lib/client/reactions.ts` 로 분리했습니다.
-- `lib/modules/comments/contracts.ts`, `lib/modules/profile/contracts.ts` 가 feature 계층이 사용하는 입력 계약을 고정합니다.
+- `lib/modules/comments/contracts.ts`, `lib/modules/meals/contracts.ts` 가 feature 계층과 런타임 adapter 사이의 최소 계약을 고정합니다.
 - 댓글/반응/프로필 feature service 는 더 이상 `lib/qa/runtime.ts` 를 직접 참조하지 않고 각 모듈 runtime adapter 를 통해 QA/운영 구현을 고릅니다.
 - 알림 activity 문서는 서버에서 계속 기록하지만, 현재 클라이언트는 피드 UI 를 두지 않고 `lib/client/activity.ts` 를 통해 알림 설정 저장만 수행합니다.
 - 댓글 생성/수정/삭제의 서버 트랜잭션 로직은 `lib/server/comments/comment-use-cases.ts` 로 추출했고, API 라우트는 얇은 컨트롤러 역할만 수행합니다.
@@ -94,6 +94,7 @@
 - `lib/qa/`: QA 모드, fixture, session, runtime adapter
 - `lib/`: Firebase 초기화, 타입, 공통 유틸, 로깅, PWA cache helper
 - `scripts/`: 스모크 테스트, 마이그레이션, 보조 도구
+- `scripts/lib/`: 스크립트 간 공통 process/Firebase helper
 - `tests/`: 구조 회귀 테스트, API 보안 테스트, Firestore Rules 테스트, E2E
 
 ## 경계 규칙
@@ -114,9 +115,10 @@
 - `tests/meal-image-runtime.test.mts`: multipart 업로드, `sharp` 정규화, cleanup API, 이미지 선택 훅을 실행 기반으로 검증
 - `tests/firestore.rules.test.mjs`: Firestore Rules 검증
 - `tests/e2e/*`: 브라우저 플로우 검증
+- `scripts/smoke-test.mjs`, `scripts/smoke-qa-token-required.mjs`, `scripts/smoke-meal-mutations.mjs`: 배포/로컬 런타임 smoke 검증
 
 ## 현재 주의 지점
 
 - 식사 삭제/수정은 `ownerUid` 기반으로만 허용되며, 레거시 meal 문서는 백필 전까지 변경이 차단됩니다.
 - 아카이브 검색은 서버에서 제한된 배치 scan 으로 필터링하며, 스캔 한계에 걸리면 다음 페이지로 이어서 탐색합니다.
-- PWA 관련 생성물은 빌드 환경과 플래그에 따라 public 자산이 바뀔 수 있습니다.
+- PWA 관련 생성물은 빌드 환경과 플래그에 따라 public 자산이 바뀔 수 있으며, `npm run build:clean` 은 stale service worker/workbox 파일도 함께 정리합니다.

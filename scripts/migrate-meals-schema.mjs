@@ -7,25 +7,16 @@
 
   Requirements:
     - Service account or ADC credentials available.
-    - FIREBASE_PROJECT_ID env var recommended.
+    - FIREBASE_ADMIN_PROJECT_ID env var recommended.
 */
 
-import admin from 'firebase-admin';
+import { admin, getAdminDbContext } from "./lib/firebase-admin-app.mjs";
 
 const DRY_RUN = process.argv.includes('--dry-run');
-const PROJECT_ID = process.env.FIREBASE_PROJECT_ID || process.env.GCLOUD_PROJECT || 'family-meal-91736';
+const { db, projectId: PROJECT_ID } = getAdminDbContext();
 
 const ROLES = ['아빠', '엄마', '딸', '아들'];
 const ROLE_SET = new Set(ROLES);
-
-if (!admin.apps.length) {
-  admin.initializeApp({
-    credential: admin.credential.applicationDefault(),
-    projectId: PROJECT_ID,
-  });
-}
-
-const db = admin.firestore();
 
 function sanitizeRoleList(raw) {
   if (!Array.isArray(raw)) return [];

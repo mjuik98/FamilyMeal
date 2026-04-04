@@ -2,11 +2,12 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Camera, Save } from "lucide-react";
+import { Save } from "lucide-react";
 
 import { useMealImageSelection } from "@/components/hooks/useMealImageSelection";
+import { MealDetailsSection } from "@/components/meal-editor/MealDetailsSection";
+import { MealImageField } from "@/components/meal-editor/MealImageField";
 import PageHeader from "@/components/PageHeader";
-import SurfaceSection from "@/components/SurfaceSection";
 import { useToast } from "@/components/Toast";
 import { useUser } from "@/context/UserContext";
 import { combineDateAndTime, formatDateKey, formatTimeKey } from "@/lib/date-utils";
@@ -15,7 +16,6 @@ import {
   updateExistingMealRecord,
 } from "@/lib/features/meals/application/meal-editor-service";
 import { MEAL_IMAGE_INPUT_ACCEPT } from "@/lib/meal-image-policy";
-import { USER_ROLES, VALID_MEAL_TYPES } from "@/lib/domain/meal-policy";
 import { logError } from "@/lib/logging";
 import { toMealUpdateErrorMessage } from "@/lib/meal-errors";
 import { hasMealParticipants, toggleMealParticipant } from "@/lib/meal-form";
@@ -125,6 +125,12 @@ export default function EditMealPage() {
       ? "미리보기를 표시하지 못했습니다. 업로드 시 서버에서 변환을 시도합니다."
       : "저장된 이미지를 표시하지 못했습니다."
     : null;
+  const handleClearImage = () => {
+    imageSelection.clearImage();
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
 
   const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -224,114 +230,25 @@ export default function EditMealPage() {
         )}
 
         <form onSubmit={handleSubmit} className="form-stack">
-          <SurfaceSection
-            title="사진"
-            actions={
-              imageSelection.imagePreview ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    imageSelection.clearImage();
-                    if (fileInputRef.current) {
-                      fileInputRef.current.value = "";
-                    }
-                  }}
-                  className="link-button"
-                >
-                  삭제
-                </button>
-              ) : undefined
-            }
-            bodyClassName=""
-          >
-              <button
-                type="button"
-                disabled={requiresLegacyMigration}
-                onClick={() => fileInputRef.current?.click()}
-                className="media-picker"
-              >
-              {imageSelection.imagePreview && !imageSelection.previewUnavailable ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={imageSelection.imagePreview}
-                  alt="Preview"
-                  className="media-preview"
-                  onError={() => imageSelection.markPreviewUnavailable()}
-                />
-              ) : (
-                <div className="media-placeholder">
-                  <Camera size={36} strokeWidth={1.5} />
-                  <span style={{ fontSize: "0.85rem" }}>
-                    {imageSelection.previewUnavailable
-                      ? "미리보기를 표시하지 못했습니다"
-                      : "눌러서 사진 추가"}
-                  </span>
-                </div>
-              )}
-            </button>
-            {imageSelection.localImageSummary ? (
-              <p className="surface-note" style={{ marginTop: "10px" }}>
-                {imageSelection.localImageSummary} · 업로드 시 서버에서 자동 최적화됩니다.
-              </p>
-            ) : null}
-            {previewStatusMessage ? (
-              <p className="surface-note" style={{ marginTop: "8px", color: "var(--danger)" }}>
-                {previewStatusMessage}
-              </p>
-            ) : null}
-            {imageSelection.validationError ? (
-              <p className="surface-note" style={{ marginTop: "8px", color: "var(--danger)" }}>
-                {imageSelection.validationError.message}
-              </p>
-            ) : null}
-          </SurfaceSection>
-
-          <input
-            type="file"
-            ref={fileInputRef}
-            onChange={(event) => {
+          <MealImageField
+            disabled={requiresLegacyMigration}
+            emptyStateLabel="눌러서 사진 추가"
+            fileInputRef={fileInputRef}
+            imagePreview={imageSelection.imagePreview}
+            inputAccept={MEAL_IMAGE_INPUT_ACCEPT}
+            localImageSummary={imageSelection.localImageSummary}
+            onClearImage={handleClearImage}
+            onImageChange={(event) => {
               void handleImageChange(event);
             }}
-            disabled={requiresLegacyMigration}
-            accept={MEAL_IMAGE_INPUT_ACCEPT}
-            style={{ display: "none" }}
+            onPreviewError={() => imageSelection.markPreviewUnavailable()}
+            previewUnavailable={imageSelection.previewUnavailable}
+            previewStatusMessage={previewStatusMessage}
+            validationError={imageSelection.validationError}
           />
 
-          <SurfaceSection title="식사 정보" bodyClassName="surface-body form-stack">
-              <div>
-                <label className="form-label">식사 종류</label>
-                <div className="chip-group">
-                  {VALID_MEAL_TYPES.map((value) => (
-                    <button
-                      key={value}
-                      type="button"
-                      disabled={requiresLegacyMigration}
-                      onClick={() => setType(value)}
-                      className={`chip-button${type === value ? " chip-button-active" : ""}`}
-                    >
-                      {value}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <label className="form-label">함께 먹은 사람</label>
-                <div className="chip-group">
-                  {USER_ROLES.map((role) => (
-                    <button
-                      key={role}
-                      type="button"
-                      disabled={requiresLegacyMigration}
-                      onClick={() => setSelectedUsers((prev) => toggleMealParticipant(prev, role))}
-                      className={`chip-button${selectedUsers.includes(role) ? " chip-button-active" : ""}`}
-                    >
-                      {role}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
+          <MealDetailsSection
+            dateTimeFields={
               <div>
                 <label className="form-label">언제 먹었나요</label>
                 <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
@@ -369,27 +286,19 @@ export default function EditMealPage() {
                   />
                 </div>
               </div>
-
-              <div>
-                <label className="form-label">설명</label>
-                <textarea
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder="어떤 식사를 했는지 적어주세요"
-                  required
-                  disabled={requiresLegacyMigration}
-                  maxLength={300}
-                  className="input-base textarea-base"
-                  style={{
-                    width: "100%",
-                    minHeight: "116px",
-                    padding: "14px 14px 16px",
-                    resize: "vertical",
-                    outline: "none",
-                  }}
-                />
-              </div>
-          </SurfaceSection>
+            }
+            description={description}
+            descriptionPlaceholder="어떤 식사를 했는지 적어주세요"
+            descriptionRequired
+            disabled={requiresLegacyMigration}
+            onDescriptionChange={setDescription}
+            onToggleUser={(role) =>
+              setSelectedUsers((prev) => toggleMealParticipant(prev, role))
+            }
+            onTypeChange={setType}
+            selectedUsers={selectedUsers}
+            type={type}
+          />
 
           <div className="form-actions">
             <button type="button" onClick={() => router.back()} className="secondary-button">
