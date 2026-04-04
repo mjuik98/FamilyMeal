@@ -46,6 +46,7 @@ let onAddMealPayload: (payload: unknown) => Promise<{ id: string }> = async () =
 let onStorageSave: (call: StorageSaveCall) => Promise<void> = async () => undefined;
 let onStorageDelete: (call: StorageDeleteCall) => Promise<void> = async () => undefined;
 let onReadMealImagePreview: (file: File) => Promise<string> = async () => "blob:preview";
+let onReadMealImageDataUrl: (file: File) => Promise<string> = async () => "data:image/jpeg;base64,preview";
 let onRevokeMealImagePreview: (previewUrl: string | null | undefined) => void = () => {};
 
 const mockModuleOptions = (exports: Record<string, unknown>) =>
@@ -86,6 +87,7 @@ mock.module("@/lib/server/route-auth", {
 mock.module("@/lib/meal-form", {
   ...mockModuleOptions({
     readMealImagePreview: (file: File) => onReadMealImagePreview(file),
+    readMealImageDataUrl: (file: File) => onReadMealImageDataUrl(file),
     revokeMealImagePreview: (previewUrl: string | null | undefined) =>
       onRevokeMealImagePreview(previewUrl),
   }),
@@ -112,6 +114,7 @@ const resetTestHandlers = () => {
   onStorageSave = async () => undefined;
   onStorageDelete = async () => undefined;
   onReadMealImagePreview = async () => "blob:preview";
+  onReadMealImageDataUrl = async () => "data:image/jpeg;base64,preview";
   onRevokeMealImagePreview = () => {};
 };
 
@@ -283,4 +286,191 @@ test("useMealImageSelection manages preview lifecycle for local files", async ()
   });
 
   assert.deepEqual(revokedPreviews, ["blob:preview-1", "blob:preview-2"]);
+});
+
+test("useMealImageSelection prefers data URL previews in Whale", async () => {
+  const originalNavigator = globalThis.navigator;
+  let blobPreviewReads = 0;
+  let dataUrlReads = 0;
+
+  onReadMealImagePreview = async () => {
+    blobPreviewReads += 1;
+    return "blob:preview";
+  };
+  onReadMealImageDataUrl = async () => {
+    dataUrlReads += 1;
+    return "data:image/jpeg;base64,whale-preview";
+  };
+
+  Object.defineProperty(globalThis, "navigator", {
+    configurable: true,
+    value: {
+      userAgent:
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Whale/4.32.315.15 Safari/537.36",
+    },
+  });
+
+  try {
+    const { useMealImageSelection } = await importFresh<
+      typeof import("../components/hooks/useMealImageSelection.ts")
+    >("../components/hooks/useMealImageSelection.ts");
+
+    type MealImageSelection = ReturnType<typeof useMealImageSelection>;
+
+    let imageSelection: MealImageSelection | null = null;
+
+    const Harness = () => {
+      imageSelection = useMealImageSelection();
+      return null;
+    };
+
+    await act(async () => {
+      TestRenderer.create(React.createElement(Harness));
+    });
+
+    const file = new File([new Uint8Array([97])], "whale.jpg", { type: "image/jpeg" });
+
+    await act(async () => {
+      await imageSelection!.selectFile(file);
+    });
+
+    assert.equal(blobPreviewReads, 0);
+    assert.equal(dataUrlReads, 1);
+    assert.equal(imageSelection!.imagePreview, "data:image/jpeg;base64,whale-preview");
+  } finally {
+    Object.defineProperty(globalThis, "navigator", {
+      configurable: true,
+      value: originalNavigator,
+    });
+  }
+});
+
+test("useMealImageSelection clears the prior local image when Whale reselection is invalid", async () => {
+  const originalNavigator = globalThis.navigator;
+
+  onReadMealImageDataUrl = async () => "data:image/jpeg;base64,whale-preview";
+
+  Object.defineProperty(globalThis, "navigator", {
+    configurable: true,
+    value: {
+      userAgent:
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Whale/4.32.315.15 Safari/537.36",
+    },
+  });
+
+  try {
+    const { useMealImageSelection } = await importFresh<
+      typeof import("../components/hooks/useMealImageSelection.ts")
+    >("../components/hooks/useMealImageSelection.ts");
+
+    type MealImageSelection = ReturnType<typeof useMealImageSelection>;
+
+    let imageSelection: MealImageSelection | null = null;
+
+    const Harness = () => {
+      imageSelection = useMealImageSelection();
+      return null;
+    };
+
+    await act(async () => {
+      TestRenderer.create(React.createElement(Harness));
+    });
+
+    const validFile = new File([new Uint8Array([97])], "whale.jpg", { type: "image/jpeg" });
+    const invalidFile = new File([new Uint8Array([98])], "notes.txt", { type: "text/plain" });
+
+    await act(async () => {
+      await imageSelection!.selectFile(validFile);
+    });
+
+    let invalidResult: Awaited<ReturnType<MealImageSelection["selectFile"]>> | null = null;
+    await act(async () => {
+      invalidResult = await imageSelection!.selectFile(invalidFile);
+    });
+
+    assert.deepEqual(invalidResult, {
+      ok: false,
+      error: {
+        code: "invalid_type",
+        message:
+          "지원하지 않는 이미지 형식입니다. JPG, PNG, WEBP, HEIC, HEIF 파일만 업로드할 수 있습니다.",
+      },
+    });
+    assert.equal(imageSelection!.imageFile, null);
+    assert.equal(imageSelection!.imagePreview, null);
+    assert.equal(imageSelection!.localImageSummary, null);
+  } finally {
+    Object.defineProperty(globalThis, "navigator", {
+      configurable: true,
+      value: originalNavigator,
+    });
+  }
+});
+
+test("useMealImageSelection keeps the new file when Whale preview reading fails", async () => {
+  const originalNavigator = globalThis.navigator;
+  const previews = ["data:image/jpeg;base64,first-preview"];
+
+  onReadMealImageDataUrl = async () => {
+    const nextPreview = previews.shift();
+    if (nextPreview) {
+      return nextPreview;
+    }
+
+    throw new Error("Failed to read image preview");
+  };
+
+  Object.defineProperty(globalThis, "navigator", {
+    configurable: true,
+    value: {
+      userAgent:
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Whale/4.32.315.15 Safari/537.36",
+    },
+  });
+
+  try {
+    const { useMealImageSelection } = await importFresh<
+      typeof import("../components/hooks/useMealImageSelection.ts")
+    >("../components/hooks/useMealImageSelection.ts");
+
+    type MealImageSelection = ReturnType<typeof useMealImageSelection>;
+
+    let imageSelection: MealImageSelection | null = null;
+
+    const Harness = () => {
+      imageSelection = useMealImageSelection();
+      return null;
+    };
+
+    await act(async () => {
+      TestRenderer.create(React.createElement(Harness));
+    });
+
+    const firstFile = new File([new Uint8Array([97])], "first.jpg", { type: "image/jpeg" });
+    const secondFile = new File([new Uint8Array([98])], "second.jpg", { type: "image/jpeg" });
+
+    await act(async () => {
+      await imageSelection!.selectFile(firstFile);
+    });
+
+    let secondResult: Awaited<ReturnType<MealImageSelection["selectFile"]>> | null = null;
+    await act(async () => {
+      secondResult = await imageSelection!.selectFile(secondFile);
+    });
+
+    assert.deepEqual(secondResult, {
+      ok: true,
+      warningMessage: "미리보기를 표시하지 못했습니다. 업로드 시 서버에서 변환을 시도합니다.",
+    });
+    assert.equal(imageSelection!.imageFile, secondFile);
+    assert.equal(imageSelection!.imagePreview, null);
+    assert.equal(imageSelection!.previewUnavailable, true);
+    assert.equal(imageSelection!.validationError, null);
+    assert.equal(imageSelection!.localImageSummary, "JPG · 1KB");
+  } finally {
+    Object.defineProperty(globalThis, "navigator", {
+      configurable: true,
+      value: originalNavigator,
+    });
+  }
 });

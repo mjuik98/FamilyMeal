@@ -869,11 +869,14 @@ test("meal editor pages reuse focused meal form helpers and direct public env co
   assert.match(imageHook, /export const useMealImageSelection =/);
   assert.match(imageHook, /validateMealImageFile/);
   assert.match(imageHook, /readMealImagePreview/);
+  assert.match(imageHook, /readMealImageDataUrl/);
   assert.match(imageHook, /revokeMealImagePreview/);
   assert.match(
     imageHook,
-    /if \(nextValidationError\) \{\s*if \(previewRef\.current\?\.startsWith\("blob:"\)\) \{\s*clearImage\(\);\s*\}\s*setValidationError\(nextValidationError\);/s
+    /if \(nextValidationError\) \{\s*if \(imageFile\) \{\s*clearImage\(\);\s*\}\s*setValidationError\(nextValidationError\);/s
   );
+  assert.match(imageHook, /warningMessage\?: string/);
+  assert.match(imageHook, /setPreviewUnavailable\(true\)/);
 
   assert.match(addPage, /from "@\/components\/hooks\/useMealImageSelection"/);
   assert.match(editPage, /from "@\/components\/hooks\/useMealImageSelection"/);
@@ -885,6 +888,10 @@ test("meal editor pages reuse focused meal form helpers and direct public env co
   assert.match(editPage, /const imageSelection = useMealImageSelection\(\)/);
   assert.match(addPage, /await imageSelection\.selectFile\(file\)/);
   assert.match(editPage, /await imageSelection\.selectFile\(file\)/);
+  assert.match(addPage, /result\.warningMessage/);
+  assert.match(editPage, /result\.warningMessage/);
+  assert.match(addPage, /finally \{\s*if \(fileInputRef\.current\) \{\s*fileInputRef\.current\.value = "";/s);
+  assert.match(editPage, /finally \{\s*if \(fileInputRef\.current\) \{\s*fileInputRef\.current\.value = "";/s);
   assert.match(addPage, /imageSelection\.clearImage\(\)/);
   assert.match(editPage, /imageSelection\.clearImage\(\)/);
   assert.match(addPage, /imageSelection\.imagePreview/);

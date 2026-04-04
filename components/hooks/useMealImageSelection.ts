@@ -7,11 +7,18 @@ import {
   type MealImageValidationError,
   validateMealImageFile,
 } from "@/lib/meal-image-policy";
-import { readMealImagePreview, revokeMealImagePreview } from "@/lib/meal-form";
+import {
+  readMealImageDataUrl,
+  readMealImagePreview,
+  revokeMealImagePreview,
+} from "@/lib/meal-form";
 
 type MealImageSelectionResult =
-  | { ok: true }
+  | { ok: true; warningMessage?: string }
   | { ok: false; error: MealImageValidationError };
+
+const LOCAL_PREVIEW_UNAVAILABLE_MESSAGE =
+  "미리보기를 표시하지 못했습니다. 업로드 시 서버에서 변환을 시도합니다.";
 
 export const useMealImageSelection = () => {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -33,6 +40,14 @@ export const useMealImageSelection = () => {
     if (!imageFile) return null;
     return formatMealImageFileSummary(imageFile);
   }, [imageFile]);
+  const prefersStablePreview = useMemo(() => {
+    if (typeof navigator !== "object") {
+      return false;
+    }
+
+    // Whale has shown unstable repaint behavior with blob preview URLs for local files.
+    return /Whale\//i.test(navigator.userAgent);
+  }, []);
 
   const clearImage = useCallback(() => {
     requestSequenceRef.current += 1;
@@ -57,7 +72,7 @@ export const useMealImageSelection = () => {
   const selectFile = useCallback(async (file: File): Promise<MealImageSelectionResult> => {
     const nextValidationError = validateMealImageFile(file);
     if (nextValidationError) {
-      if (previewRef.current?.startsWith("blob:")) {
+      if (imageFile) {
         clearImage();
       }
       setValidationError(nextValidationError);
@@ -71,7 +86,30 @@ export const useMealImageSelection = () => {
     setValidationError(null);
     setPreviewUnavailable(false);
 
-    const preview = await readMealImagePreview(file);
+    let preview: string;
+    try {
+      preview = prefersStablePreview
+        ? await readMealImageDataUrl(file)
+        : await readMealImagePreview(file);
+    } catch {
+      if (requestId !== requestSequenceRef.current) {
+        return {
+          ok: true,
+        };
+      }
+
+      revokeMealImagePreview(previewRef.current);
+      previewRef.current = null;
+      setImagePreview(null);
+      setImageFile(file);
+      setPreviewUnavailable(true);
+
+      return {
+        ok: true,
+        warningMessage: LOCAL_PREVIEW_UNAVAILABLE_MESSAGE,
+      };
+    }
+
     if (requestId !== requestSequenceRef.current) {
       revokeMealImagePreview(preview);
       return {
@@ -87,7 +125,7 @@ export const useMealImageSelection = () => {
     return {
       ok: true,
     };
-  }, [clearImage]);
+  }, [clearImage, imageFile, prefersStablePreview]);
 
   const markPreviewUnavailable = useCallback(() => {
     setPreviewUnavailable(true);

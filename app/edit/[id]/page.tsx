@@ -129,13 +129,21 @@ export default function EditMealPage() {
   const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const result = await imageSelection.selectFile(file);
-    if (!result.ok) {
-      showToast(result.error.message, "error");
-    }
 
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
+    try {
+      const result = await imageSelection.selectFile(file);
+      if (!result.ok) {
+        showToast(result.error.message, "error");
+      } else if (result.warningMessage) {
+        showToast(result.warningMessage, "error");
+      }
+    } catch (error) {
+      logError("Failed to prepare meal image preview", error);
+      showToast("미리보기를 준비하지 못했습니다. 다시 시도해 주세요.", "error");
+    } finally {
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
     }
   };
 
