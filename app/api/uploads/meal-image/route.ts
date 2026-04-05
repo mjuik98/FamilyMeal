@@ -1,14 +1,14 @@
 import { NextResponse } from "next/server";
 
-import { MAX_MEAL_IMAGE_REQUEST_BYTES } from "@/lib/meal-image-policy";
 import { serverEnv } from "@/lib/config/server-env";
+import { MAX_MEAL_IMAGE_REQUEST_BYTES } from "@/lib/modules/meals/domain/meal-image-policy";
+import { requireVerifiedUser } from "@/lib/platform/auth/route-auth";
 import {
   getRouteErrorPayload,
   getRouteErrorStatus,
   RouteError,
-} from "@/lib/route-errors";
-import { deleteStorageObjectByUrl } from "@/lib/server/meals/meal-storage";
-import { requireVerifiedUser } from "@/lib/server/route-auth";
+} from "@/lib/platform/http/route-errors";
+import { deleteStorageObjectByUrl } from "@/lib/modules/meals/server/meal-storage";
 import { storeMealImageFile } from "@/lib/server/uploads/meal-image-use-cases";
 
 export const runtime = "nodejs";

@@ -1,15 +1,11 @@
-import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { serverEnv } from "@/lib/config/server-env";
 import { USER_ROLES } from "@/lib/domain/meal-policy";
-import {
-  getRouteErrorPayload,
-  getRouteErrorStatus,
-  RouteError,
-} from "@/lib/route-errors";
-import { saveUserRoleProfile } from "@/lib/server/profile/profile-use-cases";
-import { requireVerifiedUser } from "@/lib/server/route-auth";
+import { handleRoute } from "@/lib/platform/http/route-handler";
+import { requireVerifiedUser } from "@/lib/platform/auth/route-auth";
+import { RouteError } from "@/lib/platform/http/route-errors";
+import { saveUserRoleProfile } from "@/lib/modules/profile/server/profile-use-cases";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -21,7 +17,7 @@ const RoleUpdateSchema = z.object({
 });
 
 export async function POST(request: Request) {
-  try {
+  return handleRoute(async () => {
     const user = await requireVerifiedUser(request);
 
     let body: unknown;
@@ -43,11 +39,6 @@ export async function POST(request: Request) {
       allowRoleReassign,
     });
 
-    return NextResponse.json({ ok: true, profile: updatedProfile });
-  } catch (error) {
-    return NextResponse.json(
-      { ok: false, error: getRouteErrorPayload(error) },
-      { status: getRouteErrorStatus(error) }
-    );
-  }
+    return { ok: true, profile: updatedProfile };
+  });
 }

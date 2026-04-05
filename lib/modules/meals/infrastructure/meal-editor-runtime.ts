@@ -1,6 +1,6 @@
 import { addMeal, deleteMeal, updateMeal } from "@/lib/client/meal-mutations";
 import { getMealById } from "@/lib/client/meal-queries";
-import { readMealImageDataUrl } from "@/lib/meal-form";
+import { readMealImageDataUrl } from "@/lib/modules/meals/domain/meal-form";
 import {
   deleteQaMeal,
   isQaMealsRuntimeActive,

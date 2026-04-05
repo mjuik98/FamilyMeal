@@ -1,7 +1,7 @@
 import { isReactionEmoji, normalizeReactionMap } from "@/lib/reactions";
 import type { Meal, MealComment } from "@/lib/types";
 
-import { fetchAuthedJson } from "@/lib/client/auth-http";
+import { fetchAuthedJson } from "@/lib/platform/http/auth-http";
 
 export const toggleMealReaction = async (mealId: string, emoji: string) => {
   if (!isReactionEmoji(emoji)) {

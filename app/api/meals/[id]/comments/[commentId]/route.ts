@@ -1,15 +1,13 @@
-import { NextResponse } from "next/server";
-
-import { getRouteErrorPayload, getRouteErrorStatus } from "@/lib/route-errors";
+import { handleRoute } from "@/lib/platform/http/route-handler";
+import { requireVerifiedUser } from "@/lib/platform/auth/route-auth";
 import {
   getCommentRouteParams,
   parseCommentUpdatePayload,
-} from "@/lib/server/comments/comment-policy";
+} from "@/lib/modules/comments/server/comment-policy";
 import {
   deleteMealCommentById,
   updateMealCommentById,
-} from "@/lib/server/comments/comment-use-cases";
-import { requireVerifiedUser } from "@/lib/server/route-auth";
+} from "@/lib/modules/comments/server/comment-use-cases";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -23,7 +21,7 @@ export async function PATCH(
   request: Request,
   context: { params: Promise<Params> }
 ) {
-  try {
+  return handleRoute(async () => {
     const user = await requireVerifiedUser(request);
     const { mealId, commentId } = await getCommentRouteParams(context.params);
     const { text } = await parseCommentUpdatePayload(request);
@@ -35,20 +33,15 @@ export async function PATCH(
       text,
     });
 
-    return NextResponse.json({ ok: true, comment });
-  } catch (error) {
-    return NextResponse.json(
-      { ok: false, error: getRouteErrorPayload(error) },
-      { status: getRouteErrorStatus(error) }
-    );
-  }
+    return { ok: true, comment };
+  });
 }
 
 export async function DELETE(
   request: Request,
   context: { params: Promise<Params> }
 ) {
-  try {
+  return handleRoute(async () => {
     const user = await requireVerifiedUser(request);
     const { mealId, commentId } = await getCommentRouteParams(context.params);
 
@@ -58,11 +51,6 @@ export async function DELETE(
       uid: user.uid,
     });
 
-    return NextResponse.json({ ok: true });
-  } catch (error) {
-    return NextResponse.json(
-      { ok: false, error: getRouteErrorPayload(error) },
-      { status: getRouteErrorStatus(error) }
-    );
-  }
+    return { ok: true };
+  });
 }

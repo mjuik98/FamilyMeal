@@ -7,7 +7,8 @@ const read = (relativePath) =>
   fs.readFileSync(path.join(process.cwd(), relativePath), "utf8");
 
 test("meal image policy centralizes accepted types and request limits", () => {
-  const source = read("lib/meal-image-policy.ts");
+  const source = read("lib/modules/meals/domain/meal-image-policy.ts");
+  const shim = read("lib/meal-image-policy.ts");
 
   assert.match(source, /MAX_MEAL_IMAGE_UPLOAD_BYTES/);
   assert.match(source, /MAX_MEAL_IMAGE_REQUEST_BYTES/);
@@ -16,10 +17,11 @@ test("meal image policy centralizes accepted types and request limits", () => {
   assert.match(source, /image\/heif/);
   assert.match(source, /export const validateMealImageFile =/);
   assert.match(source, /export const formatMealImageFileSize =/);
+  assert.match(shim, /modules\/meals\/domain\/meal-image-policy/);
 });
 
 test("meal image validation returns explicit error codes and messages", () => {
-  const source = read("lib/meal-image-policy.ts");
+  const source = read("lib/modules/meals/domain/meal-image-policy.ts");
 
   assert.match(source, /code:\s*"invalid_type"/);
   assert.match(source, /code:\s*"file_too_large"/);

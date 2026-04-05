@@ -78,13 +78,13 @@ mock.module("@/lib/firebase-admin", {
   }),
 });
 
-mock.module("@/lib/server/route-auth", {
+mock.module("@/lib/platform/auth/route-auth", {
   ...mockModuleOptions({
     requireVerifiedUser: async () => ({ uid: currentUserUid }),
   }),
 });
 
-mock.module("@/lib/meal-form", {
+mock.module("@/lib/modules/meals/domain/meal-form", {
   ...mockModuleOptions({
     readMealImagePreview: (file: File) => onReadMealImagePreview(file),
     readMealImageDataUrl: (file: File) => onReadMealImageDataUrl(file),

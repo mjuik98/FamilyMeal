@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
 
 import { parseDateKey } from "@/lib/date-utils";
+import { requireValidatedUserRole } from "@/lib/platform/auth/route-auth";
 import {
   getRouteErrorPayload,
   getRouteErrorStatus,
   RouteError,
-} from "@/lib/route-errors";
-import { listWeeklyMealStats } from "@/lib/server/meals/meal-read-use-cases";
-import { requireValidatedUserRole } from "@/lib/server/route-auth";
+} from "@/lib/platform/http/route-errors";
+import { listWeeklyMealStats } from "@/lib/modules/meals/server/meal-read-use-cases";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

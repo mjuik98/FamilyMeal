@@ -13,19 +13,19 @@ import {
   getRouteErrorMessage,
   getRouteErrorPayload,
   getRouteErrorStatus,
-} from "@/lib/route-errors";
+} from "@/lib/platform/http/route-errors";
+import { requireValidatedUserRole } from "@/lib/platform/auth/route-auth";
+import { AuthError } from "@/lib/platform/auth/server-auth";
 import {
   deleteMealCommentsByMealId,
   deleteMealDocumentById,
   markMealDeleteJob,
   planMealDeleteOperation,
-} from "@/lib/server/meals/meal-delete-use-cases";
-import { getMealByIdForActor } from "@/lib/server/meals/meal-read-use-cases";
-import { deleteStorageObjectByUrl } from "@/lib/server/meals/meal-storage";
-import { MealRouteError, type UpdateMealInput } from "@/lib/server/meals/meal-types";
-import { updateMealDocument } from "@/lib/server/meals/meal-write-use-cases";
-import { requireValidatedUserRole } from "@/lib/server/route-auth";
-import { AuthError } from "@/lib/server-auth";
+} from "@/lib/modules/meals/server/meal-delete-use-cases";
+import { getMealByIdForActor } from "@/lib/modules/meals/server/meal-read-use-cases";
+import { deleteStorageObjectByUrl } from "@/lib/modules/meals/server/meal-storage";
+import { MealRouteError, type UpdateMealInput } from "@/lib/modules/meals/server/meal-types";
+import { updateMealDocument } from "@/lib/modules/meals/server/meal-write-use-cases";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

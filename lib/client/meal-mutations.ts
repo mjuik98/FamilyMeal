@@ -7,7 +7,7 @@ import type {
   UpdateMealCommand,
 } from "@/lib/modules/meals/contracts";
 
-import { fetchAuthedJson } from "@/lib/client/auth-http";
+import { fetchAuthedJson } from "@/lib/platform/http/auth-http";
 
 export type MealUpdateInput = UpdateMealCommand;
 

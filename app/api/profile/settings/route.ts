@@ -1,13 +1,9 @@
-import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import {
-  getRouteErrorPayload,
-  getRouteErrorStatus,
-  RouteError,
-} from "@/lib/route-errors";
-import { saveUserNotificationPreferences } from "@/lib/server/profile/profile-use-cases";
-import { requireVerifiedUser } from "@/lib/server/route-auth";
+import { handleRoute } from "@/lib/platform/http/route-handler";
+import { requireVerifiedUser } from "@/lib/platform/auth/route-auth";
+import { RouteError } from "@/lib/platform/http/route-errors";
+import { saveUserNotificationPreferences } from "@/lib/modules/profile/server/profile-use-cases";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -24,7 +20,7 @@ const SettingsSchema = z.object({
 });
 
 export async function POST(request: Request) {
-  try {
+  return handleRoute(async () => {
     const user = await requireVerifiedUser(request);
 
     let body: unknown;
@@ -45,11 +41,6 @@ export async function POST(request: Request) {
       notificationPreferences,
     });
 
-    return NextResponse.json({ ok: true, profile });
-  } catch (error) {
-    return NextResponse.json(
-      { ok: false, error: getRouteErrorPayload(error) },
-      { status: getRouteErrorStatus(error) }
-    );
-  }
+    return { ok: true, profile };
+  });
 }

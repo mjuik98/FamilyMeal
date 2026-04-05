@@ -1,4 +1,4 @@
-import { getAccessToken, toApiError } from "@/lib/client/auth-http";
+import { getAccessToken, toApiError } from "@/lib/platform/http/auth-http";
 
 const uploadViaServer = async (imageFile: File): Promise<string> => {
   const requestUpload = async (forceRefresh = false): Promise<Response> => {

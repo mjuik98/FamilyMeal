@@ -11,7 +11,7 @@ import {
 import { useMealCommentsController as useMealComments } from "@/lib/features/comments/ui/useMealCommentsController";
 import { useMealReactionsController as useMealReactions } from "@/lib/features/reactions/ui/useMealReactionsController";
 import { logError } from "@/lib/logging";
-import { toMealDeleteErrorMessage } from "@/lib/meal-errors";
+import { toMealDeleteErrorMessage } from "@/lib/modules/meals/ui/meal-error-messages";
 import type { Meal } from "@/lib/types";
 
 import { useConfirm } from "./ConfirmDialog";

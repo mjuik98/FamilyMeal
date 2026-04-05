@@ -1,19 +1,14 @@
-import { NextResponse } from "next/server";
-
-import {
-  getRouteErrorPayload,
-  getRouteErrorStatus,
-  RouteError,
-} from "@/lib/route-errors";
-import { parseArchiveQueryParams } from "@/lib/server/meals/archive-types";
-import { listArchiveMeals } from "@/lib/server/meals/archive-use-cases";
-import { requireValidatedUserRole } from "@/lib/server/route-auth";
+import { handleRoute } from "@/lib/platform/http/route-handler";
+import { requireValidatedUserRole } from "@/lib/platform/auth/route-auth";
+import { RouteError } from "@/lib/platform/http/route-errors";
+import { parseArchiveQueryParams } from "@/lib/modules/meals/server/archive-types";
+import { listArchiveMeals } from "@/lib/modules/meals/server/archive-use-cases";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
-  try {
+  return handleRoute(async () => {
     const { user, role } = await requireValidatedUserRole(request);
 
     let query;
@@ -33,11 +28,6 @@ export async function GET(request: Request) {
       uid: user.uid,
       actorRole: role,
     });
-    return NextResponse.json({ ok: true, ...result });
-  } catch (error) {
-    return NextResponse.json(
-      { ok: false, error: getRouteErrorPayload(error) },
-      { status: getRouteErrorStatus(error) }
-    );
-  }
+    return { ok: true, ...result };
+  });
 }

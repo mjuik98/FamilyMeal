@@ -1,15 +1,13 @@
-import { NextResponse } from "next/server";
-
-import { getRouteErrorPayload, getRouteErrorStatus } from "@/lib/route-errors";
+import { handleRoute } from "@/lib/platform/http/route-handler";
+import { requireValidatedUserRole } from "@/lib/platform/auth/route-auth";
 import {
   getCommentReactionRouteParams,
   parseReactionPayload,
-} from "@/lib/server/reactions/reaction-policy";
+} from "@/lib/modules/reactions/server/reaction-policy";
 import {
   assertReactionActorRole,
   toggleCommentReactionForUser,
-} from "@/lib/server/reactions/reaction-use-cases";
-import { requireValidatedUserRole } from "@/lib/server/route-auth";
+} from "@/lib/modules/reactions/server/reaction-use-cases";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -20,7 +18,7 @@ export async function POST(
   request: Request,
   context: { params: Promise<Params> }
 ) {
-  try {
+  return handleRoute(async () => {
     const { user, role: actorRole } = await requireValidatedUserRole(
       request,
       assertReactionActorRole
@@ -37,11 +35,6 @@ export async function POST(
       emoji,
     });
 
-    return NextResponse.json({ ok: true, reactions });
-  } catch (error) {
-    return NextResponse.json(
-      { ok: false, error: getRouteErrorPayload(error) },
-      { status: getRouteErrorStatus(error) }
-    );
-  }
+    return { ok: true, reactions };
+  });
 }

@@ -48,10 +48,12 @@ test("comment and form inputs use shared input classes", () => {
 
 test("edit page waits for auth loading before redirecting", () => {
   const editPage = read("app/edit/[id]/page.tsx");
+  const editController = read("lib/modules/meals/ui/useEditMealPageController.ts");
 
-  assert.match(editPage, /const \{ userProfile, loading: authLoading \} = useUser\(\);/);
-  assert.match(editPage, /if \(authLoading\) \{\s*return;\s*\}/s);
-  assert.match(editPage, /if \(authLoading \|\| mealLoading\) \{/);
+  assert.match(editPage, /useEditMealPageController/);
+  assert.match(editController, /const \{ userProfile, loading: authLoading \} = useUser\(\);/);
+  assert.match(editController, /if \(authLoading\) \{\s*return;\s*\}/s);
+  assert.match(editController, /isLoading: authLoading \|\| mealLoading/);
 });
 
 test("login view uses the refreshed onboarding layout and shared CSS hooks", () => {
@@ -110,6 +112,7 @@ test("qa route for meal card e2e exists", () => {
 
 test("qa behavior is isolated behind feature application services", () => {
   const addPage = read("app/add/page.tsx");
+  const addController = read("lib/modules/meals/ui/useAddMealPageController.ts");
   const archivePage = read("app/archive/page.tsx");
   const mealDetailPage = read("app/meals/[id]/page.tsx");
   const userContext = read("context/UserContext.tsx");
@@ -133,7 +136,8 @@ test("qa behavior is isolated behind feature application services", () => {
   const qaProfileAdapter = read("lib/qa/adapters/profile.ts");
   const qaRuntime = read("lib/qa/runtime.ts");
 
-  assert.match(addPage, /@\/lib\/features\/meals\/application\/meal-editor-service/);
+  assert.match(addPage, /@\/lib\/modules\/meals\/ui\/useAddMealPageController/);
+  assert.match(addController, /@\/lib\/features\/meals\/application\/meal-editor-service/);
   assert.match(archivePage, /@\/lib\/features\/meals\/application\/meal-read-service/);
   assert.match(mealDetailPage, /@\/lib\/features\/meals\/application\/meal-read-service/);
   assert.match(userContext, /@\/lib\/features\/profile\/application\/user-session-service/);
@@ -143,6 +147,7 @@ test("qa behavior is isolated behind feature application services", () => {
   assert.match(weeklyStatsHook, /@\/lib\/features\/meals\/application\/meal-read-service/);
 
   assert.doesNotMatch(addPage, /@\/lib\/qa\/runtime/);
+  assert.doesNotMatch(addController, /@\/lib\/qa\/runtime/);
   assert.doesNotMatch(archivePage, /@\/lib\/qa\/runtime/);
   assert.doesNotMatch(mealDetailPage, /@\/lib\/qa\/runtime/);
   assert.doesNotMatch(userContext, /@\/lib\/qa\/runtime/);
@@ -219,7 +224,7 @@ test("reaction mutations are handled by dedicated APIs with shared validation", 
   const mealReactionRoute = read("app/api/meals/[id]/reactions/route.ts");
   const commentReactionRoute = read("app/api/meals/[id]/comments/[commentId]/reactions/route.ts");
   const reactionHelpers = read("lib/reactions.ts");
-  const reactionPolicy = read("lib/server/reactions/reaction-policy.ts");
+  const reactionPolicy = read("lib/modules/reactions/server/reaction-policy.ts");
 
   assert.match(clientReactions, /\/api\/meals\/\$\{encodedMealId\}\/reactions/);
   assert.match(clientReactions, /\/api\/meals\/\$\{encodedMealId\}\/comments\/\$\{encodedCommentId\}\/reactions/);
@@ -232,7 +237,7 @@ test("reaction mutations are handled by dedicated APIs with shared validation", 
 
 test("comment routes support replies and safe parent deletion guards", () => {
   const createRoute = read("app/api/meals/[id]/comments/route.ts");
-  const commentUseCases = read("lib/server/comments/comment-use-cases.ts");
+  const commentUseCases = read("lib/modules/comments/server/comment-use-cases.ts");
   const mealCard = read("components/MealCard.tsx");
   const mealConversationPanel = read("components/meal-detail/MealConversationPanel.tsx");
   const commentItem = read("components/comments/CommentItem.tsx");
@@ -357,13 +362,18 @@ test("meal card uses extracted hooks, shared comment subscription store, and sha
 
 test("edit page blocks legacy meal mutation locally and maps migration-required errors", () => {
   const editPage = read("app/edit/[id]/page.tsx");
-  const mealErrors = read("lib/meal-errors.ts");
+  const editController = read("lib/modules/meals/ui/useEditMealPageController.ts");
+  const mealErrorsShim = read("lib/meal-errors.ts");
+  const mealErrors = read("lib/modules/meals/ui/meal-error-messages.ts");
 
-  assert.match(editPage, /legacy meals require owner migration/i);
+  assert.match(editPage, /useEditMealPageController/);
   assert.match(editPage, /등록 이전 기록은 소유자 이전 작업 후 수정할 수 있습니다\./);
-  assert.doesNotMatch(editPage, /needsOwnerAdoption/);
-  assert.doesNotMatch(editPage, /ownerUid: userProfile\.uid/);
-  assert.match(mealErrors, /Legacy meals must be migrated before mutation/);
+  assert.match(editController, /requiresLegacyMigration/);
+  assert.match(editController, /showToast\("등록 이전 기록은 소유자 이전 작업 후 수정할 수 있습니다\.", "error"\)/);
+  assert.doesNotMatch(editController, /needsOwnerAdoption/);
+  assert.doesNotMatch(editController, /ownerUid: userProfile\.uid/);
+  assert.match(mealErrorsShim, /modules\/meals\/ui\/meal-error-messages/);
+  assert.match(mealErrors, /code === "legacy_meal_requires_migration"/);
   assert.match(mealErrors, /기존 기록이라 아직 수정할 수 없습니다\./);
 });
 
@@ -618,24 +628,32 @@ test("profile notification settings stay wired after removing dead activity feed
 
 test("add flow remembers recent meal draft defaults", () => {
   const addPage = read("app/add/page.tsx");
+  const addController = read("lib/modules/meals/ui/useAddMealPageController.ts");
   const mealImageField = read("components/meal-editor/MealImageField.tsx");
-  const mealDraft = read("lib/meal-draft.ts");
-  const mealCopy = read("lib/meal-copy.ts");
-  const mealErrors = read("lib/meal-errors.ts");
+  const mealDraftShim = read("lib/meal-draft.ts");
+  const mealDraft = read("lib/modules/meals/domain/meal-draft.ts");
+  const mealCopyShim = read("lib/meal-copy.ts");
+  const mealCopy = read("lib/modules/meals/domain/meal-copy.ts");
+  const mealErrorsShim = read("lib/meal-errors.ts");
+  const mealErrors = read("lib/modules/meals/ui/meal-error-messages.ts");
   const mealEditorRuntime = read("lib/modules/meals/infrastructure/meal-editor-runtime.ts");
   const homePage = read("app/page.tsx");
   const selectedDateHook = read("components/hooks/useSelectedDate.ts");
   const uploadHelper = read("lib/uploadImage.ts");
   const mealMutations = read("lib/client/meal-mutations.ts");
 
-  assert.match(addPage, /getMealDraftDefaults/);
-  assert.match(addPage, /saveMealDraftDefaults/);
-  assert.match(addPage, /buildAutoMealDescription/);
-  assert.match(addPage, /createMealRecord/);
+  assert.match(addPage, /useAddMealPageController/);
+  assert.match(addController, /getMealDraftDefaults/);
+  assert.match(addController, /saveMealDraftDefaults/);
+  assert.match(addController, /buildAutoMealDescription/);
+  assert.match(addController, /createMealRecord/);
   assert.match(mealImageField, /data-testid=\{inputTestId\}/);
   assert.match(addPage, /data-testid="add-quick-save"/);
-  assert.match(addPage, /toMealCreateErrorMessage/);
+  assert.match(addController, /toMealCreateErrorMessage/);
   assert.match(mealEditorRuntime, /uploadImage/);
+  assert.match(mealDraftShim, /modules\/meals\/domain\/meal-draft/);
+  assert.match(mealCopyShim, /modules\/meals\/domain\/meal-copy/);
+  assert.match(mealErrorsShim, /modules\/meals\/ui\/meal-error-messages/);
   assert.match(mealErrors, /사진 업로드에 실패했습니다\./);
   assert.match(mealErrors, /식사 기록 저장에 실패했습니다\./);
   assert.match(homePage, /useSelectedDate/);
@@ -651,9 +669,13 @@ test("add flow remembers recent meal draft defaults", () => {
 
 test("edit flow uses server mutation helper and specific failure copy", () => {
   const editPage = read("app/edit/[id]/page.tsx");
-  const mealErrors = read("lib/meal-errors.ts");
+  const editController = read("lib/modules/meals/ui/useEditMealPageController.ts");
+  const mealErrorsShim = read("lib/meal-errors.ts");
+  const mealErrors = read("lib/modules/meals/ui/meal-error-messages.ts");
 
-  assert.match(editPage, /toMealUpdateErrorMessage/);
+  assert.match(editPage, /useEditMealPageController/);
+  assert.match(editController, /toMealUpdateErrorMessage/);
+  assert.match(mealErrorsShim, /modules\/meals\/ui\/meal-error-messages/);
   assert.match(mealErrors, /사진 업로드에 실패했습니다\./);
   assert.match(mealErrors, /식사 기록 수정에 실패했습니다\./);
 });
@@ -662,7 +684,8 @@ test("detail actions fail closed for legacy meals and preserve delete status han
   const mealCard = read("components/MealCard.tsx");
   const mealMutations = read("lib/client/meal-mutations.ts");
   const mealContracts = read("lib/modules/meals/contracts.ts");
-  const mealErrors = read("lib/meal-errors.ts");
+  const mealErrorsShim = read("lib/meal-errors.ts");
+  const mealErrors = read("lib/modules/meals/ui/meal-error-messages.ts");
   const mealDetailSummary = read("components/meal-detail/MealDetailSummary.tsx");
 
   assert.match(mealCard, /const isOwner = useMemo\(\(\) => \{\s*if \(!userProfile\) return false;\s*return Boolean\(meal\.ownerUid && meal\.ownerUid === userProfile\.uid\);/s);
@@ -670,16 +693,18 @@ test("detail actions fail closed for legacy meals and preserve delete status han
   assert.match(mealContracts, /export type MealDeleteStatus =/);
   assert.match(mealContracts, /export type MealDeleteResult = \{\s*deleted: boolean;\s*status: MealDeleteStatus;\s*\}/s);
   assert.match(mealMutations, /from "@\/lib\/modules\/meals\/contracts"/);
+  assert.match(mealCard, /from "@\/lib\/modules\/meals\/ui\/meal-error-messages"/);
   assert.match(mealCard, /switch \(result\.status\)/);
   assert.match(mealCard, /const \[isDeleting, setIsDeleting\] = useState\(false\);/);
   assert.match(mealCard, /if \(isDeleting\) return;/);
   assert.match(mealCard, /case "already_processing":/);
   assert.match(mealCard, /삭제 작업이 이미 진행 중입니다\./);
   assert.match(mealCard, /"info"/);
+  assert.match(mealErrorsShim, /modules\/meals\/ui\/meal-error-messages/);
   assert.match(mealErrors, /기존 기록이라 아직 삭제할 수 없습니다\./);
   assert.match(mealCard, /case "already_deleted":/);
   assert.match(mealCard, /이미 삭제된 기록입니다\./);
-  assert.match(mealErrors, /Unexpected delete status/);
+  assert.match(mealErrors, /code === "unexpected_delete_status"/);
   assert.match(mealErrors, /삭제 상태를 확인하지 못했습니다\./);
   assert.doesNotMatch(mealCard, /showToast\("삭제 상태를 확인하지 못했습니다\.", "error"\)/);
   assert.match(mealDetailSummary, /deleteDisabled\?: boolean;/);
@@ -701,6 +726,7 @@ test("legacy participant fallback is shared across archive cards and detail summ
 test("detail page guards meal and same-day fetches against stale responses", () => {
   const mealDetailPage = read("app/meals/[id]/page.tsx");
   const editPage = read("app/edit/[id]/page.tsx");
+  const editController = read("lib/modules/meals/ui/useEditMealPageController.ts");
 
   assert.match(mealDetailPage, /const mealRequestSequenceRef = useRef\(0\)/);
   assert.match(mealDetailPage, /const sameDayRequestSequenceRef = useRef\(0\)/);
@@ -708,14 +734,15 @@ test("detail page guards meal and same-day fetches against stale responses", () 
   assert.match(mealDetailPage, /const requestId = \+\+sameDayRequestSequenceRef\.current/);
   assert.match(mealDetailPage, /if \(!active \|\| requestId !== mealRequestSequenceRef\.current\)/);
   assert.match(mealDetailPage, /if \(!active \|\| requestId !== sameDayRequestSequenceRef\.current\)/);
-  assert.match(editPage, /const loadRequestSequenceRef = useRef\(0\)/);
-  assert.match(editPage, /const currentUid = userProfile\?\.uid/);
-  assert.match(editPage, /const currentRole = userProfile\?\.role/);
-  assert.match(editPage, /const showToastRef = useRef\(showToast\)/);
-  assert.match(editPage, /let active = true;/);
-  assert.match(editPage, /const requestId = \+\+loadRequestSequenceRef\.current/);
-  assert.match(editPage, /if \(!active \|\| requestId !== loadRequestSequenceRef\.current\) \{/);
-  assert.doesNotMatch(editPage, /\}, \[mealId, router, showToast, userProfile\]\);/);
+  assert.match(editPage, /useEditMealPageController/);
+  assert.match(editController, /const loadRequestSequenceRef = useRef\(0\)/);
+  assert.match(editController, /const currentUid = userProfile\?\.uid/);
+  assert.match(editController, /const currentRole = userProfile\?\.role/);
+  assert.match(editController, /const showToastRef = useRef\(showToast\)/);
+  assert.match(editController, /let active = true;/);
+  assert.match(editController, /const requestId = \+\+loadRequestSequenceRef\.current/);
+  assert.match(editController, /if \(!active \|\| requestId !== loadRequestSequenceRef\.current\) \{/);
+  assert.doesNotMatch(editController, /\}, \[mealId, router, showToast, userProfile\]\);/);
 });
 
 test("detail page exits to archive after terminal delete outcomes and keyword search uses normalized participants", () => {
@@ -734,7 +761,8 @@ test("detail page exits to archive after terminal delete outcomes and keyword se
 
 test("meal delete route uses idempotent server cleanup flow", () => {
   const deleteRoute = read("app/api/meals/[id]/route.ts");
-  const mealDeleteUseCases = read("lib/server/meals/meal-delete-use-cases.ts");
+  const mealDeleteUseCases = read("lib/modules/meals/server/meal-delete-use-cases.ts");
+  const mealDeleteShim = read("lib/server/meals/meal-delete-use-cases.ts");
   assert.match(deleteRoute, /planMealDeleteOperation/);
   assert.match(deleteRoute, /deleteMealCommentsByMealId/);
   assert.match(deleteRoute, /markMealDeleteJob/);
@@ -743,6 +771,7 @@ test("meal delete route uses idempotent server cleanup flow", () => {
   assert.match(deleteRoute, /status:\s*"completed"/);
   assert.match(deleteRoute, /status:\s*"failed"/);
   assert.match(mealDeleteUseCases, /deleteMealCommentsByMealId/);
+  assert.match(mealDeleteShim, /from "@\/lib\/modules\/meals\/server\/meal-delete-use-cases"/);
 });
 
 test("qa mock mode is disabled in production by env guard", () => {
@@ -772,7 +801,8 @@ test("client data access is split into focused adapters and user context delegat
   const clientActivity = read("lib/client/activity.ts");
   const clientProfile = read("lib/client/profile.ts");
   const profileSession = read("lib/client/profile-session.ts");
-  const authHttp = read("lib/client/auth-http.ts");
+  const authHttpShim = read("lib/client/auth-http.ts");
+  const authHttp = read("lib/platform/http/auth-http.ts");
   const mealCommentService = read("lib/features/comments/application/meal-comment-service.ts");
   const mealReactionService = read("lib/features/reactions/application/meal-reaction-service.ts");
   const commentRuntime = read("lib/modules/comments/infrastructure/comment-runtime.ts");
@@ -811,6 +841,7 @@ test("client data access is split into focused adapters and user context delegat
   assert.match(clientProfile, /export const users =/);
   assert.match(profileSession, /export const loadUserProfile = async/);
   assert.match(profileSession, /export const saveUserRole = async/);
+  assert.match(authHttpShim, /from "@\/lib\/platform\/http\/auth-http"/);
   assert.match(authHttp, /export const getAccessToken = async/);
   assert.match(authHttp, /export const parseErrorMessage = async/);
   removedCompatFiles.forEach((filePath) => assert.equal(fs.existsSync(filePath), false));
@@ -863,7 +894,7 @@ test("meal date hooks are routed through feature ui controllers and upload helpe
   assert.match(weeklyStatsController, /export const useWeeklyStatsController =/);
   removedCompatHooks.forEach((filePath) => assert.equal(fs.existsSync(filePath), false));
 
-  assert.match(uploadHelper, /from "@\/lib\/client\/auth-http"/);
+  assert.match(uploadHelper, /from "@\/lib\/platform\/http\/auth-http"/);
   assert.doesNotMatch(uploadHelper, /const getAccessToken = async/);
   assert.doesNotMatch(uploadHelper, /const parseErrorMessage = async/);
 });
@@ -879,12 +910,18 @@ test("stale generated assets are removed from the tracked source tree", () => {
 test("runtime pages avoid compat meal barrel and comment store reuses shared serializers", () => {
   const addPage = read("app/add/page.tsx");
   const editPage = read("app/edit/[id]/page.tsx");
+  const addController = read("lib/modules/meals/ui/useAddMealPageController.ts");
+  const editController = read("lib/modules/meals/ui/useEditMealPageController.ts");
   const commentsStore = read("lib/meal-comments-store.ts");
 
-  assert.match(addPage, /from "@\/lib\/features\/meals\/application\/meal-editor-service"/);
-  assert.match(editPage, /from "@\/lib\/features\/meals\/application\/meal-editor-service"/);
+  assert.match(addPage, /from "@\/lib\/modules\/meals\/ui\/useAddMealPageController"/);
+  assert.match(editPage, /from "@\/lib\/modules\/meals\/ui\/useEditMealPageController"/);
+  assert.match(addController, /from "@\/lib\/features\/meals\/application\/meal-editor-service"/);
+  assert.match(editController, /from "@\/lib\/features\/meals\/application\/meal-editor-service"/);
   assert.doesNotMatch(addPage, /@\/lib\/data/);
   assert.doesNotMatch(editPage, /@\/lib\/data/);
+  assert.doesNotMatch(addController, /@\/lib\/data/);
+  assert.doesNotMatch(editController, /@\/lib\/data/);
 
   assert.match(commentsStore, /from "@\/lib\/client\/serializers"/);
   assert.doesNotMatch(commentsStore, /const normalizeComment =/);
@@ -902,10 +939,14 @@ test("eslint guards forbid compat barrels and direct console usage", () => {
 test("meal editor pages reuse focused meal form helpers and direct public env config", () => {
   const addPage = read("app/add/page.tsx");
   const editPage = read("app/edit/[id]/page.tsx");
+  const addController = read("lib/modules/meals/ui/useAddMealPageController.ts");
+  const editController = read("lib/modules/meals/ui/useEditMealPageController.ts");
   const mealImageField = read("components/meal-editor/MealImageField.tsx");
   const mealDetailsSection = read("components/meal-editor/MealDetailsSection.tsx");
-  const mealForm = read("lib/meal-form.ts");
-  const imagePolicy = read("lib/meal-image-policy.ts");
+  const mealFormShim = read("lib/meal-form.ts");
+  const mealForm = read("lib/modules/meals/domain/meal-form.ts");
+  const imagePolicyShim = read("lib/meal-image-policy.ts");
+  const imagePolicy = read("lib/modules/meals/domain/meal-image-policy.ts");
   const imageHook = read("components/hooks/useMealImageSelection.ts");
   const mealEditorService = read("lib/features/meals/application/meal-editor-service.ts");
   const mealEditorRuntime = read("lib/modules/meals/infrastructure/meal-editor-runtime.ts");
@@ -919,11 +960,13 @@ test("meal editor pages reuse focused meal form helpers and direct public env co
   assert.match(mealForm, /export const readMealImageDataUrl = async/);
   assert.match(mealForm, /export const toggleMealParticipant =/);
   assert.doesNotMatch(mealForm, /export const isLocalMealImagePreview =/);
+  assert.match(mealFormShim, /modules\/meals\/domain\/meal-form/);
 
   assert.match(imagePolicy, /MAX_MEAL_IMAGE_UPLOAD_BYTES/);
   assert.match(imagePolicy, /ALLOWED_MEAL_IMAGE_TYPES/);
   assert.match(imagePolicy, /export const validateMealImageFile =/);
   assert.match(imagePolicy, /export const formatMealImageFileSize =/);
+  assert.match(imagePolicyShim, /modules\/meals\/domain\/meal-image-policy/);
 
   assert.match(imageHook, /export const useMealImageSelection =/);
   assert.match(imageHook, /validateMealImageFile/);
@@ -941,32 +984,34 @@ test("meal editor pages reuse focused meal form helpers and direct public env co
   assert.match(addPage, /from "@\/components\/meal-editor\/MealDetailsSection"/);
   assert.match(editPage, /from "@\/components\/meal-editor\/MealImageField"/);
   assert.match(editPage, /from "@\/components\/meal-editor\/MealDetailsSection"/);
-  assert.match(addPage, /from "@\/lib\/features\/meals\/application\/meal-editor-service"/);
-  assert.match(editPage, /from "@\/lib\/features\/meals\/application\/meal-editor-service"/);
+  assert.match(addPage, /from "@\/lib\/modules\/meals\/ui\/useAddMealPageController"/);
+  assert.match(editPage, /from "@\/lib\/modules\/meals\/ui\/useEditMealPageController"/);
+  assert.match(addController, /from "@\/components\/hooks\/useMealImageSelection"/);
+  assert.match(editController, /from "@\/components\/hooks\/useMealImageSelection"/);
   assert.match(mealImageField, /data-testid=\{inputTestId\}/);
   assert.match(mealImageField, /className="media-picker"/);
   assert.match(mealDetailsSection, /USER_ROLES\.map/);
   assert.match(mealDetailsSection, /VALID_MEAL_TYPES\.map/);
   assert.doesNotMatch(addPage, /new FileReader\(/);
   assert.doesNotMatch(editPage, /new FileReader\(/);
-  assert.match(addPage, /const imageSelection = useMealImageSelection\(\)/);
-  assert.match(editPage, /const imageSelection = useMealImageSelection\(\)/);
-  assert.match(addPage, /await imageSelection\.selectFile\(file\)/);
-  assert.match(editPage, /await imageSelection\.selectFile\(file\)/);
-  assert.match(addPage, /result\.warningMessage/);
-  assert.match(editPage, /result\.warningMessage/);
-  assert.match(addPage, /finally \{\s*if \(fileInputRef\.current\) \{\s*fileInputRef\.current\.value = "";/s);
-  assert.match(editPage, /finally \{\s*if \(fileInputRef\.current\) \{\s*fileInputRef\.current\.value = "";/s);
-  assert.match(addPage, /imageSelection\.clearImage\(\)/);
-  assert.match(editPage, /imageSelection\.clearImage\(\)/);
-  assert.match(addPage, /imageSelection\.imagePreview/);
-  assert.match(editPage, /imageSelection\.imagePreview/);
-  assert.match(addPage, /imageSelection\.imageFile/);
-  assert.match(editPage, /imageSelection\.imageFile/);
-  assert.match(addPage, /imageSelection\.validationError/);
-  assert.match(editPage, /imageSelection\.validationError/);
+  assert.match(addController, /const imageSelection = useMealImageSelection\(\)/);
+  assert.match(editController, /const imageSelection = useMealImageSelection\(\)/);
+  assert.match(addController, /await imageSelection\.selectFile\(file\)/);
+  assert.match(editController, /await imageSelection\.selectFile\(file\)/);
+  assert.match(addController, /result\.warningMessage/);
+  assert.match(editController, /result\.warningMessage/);
+  assert.match(addController, /finally \{\s*if \(fileInputRef\.current\) \{\s*fileInputRef\.current\.value = "";/s);
+  assert.match(editController, /finally \{\s*if \(fileInputRef\.current\) \{\s*fileInputRef\.current\.value = "";/s);
+  assert.match(addController, /imageSelection\.clearImage\(\)/);
+  assert.match(editController, /imageSelection\.clearImage\(\)/);
+  assert.match(addPage, /controller\.imageSelection\.imagePreview/);
+  assert.match(editPage, /controller\.imageSelection\.imagePreview/);
+  assert.match(addPage, /controller\.imageSelection\.imageFile/);
+  assert.match(editController, /imageSelection\.imageFile/);
+  assert.match(addPage, /controller\.imageSelection\.validationError/);
+  assert.match(editPage, /controller\.imageSelection\.validationError/);
   assert.match(
-    editPage,
+    editController,
     /imageSelection\.isLocalImage\s*\?\s*"미리보기를 표시하지 못했습니다\. 업로드 시 서버에서 변환을 시도합니다\."\s*:\s*"저장된 이미지를 표시하지 못했습니다\."/s
   );
   assert.doesNotMatch(addPage, /const imagePreviewRequestSequenceRef = useRef\(0\)/);

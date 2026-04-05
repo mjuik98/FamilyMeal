@@ -1,4 +1,4 @@
-import { fetchAuthedJson } from "@/lib/client/auth-http";
+import { fetchAuthedJson } from "@/lib/platform/http/auth-http";
 import { normalizeNotificationPreferences } from "@/lib/activity";
 import type { NotificationPreferences } from "@/lib/types";
 

@@ -6,12 +6,12 @@ import {
   formatMealImageFileSummary,
   type MealImageValidationError,
   validateMealImageFile,
-} from "@/lib/meal-image-policy";
+} from "@/lib/modules/meals/domain/meal-image-policy";
 import {
   readMealImageDataUrl,
   readMealImagePreview,
   revokeMealImagePreview,
-} from "@/lib/meal-form";
+} from "@/lib/modules/meals/domain/meal-form";
 
 type MealImageSelectionResult =
   | { ok: true; warningMessage?: string }

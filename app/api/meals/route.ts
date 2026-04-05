@@ -13,12 +13,12 @@ import {
   getRouteErrorPayload,
   getRouteErrorStatus,
   RouteError,
-} from "@/lib/route-errors";
-import { listMealsForDate } from "@/lib/server/meals/meal-read-use-cases";
-import { deleteStorageObjectByUrl } from "@/lib/server/meals/meal-storage";
-import { createMealDocument } from "@/lib/server/meals/meal-write-use-cases";
-import { requireValidatedUserRole } from "@/lib/server/route-auth";
-import { MealRouteError } from "@/lib/server/meals/meal-types";
+} from "@/lib/platform/http/route-errors";
+import { requireValidatedUserRole } from "@/lib/platform/auth/route-auth";
+import { listMealsForDate } from "@/lib/modules/meals/server/meal-read-use-cases";
+import { deleteStorageObjectByUrl } from "@/lib/modules/meals/server/meal-storage";
+import { createMealDocument } from "@/lib/modules/meals/server/meal-write-use-cases";
+import { MealRouteError } from "@/lib/modules/meals/server/meal-types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

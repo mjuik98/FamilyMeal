@@ -7,7 +7,8 @@ const read = (relativePath) =>
   fs.readFileSync(path.join(process.cwd(), relativePath), "utf8");
 
 test("archive cursor helpers are defined in the server archive types module", () => {
-  const archiveTypes = read("lib/server/meals/archive-types.ts");
+  const archiveTypes = read("lib/modules/meals/server/archive-types.ts");
+  const archiveTypesShim = read("lib/server/meals/archive-types.ts");
 
   assert.match(archiveTypes, /export const ARCHIVE_PAGE_SIZE_DEFAULT = 24;/);
   assert.match(archiveTypes, /export const ARCHIVE_PAGE_SIZE_MAX = 48;/);
@@ -20,10 +21,11 @@ test("archive cursor helpers are defined in the server archive types module", ()
     archiveTypes,
     /Buffer\.from\(JSON\.stringify\(\{ lastTimestamp, lastId, mode \}\), "utf8"\)\.toString\("base64url"\)/
   );
+  assert.match(archiveTypesShim, /from "@\/lib\/modules\/meals\/server\/archive-types"/);
 });
 
 test("archive query parsing normalizes filters and seek cursors", () => {
-  const archiveTypes = read("lib/server/meals/archive-types.ts");
+  const archiveTypes = read("lib/modules/meals/server/archive-types.ts");
 
   assert.match(archiveTypes, /export const parseArchiveQueryParams =/);
   assert.match(archiveTypes, /limit: parsed\.data\.limit \?\? ARCHIVE_PAGE_SIZE_DEFAULT/);
@@ -36,7 +38,7 @@ test("archive query parsing normalizes filters and seek cursors", () => {
 });
 
 test("archive matching checks query, type, and participant together", () => {
-  const archiveTypes = read("lib/server/meals/archive-types.ts");
+  const archiveTypes = read("lib/modules/meals/server/archive-types.ts");
 
   assert.match(archiveTypes, /export const matchesArchiveMeal =/);
   assert.match(archiveTypes, /if \(filters\.type && meal\.type !== filters\.type\)/);
@@ -47,16 +49,19 @@ test("archive matching checks query, type, and participant together", () => {
 
 test("archive route threads authenticated caller identity into the server use case", () => {
   const archiveRoute = read("app/api/archive/route.ts");
-  const routeAuth = read("lib/server/route-auth.ts");
+  const routeAuthShim = read("lib/server/route-auth.ts");
+  const routeAuth = read("lib/platform/auth/route-auth.ts");
 
   assert.match(archiveRoute, /const \{ user, role \} = await requireValidatedUserRole\(request\);/);
+  assert.match(routeAuthShim, /from "@\/lib\/platform\/auth\/route-auth"/);
   assert.match(routeAuth, /verifyRequestUser/);
   assert.match(routeAuth, /getUserRole/);
   assert.match(archiveRoute, /const result = await listArchiveMeals\(\{\s*\.\.\.query,\s*uid: user\.uid,\s*actorRole: role,\s*\}\);/s);
 });
 
 test("archive listing enforces participant visibility and returns partial-scan metadata", () => {
-  const archiveUseCases = read("lib/server/meals/archive-use-cases.ts");
+  const archiveUseCases = read("lib/modules/meals/server/archive-use-cases.ts");
+  const archiveUseCasesShim = read("lib/server/meals/archive-use-cases.ts");
 
   assert.match(archiveUseCases, /actorRole: UserRole/);
   assert.match(
@@ -68,4 +73,5 @@ test("archive listing enforces participant visibility and returns partial-scan m
     archiveUseCases,
     /nextCursor: hasMore && cursorAnchor \? encodeArchiveCursor\(cursorAnchor\.timestamp, cursorAnchor\.id, cursorMode\) : null/
   );
+  assert.match(archiveUseCasesShim, /from "@\/lib\/modules\/meals\/server\/archive-use-cases"/);
 });

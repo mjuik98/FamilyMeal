@@ -8,16 +8,18 @@ const read = (relativePath) =>
 
 test("server auth uses server-only allowlist and production fail-closed guard", () => {
   const serverAuth = read("lib/server-auth.ts");
-  assert.match(serverAuth, /from "@\/lib\/config\/server-env"/);
-  assert.match(serverAuth, /serverEnv\.allowedEmails/);
-  assert.match(serverAuth, /Server allowlist is not configured/);
-  assert.match(serverAuth, /assertAllowlistConfigured/);
+  const platformServerAuth = read("lib/platform/auth/server-auth.ts");
+  assert.match(serverAuth, /from "@\/lib\/platform\/auth\/server-auth"/);
+  assert.match(platformServerAuth, /from "@\/lib\/config\/server-env"/);
+  assert.match(platformServerAuth, /serverEnv\.allowedEmails/);
+  assert.match(platformServerAuth, /Server allowlist is not configured/);
+  assert.match(platformServerAuth, /assertAllowlistConfigured/);
   assert.doesNotMatch(serverAuth, /NEXT_PUBLIC_ALLOWED_EMAILS/);
 });
 
 test("comment creation route only requires authenticated role", () => {
   const commentRoute = read("app/api/meals/[id]/comments/route.ts");
-  const commentUseCases = read("lib/server/comments/comment-use-cases.ts");
+  const commentUseCases = read("lib/modules/comments/server/comment-use-cases.ts");
   assert.match(commentRoute, /assertValidCommentRole/);
   assert.match(commentUseCases, /Valid user role is required/);
   assert.doesNotMatch(commentUseCases, /const canCommentOnMeal =/);
@@ -26,17 +28,19 @@ test("comment creation route only requires authenticated role", () => {
 
 test("role updates are handled by server route with lock policy", () => {
   const roleRoute = read("app/api/profile/role/route.ts");
-  const profileUseCases = read("lib/server/profile/profile-use-cases.ts");
+  const profileUseCases = read("lib/modules/profile/server/profile-use-cases.ts");
   const routeAuth = read("lib/server/route-auth.ts");
+  const platformRouteAuth = read("lib/platform/auth/route-auth.ts");
   const serverEnv = read("lib/config/server-env.ts");
   assert.match(roleRoute, /from "@\/lib\/config\/server-env"/);
-  assert.match(roleRoute, /from "@\/lib\/server\/profile\/profile-use-cases"/);
-  assert.match(roleRoute, /from "@\/lib\/server\/route-auth"/);
+  assert.match(roleRoute, /from "@\/lib\/modules\/profile\/server\/profile-use-cases"/);
+  assert.match(roleRoute, /from "@\/lib\/platform\/auth\/route-auth"/);
   assert.match(roleRoute, /serverEnv\.allowRoleReassign/);
   assert.match(roleRoute, /allowRoleReassign/);
   assert.match(profileUseCases, /Role is locked/);
   assert.match(roleRoute, /requireVerifiedUser/);
-  assert.match(routeAuth, /verifyRequestUser/);
+  assert.match(routeAuth, /from "@\/lib\/platform\/auth\/route-auth"/);
+  assert.match(platformRouteAuth, /verifyRequestUser/);
   assert.match(serverEnv, /allowRoleReassign:/);
   assert.doesNotMatch(roleRoute, /process\.env\.ALLOW_ROLE_REASSIGN/);
 });
@@ -57,17 +61,17 @@ test("firestore rules lock client-side role changes and validate optional fields
 test("profile settings and activity logging stay on the server side", () => {
   const settingsRoute = read("app/api/profile/settings/route.ts");
   const activityLog = read("lib/activity-log.ts");
-  const commentUseCases = read("lib/server/comments/comment-use-cases.ts");
+  const commentUseCases = read("lib/modules/comments/server/comment-use-cases.ts");
   const mealReactionRoute = read("app/api/meals/[id]/reactions/route.ts");
   const commentReactionRoute = read("app/api/meals/[id]/comments/[commentId]/reactions/route.ts");
-  const reactionUseCases = read("lib/server/reactions/reaction-use-cases.ts");
+  const reactionUseCases = read("lib/modules/reactions/server/reaction-use-cases.ts");
 
   assert.match(settingsRoute, /requireVerifiedUser/);
   assert.match(settingsRoute, /notificationPreferences/);
   assert.match(activityLog, /users"\)\.doc\(recipientUid\)\.collection\("activity"\)/);
   assert.match(commentUseCases, /createCommentActivities/);
-  assert.match(mealReactionRoute, /from "@\/lib\/server\/reactions\/reaction-use-cases"/);
-  assert.match(commentReactionRoute, /from "@\/lib\/server\/reactions\/reaction-use-cases"/);
+  assert.match(mealReactionRoute, /from "@\/lib\/modules\/reactions\/server\/reaction-use-cases"/);
+  assert.match(commentReactionRoute, /from "@\/lib\/modules\/reactions\/server\/reaction-use-cases"/);
   assert.match(reactionUseCases, /syncMealReactionActivity/);
   assert.match(reactionUseCases, /syncCommentReactionActivity/);
   assert.doesNotMatch(mealReactionRoute, /adminDb\.runTransaction/);
@@ -77,10 +81,10 @@ test("profile settings and activity logging stay on the server side", () => {
 test("profile routes delegate to extracted server profile use cases", () => {
   const roleRoute = read("app/api/profile/role/route.ts");
   const settingsRoute = read("app/api/profile/settings/route.ts");
-  const profileUseCases = read("lib/server/profile/profile-use-cases.ts");
+  const profileUseCases = read("lib/modules/profile/server/profile-use-cases.ts");
 
-  assert.match(roleRoute, /from "@\/lib\/server\/profile\/profile-use-cases"/);
-  assert.match(settingsRoute, /from "@\/lib\/server\/profile\/profile-use-cases"/);
+  assert.match(roleRoute, /from "@\/lib\/modules\/profile\/server\/profile-use-cases"/);
+  assert.match(settingsRoute, /from "@\/lib\/modules\/profile\/server\/profile-use-cases"/);
   assert.match(profileUseCases, /export const saveUserRoleProfile = async/);
   assert.match(profileUseCases, /export const saveUserNotificationPreferences = async/);
   assert.doesNotMatch(roleRoute, /from "@\/lib\/firebase-admin"/);
@@ -94,7 +98,8 @@ test("meal image uploads are handled by authenticated server route", () => {
   const uploadRoute = read("app/api/uploads/meal-image/route.ts");
   const uploadHelper = read("lib/uploadImage.ts");
   const uploadUseCases = read("lib/server/uploads/meal-image-use-cases.ts");
-  const imagePolicy = read("lib/meal-image-policy.ts");
+  const imagePolicy = read("lib/modules/meals/domain/meal-image-policy.ts");
+  const imagePolicyShim = read("lib/meal-image-policy.ts");
   const packageJson = read("package.json");
 
   assert.match(uploadRoute, /requireVerifiedUser/);
@@ -116,6 +121,7 @@ test("meal image uploads are handled by authenticated server route", () => {
   assert.match(uploadUseCases, /\.jpeg\(/);
   assert.match(uploadUseCases, /adminStorage/);
   assert.match(uploadUseCases, /const buildStoragePath = \(uid: string\): string => `meals\/\$\{uid\}\/\$\{Date\.now\(\)\}_\$\{randomUUID\(\)\}\.jpg`/);
+  assert.match(imagePolicyShim, /modules\/meals\/domain\/meal-image-policy/);
   assert.match(imagePolicy, /MAX_MEAL_IMAGE_REQUEST_BYTES/);
   assert.match(uploadHelper, /\/api\/uploads\/meal-image/);
   assert.match(uploadHelper, /new FormData\(\)/);
@@ -147,27 +153,31 @@ test("meal routes delegate to extracted server meal modules", () => {
   const mealQueries = read("lib/client/meal-queries.ts");
   const createRoute = read("app/api/meals/route.ts");
   const mealRoute = read("app/api/meals/[id]/route.ts");
-  const mealReadUseCases = read("lib/server/meals/meal-read-use-cases.ts");
-  const mealWriteUseCases = read("lib/server/meals/meal-write-use-cases.ts");
-  const mealDeleteUseCases = read("lib/server/meals/meal-delete-use-cases.ts");
-  const mealStorage = read("lib/server/meals/meal-storage.ts");
+  const mealReadUseCases = read("lib/modules/meals/server/meal-read-use-cases.ts");
+  const mealWriteUseCases = read("lib/modules/meals/server/meal-write-use-cases.ts");
+  const mealDeleteUseCases = read("lib/modules/meals/server/meal-delete-use-cases.ts");
+  const mealStorage = read("lib/modules/meals/server/meal-storage.ts");
+  const mealReadShim = read("lib/server/meals/meal-read-use-cases.ts");
+  const mealWriteShim = read("lib/server/meals/meal-write-use-cases.ts");
+  const mealDeleteShim = read("lib/server/meals/meal-delete-use-cases.ts");
+  const mealStorageShim = read("lib/server/meals/meal-storage.ts");
   const serverMealsBarrelPath = path.join(process.cwd(), "lib", "server-meals.ts");
 
   assert.match(mealMutations, /fetchAuthedJson<\{ ok: true; meal: Meal \}>\("\/api\/meals"/);
   assert.match(mealMutations, /\/api\/meals\/\$\{encodedMealId\}/);
   assert.match(createRoute, /requireValidatedUserRole/);
-  assert.match(createRoute, /from "@\/lib\/server\/meals\/meal-read-use-cases"/);
-  assert.match(createRoute, /from "@\/lib\/server\/meals\/meal-write-use-cases"/);
+  assert.match(createRoute, /from "@\/lib\/modules\/meals\/server\/meal-read-use-cases"/);
+  assert.match(createRoute, /from "@\/lib\/modules\/meals\/server\/meal-write-use-cases"/);
   assert.match(createRoute, /createMealDocument/);
   assert.match(createRoute, /listMealsForDate/);
   assert.doesNotMatch(createRoute, /@\/lib\/server-meals/);
   assert.match(mealRoute, /export async function GET/);
-  assert.match(mealRoute, /from "@\/lib\/server\/meals\/meal-read-use-cases"/);
+  assert.match(mealRoute, /from "@\/lib\/modules\/meals\/server\/meal-read-use-cases"/);
   assert.match(mealRoute, /export async function PATCH/);
-  assert.match(mealRoute, /from "@\/lib\/server\/meals\/meal-write-use-cases"/);
-  assert.match(mealRoute, /from "@\/lib\/server\/meals\/meal-delete-use-cases"/);
-  assert.match(mealRoute, /from "@\/lib\/server\/meals\/meal-storage"/);
-  assert.match(mealRoute, /from "@\/lib\/server\/route-auth"/);
+  assert.match(mealRoute, /from "@\/lib\/modules\/meals\/server\/meal-write-use-cases"/);
+  assert.match(mealRoute, /from "@\/lib\/modules\/meals\/server\/meal-delete-use-cases"/);
+  assert.match(mealRoute, /from "@\/lib\/modules\/meals\/server\/meal-storage"/);
+  assert.match(mealRoute, /from "@\/lib\/platform\/auth\/route-auth"/);
   assert.match(mealRoute, /updateMealDocument/);
   assert.match(mealRoute, /planMealDeleteOperation/);
   assert.match(mealRoute, /deleteMealCommentsByMealId/);
@@ -179,6 +189,10 @@ test("meal routes delegate to extracted server meal modules", () => {
   assert.doesNotMatch(mealRoute, /verifyRequestUser/);
   assert.doesNotMatch(mealRoute, /getUserRole/);
   assert.equal(fs.existsSync(serverMealsBarrelPath), false);
+  assert.match(mealReadShim, /from "@\/lib\/modules\/meals\/server\/meal-read-use-cases"/);
+  assert.match(mealWriteShim, /from "@\/lib\/modules\/meals\/server\/meal-write-use-cases"/);
+  assert.match(mealDeleteShim, /from "@\/lib\/modules\/meals\/server\/meal-delete-use-cases"/);
+  assert.match(mealStorageShim, /from "@\/lib\/modules\/meals\/server\/meal-storage"/);
   assert.match(mealReadUseCases, /export const listMealsForDate = async/);
   assert.match(mealReadUseCases, /export const listWeeklyMealStats = async/);
   assert.match(mealWriteUseCases, /export const createMealDocument = async/);
@@ -198,8 +212,8 @@ test("meal routes delegate to extracted server meal modules", () => {
 test("meal edit mutations preserve timestamp updates through the patch stack", () => {
   const mealMutations = read("lib/client/meal-mutations.ts");
   const mealRoute = read("app/api/meals/[id]/route.ts");
-  const mealTypes = read("lib/server/meals/meal-types.ts");
-  const mealWriteUseCases = read("lib/server/meals/meal-write-use-cases.ts");
+  const mealTypes = read("lib/modules/meals/server/meal-types.ts");
+  const mealWriteUseCases = read("lib/modules/meals/server/meal-write-use-cases.ts");
 
   assert.doesNotMatch(
     mealMutations,
@@ -214,7 +228,7 @@ test("meal edit mutations preserve timestamp updates through the patch stack", (
 });
 
 test("meal day reads use shared explicit date helpers instead of local clock math", () => {
-  const mealReadUseCases = read("lib/server/meals/meal-read-use-cases.ts");
+  const mealReadUseCases = read("lib/modules/meals/server/meal-read-use-cases.ts");
   const dateUtils = read("lib/date-utils.ts");
 
   assert.match(mealReadUseCases, /from "@\/lib\/date-utils"/);
@@ -229,9 +243,9 @@ test("meal day reads use shared explicit date helpers instead of local clock mat
 });
 
 test("meal mutations fail closed for legacy records without ownerUid", () => {
-  const mealWriteUseCases = read("lib/server/meals/meal-write-use-cases.ts");
-  const mealDeleteUseCases = read("lib/server/meals/meal-delete-use-cases.ts");
-  const mealTypes = read("lib/server/meals/meal-types.ts");
+  const mealWriteUseCases = read("lib/modules/meals/server/meal-write-use-cases.ts");
+  const mealDeleteUseCases = read("lib/modules/meals/server/meal-delete-use-cases.ts");
+  const mealTypes = read("lib/modules/meals/server/meal-types.ts");
   const serverMealsBarrelPath = path.join(process.cwd(), "lib", "server-meals.ts");
 
   assert.match(mealWriteUseCases, /Legacy meals must be migrated before mutation/);
@@ -259,9 +273,9 @@ test("profile session reads are handled by server route and client loader avoids
   assert.equal(fs.existsSync(sessionRoutePath), true);
 
   const sessionRoute = read("app/api/profile/session/route.ts");
-  const profileUseCases = read("lib/server/profile/profile-use-cases.ts");
+  const profileUseCases = read("lib/modules/profile/server/profile-use-cases.ts");
 
-  assert.match(sessionRoute, /from "@\/lib\/server\/profile\/profile-use-cases"/);
+  assert.match(sessionRoute, /from "@\/lib\/modules\/profile\/server\/profile-use-cases"/);
   assert.match(sessionRoute, /requireVerifiedUser/);
   assert.match(sessionRoute, /loadUserProfileSession/);
   assert.match(profileUseCases, /export const loadUserProfileSession = async/);
@@ -280,8 +294,10 @@ test("migration script admin context fails closed when project id is missing", (
 
 test("archive queries are handled by authenticated server route and server meal helpers", () => {
   const archiveRoute = read("app/api/archive/route.ts");
-  const archiveUseCases = read("lib/server/meals/archive-use-cases.ts");
-  const archiveTypes = read("lib/server/meals/archive-types.ts");
+  const archiveUseCases = read("lib/modules/meals/server/archive-use-cases.ts");
+  const archiveTypes = read("lib/modules/meals/server/archive-types.ts");
+  const archiveUseCasesShim = read("lib/server/meals/archive-use-cases.ts");
+  const archiveTypesShim = read("lib/server/meals/archive-types.ts");
   const serverMealsBarrelPath = path.join(process.cwd(), "lib", "server-meals.ts");
 
   assert.match(archiveRoute, /requireValidatedUserRole/);
@@ -289,6 +305,8 @@ test("archive queries are handled by authenticated server route and server meal 
   assert.match(archiveUseCases, /export const listArchiveMeals = async/);
   assert.match(archiveTypes, /export const parseArchiveQueryParams =/);
   assert.match(archiveTypes, /export const encodeArchiveCursor =/);
+  assert.match(archiveUseCasesShim, /from "@\/lib\/modules\/meals\/server\/archive-use-cases"/);
+  assert.match(archiveTypesShim, /from "@\/lib\/modules\/meals\/server\/archive-types"/);
   assert.equal(fs.existsSync(serverMealsBarrelPath), false);
 });
 
@@ -309,7 +327,8 @@ test("client delete mutations preserve structured route status for callers", () 
 });
 
 test("server meal serialization normalizes legacy userId into userIds", () => {
-  const mealTypes = read("lib/server/meals/meal-types.ts");
+  const mealTypes = read("lib/modules/meals/server/meal-types.ts");
+  const mealTypesShim = read("lib/server/meals/meal-types.ts");
   const serializers = read("lib/client/serializers.ts");
 
   assert.match(
@@ -328,20 +347,25 @@ test("server meal serialization normalizes legacy userId into userIds", () => {
     serializers,
     /if \(normalizedUserIds\.length > 0\) \{\s*return normalizedUserIds;\s*\}\s*if \(isUserRole\(mealData\.userId\)\) \{/s
   );
+  assert.match(mealTypesShim, /from "@\/lib\/modules\/meals\/server\/meal-types"/);
 });
 
 test("server meal updates remove deprecated userId from modern write paths", () => {
-  const mealWriteUseCases = read("lib/server/meals/meal-write-use-cases.ts");
+  const mealWriteUseCases = read("lib/modules/meals/server/meal-write-use-cases.ts");
+  const mealWriteShim = read("lib/server/meals/meal-write-use-cases.ts");
 
   assert.match(mealWriteUseCases, /dataToUpdate\.userId = FieldValue\.delete\(\);/);
   assert.doesNotMatch(
     mealWriteUseCases,
     /userId: isUserRole\(current\.userId\) \? current\.userId : undefined/
   );
+  assert.match(mealWriteShim, /from "@\/lib\/modules\/meals\/server\/meal-write-use-cases"/);
 });
 
 test("route handlers share common route error helpers", () => {
   const routeErrors = read("lib/route-errors.ts");
+  const platformRouteErrors = read("lib/platform/http/route-errors.ts");
+  const routeHandler = read("lib/platform/http/route-handler.ts");
   const settingsRoute = read("app/api/profile/settings/route.ts");
   const roleRoute = read("app/api/profile/role/route.ts");
   const uploadRoute = read("app/api/uploads/meal-image/route.ts");
@@ -350,20 +374,22 @@ test("route handlers share common route error helpers", () => {
   const commentRoute = read("app/api/meals/[id]/comments/[commentId]/route.ts");
   const commentReactionsRoute = read("app/api/meals/[id]/comments/[commentId]/reactions/route.ts");
 
-  assert.match(routeErrors, /export class RouteError extends Error/);
-  assert.match(routeErrors, /export const getRouteErrorStatus/);
-  assert.match(routeErrors, /export const getRouteErrorMessage/);
+  assert.match(routeErrors, /from "@\/lib\/platform\/http\/route-errors"/);
+  assert.match(platformRouteErrors, /export class RouteError extends Error/);
+  assert.match(platformRouteErrors, /export const getRouteErrorStatus/);
+  assert.match(platformRouteErrors, /export const getRouteErrorMessage/);
+  assert.match(routeHandler, /getRouteErrorPayload/);
+  assert.match(routeHandler, /getRouteErrorStatus/);
 
-  for (const source of [
-    settingsRoute,
-    roleRoute,
-    uploadRoute,
-    mealCommentsRoute,
-    mealReactionsRoute,
-    commentRoute,
-    commentReactionsRoute,
-  ]) {
-    assert.match(source, /@\/lib\/route-errors/);
+  for (const source of [settingsRoute, roleRoute, mealCommentsRoute, mealReactionsRoute, commentRoute, commentReactionsRoute]) {
+    assert.match(source, /@\/lib\/platform\/http\/route-handler/);
+    assert.doesNotMatch(source, /class RouteError extends Error/);
+    assert.doesNotMatch(source, /const getErrorStatus =/);
+    assert.doesNotMatch(source, /const getErrorMessage =/);
+  }
+
+  for (const source of [uploadRoute]) {
+    assert.match(source, /@\/lib\/platform\/http\/route-errors/);
     assert.doesNotMatch(source, /class RouteError extends Error/);
     assert.doesNotMatch(source, /const getErrorStatus =/);
     assert.doesNotMatch(source, /const getErrorMessage =/);
@@ -404,7 +430,7 @@ test("proxy and version routes use shared env accessors", () => {
 });
 
 test("comment delete route no longer allows role-only legacy participant deletes", () => {
-  const commentRoute = read("lib/server/comments/comment-use-cases.ts");
+  const commentRoute = read("lib/modules/comments/server/comment-use-cases.ts");
 
   assert.match(commentRoute, /const isOwner =/);
   assert.match(commentRoute, /const isAuthor =/);
@@ -423,7 +449,7 @@ test("client meal readers use explicit serialization and remove unused activity-
 });
 
 test("comment count updates use atomic increments on create and guarded decrements on delete", () => {
-  const commentUseCases = read("lib/server/comments/comment-use-cases.ts");
+  const commentUseCases = read("lib/modules/comments/server/comment-use-cases.ts");
 
   assert.match(commentUseCases, /FieldValue\.increment\(1\)/);
   assert.doesNotMatch(commentUseCases, /commentCount:\s*baseCount \+ 1/);
@@ -431,7 +457,7 @@ test("comment count updates use atomic increments on create and guarded decremen
 });
 
 test("server auth can reject non-allowlisted emails before full token verification", () => {
-  const serverAuth = read("lib/server-auth.ts");
+  const serverAuth = read("lib/platform/auth/server-auth.ts");
 
   assert.match(serverAuth, /decodeJwtPayload/);
   assert.match(serverAuth, /getUnverifiedEmailFromToken/);
@@ -442,6 +468,7 @@ test("server auth can reject non-allowlisted emails before full token verificati
 
 test("route auth helpers centralize verified-user and role loading", () => {
   const routeAuth = read("lib/server/route-auth.ts");
+  const platformRouteAuth = read("lib/platform/auth/route-auth.ts");
   const mealCreateRoute = read("app/api/meals/route.ts");
   const archiveRoute = read("app/api/archive/route.ts");
   const commentCreateRoute = read("app/api/meals/[id]/comments/route.ts");
@@ -452,10 +479,11 @@ test("route auth helpers centralize verified-user and role loading", () => {
   const profileSettingsRoute = read("app/api/profile/settings/route.ts");
   const uploadRoute = read("app/api/uploads/meal-image/route.ts");
 
-  assert.match(routeAuth, /export const requireVerifiedUser = async/);
-  assert.match(routeAuth, /export const requireValidatedUserRole = async/);
-  assert.match(routeAuth, /verifyRequestUser/);
-  assert.match(routeAuth, /getUserRole/);
+  assert.match(routeAuth, /from "@\/lib\/platform\/auth\/route-auth"/);
+  assert.match(platformRouteAuth, /export const requireVerifiedUser = async/);
+  assert.match(platformRouteAuth, /export const requireValidatedUserRole = async/);
+  assert.match(platformRouteAuth, /verifyRequestUser/);
+  assert.match(platformRouteAuth, /getUserRole/);
 
   for (const source of [
     mealCreateRoute,
@@ -468,7 +496,8 @@ test("route auth helpers centralize verified-user and role loading", () => {
     profileSettingsRoute,
     uploadRoute,
   ]) {
-    assert.match(source, /@\/lib\/server\/route-auth/);
+    assert.match(source, /@\/lib\/platform\/auth\/route-auth/);
+    assert.doesNotMatch(source, /from "@\/lib\/server\/route-auth"/);
     assert.doesNotMatch(source, /from "@\/lib\/server-auth"/);
   }
 
@@ -489,9 +518,13 @@ test("server config and meal policy are centralized in shared modules", () => {
   const mealPolicy = read("lib/domain/meal-policy.ts");
   const firebaseAdmin = read("lib/firebase-admin.ts");
   const serverAuth = read("lib/server-auth.ts");
-  const mealImageUrl = read("lib/server/meals/meal-image-url.ts");
-  const mealStorage = read("lib/server/meals/meal-storage.ts");
-  const mealTypes = read("lib/server/meals/meal-types.ts");
+  const platformServerAuth = read("lib/platform/auth/server-auth.ts");
+  const mealImageUrl = read("lib/modules/meals/server/meal-image-url.ts");
+  const mealImageUrlShim = read("lib/server/meals/meal-image-url.ts");
+  const mealStorage = read("lib/modules/meals/server/meal-storage.ts");
+  const mealStorageShim = read("lib/server/meals/meal-storage.ts");
+  const mealTypes = read("lib/modules/meals/server/meal-types.ts");
+  const mealTypesShim = read("lib/server/meals/meal-types.ts");
   const uploadRoute = read("app/api/uploads/meal-image/route.ts");
   const profilePage = read("app/profile/page.tsx");
   const envCompatPath = path.join(process.cwd(), "lib", "env.ts");
@@ -506,10 +539,14 @@ test("server config and meal policy are centralized in shared modules", () => {
   assert.match(mealPolicy, /export const MAX_MEAL_DESCRIPTION_LENGTH/);
 
   assert.match(firebaseAdmin, /from "@\/lib\/config\/server-env"/);
-  assert.match(serverAuth, /from "@\/lib\/config\/server-env"/);
+  assert.match(serverAuth, /from "@\/lib\/platform\/auth\/server-auth"/);
+  assert.match(platformServerAuth, /from "@\/lib\/config\/server-env"/);
   assert.match(mealImageUrl, /from "@\/lib\/config\/server-env"/);
-  assert.match(mealStorage, /from "@\/lib\/server\/meals\/meal-image-url"/);
+  assert.match(mealImageUrlShim, /from "@\/lib\/modules\/meals\/server\/meal-image-url"/);
+  assert.match(mealStorage, /from "@\/lib\/modules\/meals\/server\/meal-image-url"/);
+  assert.match(mealStorageShim, /from "@\/lib\/modules\/meals\/server\/meal-storage"/);
   assert.match(mealTypes, /from "@\/lib\/domain\/meal-policy"/);
+  assert.match(mealTypesShim, /from "@\/lib\/modules\/meals\/server\/meal-types"/);
   assert.match(uploadRoute, /from "@\/lib\/config\/server-env"/);
   assert.match(profilePage, /from "@\/lib\/domain\/meal-policy"/);
   assert.doesNotMatch(profilePage, /from "@\/lib\/client\/profile"/);
@@ -522,11 +559,17 @@ test("server config and meal policy are centralized in shared modules", () => {
 test("comment routes delegate to extracted server use cases", () => {
   const commentCreateRoute = read("app/api/meals/[id]/comments/route.ts");
   const commentMutationRoute = read("app/api/meals/[id]/comments/[commentId]/route.ts");
-  const commentUseCases = read("lib/server/comments/comment-use-cases.ts");
-  const commentPolicy = read("lib/server/comments/comment-policy.ts");
+  const commentUseCasesShim = read("lib/server/comments/comment-use-cases.ts");
+  const commentPolicyShim = read("lib/server/comments/comment-policy.ts");
+  const commentUseCases = read("lib/modules/comments/server/comment-use-cases.ts");
+  const commentPolicy = read("lib/modules/comments/server/comment-policy.ts");
 
-  assert.match(commentCreateRoute, /from "@\/lib\/server\/comments\/comment-use-cases"/);
-  assert.match(commentMutationRoute, /from "@\/lib\/server\/comments\/comment-use-cases"/);
+  assert.match(commentCreateRoute, /from "@\/lib\/modules\/comments\/server\/comment-use-cases"/);
+  assert.match(commentCreateRoute, /from "@\/lib\/modules\/comments\/server\/comment-policy"/);
+  assert.match(commentMutationRoute, /from "@\/lib\/modules\/comments\/server\/comment-use-cases"/);
+  assert.match(commentMutationRoute, /from "@\/lib\/modules\/comments\/server\/comment-policy"/);
+  assert.match(commentUseCasesShim, /modules\/comments\/server\/comment-use-cases/);
+  assert.match(commentPolicyShim, /modules\/comments\/server\/comment-policy/);
   assert.match(commentUseCases, /export const createMealComment = async/);
   assert.match(commentUseCases, /export const updateMealCommentById = async/);
   assert.match(commentUseCases, /export const deleteMealCommentById = async/);
@@ -537,12 +580,14 @@ test("comment routes delegate to extracted server use cases", () => {
 });
 
 test("shared meal policy constants are reused across routes and draft helpers", () => {
-  const mealDraft = read("lib/meal-draft.ts");
+  const mealDraft = read("lib/modules/meals/domain/meal-draft.ts");
+  const mealDraftShim = read("lib/meal-draft.ts");
   const mealCreateRoute = read("app/api/meals/route.ts");
   const mealUpdateRoute = read("app/api/meals/[id]/route.ts");
   const roleRoute = read("app/api/profile/role/route.ts");
-  const reactionUseCases = read("lib/server/reactions/reaction-use-cases.ts");
+  const reactionUseCases = read("lib/modules/reactions/server/reaction-use-cases.ts");
 
+  assert.match(mealDraftShim, /modules\/meals\/domain\/meal-draft/);
   assert.match(mealDraft, /from "@\/lib\/domain\/meal-policy"/);
   assert.match(mealCreateRoute, /from "@\/lib\/domain\/meal-policy"/);
   assert.match(mealUpdateRoute, /from "@\/lib\/domain\/meal-policy"/);

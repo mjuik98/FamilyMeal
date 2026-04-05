@@ -1,7 +1,7 @@
 import type { User } from "firebase/auth";
 
 import { DEFAULT_NOTIFICATION_PREFERENCES, normalizeNotificationPreferences } from "@/lib/activity";
-import { fetchAuthedJson } from "@/lib/client/auth-http";
+import { fetchAuthedJson } from "@/lib/platform/http/auth-http";
 import type { UserProfile, UserRole } from "@/lib/types";
 
 export const buildFallbackUserProfile = (

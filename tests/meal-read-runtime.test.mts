@@ -144,7 +144,7 @@ mock.module("next/server", {
   }),
 });
 
-mock.module("@/lib/server/route-auth", {
+mock.module("@/lib/platform/auth/route-auth", {
   ...mockModuleOptions({
     requireValidatedUserRole: async () => ({
       user: { uid: "user-1" },

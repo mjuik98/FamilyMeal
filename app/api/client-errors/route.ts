@@ -3,7 +3,10 @@ import { z } from "zod";
 
 import { serverEnv } from "@/lib/config/server-env";
 import { logError } from "@/lib/logging";
-import { getRouteErrorPayload, RouteError } from "@/lib/route-errors";
+import {
+  getRouteErrorPayload,
+  RouteError,
+} from "@/lib/platform/http/route-errors";
 
 const MAX_REQUEST_BYTES = 16 * 1024;
 const RATE_LIMIT_WINDOW_MS = 60_000;

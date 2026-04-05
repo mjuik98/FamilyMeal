@@ -8,8 +8,8 @@ import {
   MAX_MEAL_IMAGE_DIMENSION,
   MAX_MEAL_IMAGE_UPLOAD_BYTES,
   NORMALIZED_MEAL_IMAGE_QUALITY,
-} from "@/lib/meal-image-policy";
-import { RouteError } from "@/lib/route-errors";
+} from "@/lib/modules/meals/domain/meal-image-policy";
+import { RouteError } from "@/lib/platform/http/route-errors";
 
 const ALLOWED_IMAGE_TYPE_SET = new Set<string>(ALLOWED_MEAL_IMAGE_TYPES);
 const NORMALIZED_CONTENT_TYPE = "image/jpeg";

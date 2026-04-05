@@ -76,7 +76,7 @@ mock.module("@/lib/uploadImage", {
   }),
 });
 
-mock.module("@/lib/meal-form", {
+mock.module("@/lib/modules/meals/domain/meal-form", {
   ...mockModuleOptions({
     readMealImageDataUrl: async () => "data:image/jpeg;base64,qa",
   }),

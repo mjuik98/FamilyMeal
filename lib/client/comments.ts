@@ -3,7 +3,7 @@ import { collection, getDocs, orderBy, query } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import type { MealComment, UserRole } from "@/lib/types";
 
-import { fetchAuthedJson } from "@/lib/client/auth-http";
+import { fetchAuthedJson } from "@/lib/platform/http/auth-http";
 import { convertCommentDoc } from "@/lib/client/serializers";
 
 const mealCommentsRef = (mealId: string) => collection(db, "meals", mealId, "comments");

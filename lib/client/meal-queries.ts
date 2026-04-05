@@ -1,4 +1,4 @@
-import { fetchAuthedJson } from "@/lib/client/auth-http";
+import { fetchAuthedJson } from "@/lib/platform/http/auth-http";
 import { formatDateKey } from "@/lib/date-utils";
 import { SEARCH_FALLBACK_LIMIT, SEARCH_INDEX_LIMIT } from "@/lib/domain/meal-policy";
 import { logError } from "@/lib/logging";
