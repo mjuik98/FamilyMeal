@@ -240,6 +240,7 @@ test("reaction mutations are handled by dedicated APIs with shared validation", 
 test("comment routes support replies and safe parent deletion guards", () => {
   const createRoute = read("app/api/meals/[id]/comments/route.ts");
   const commentUseCases = read("lib/modules/comments/server/comment-use-cases.ts");
+  const commentAdminStore = read("lib/modules/comments/adapters/firestore/comment-admin-store.ts");
   const mealCard = read("components/MealCard.tsx");
   const mealConversationPanel = read("components/meal-detail/MealConversationPanel.tsx");
   const commentItem = read("components/comments/CommentItem.tsx");
@@ -250,9 +251,10 @@ test("comment routes support replies and safe parent deletion guards", () => {
   const activitySummaryPath = path.join(process.cwd(), "components", "ActivitySummary.tsx");
 
   assert.match(createRoute, /parentId/);
-  assert.match(commentUseCases, /mentionedAuthor/);
-  assert.match(commentUseCases, /where\("parentId", "==", commentId\)/);
-  assert.match(commentUseCases, /Reply comments exist/);
+  assert.match(commentUseCases, /comment-admin-store/);
+  assert.match(commentAdminStore, /mentionedAuthor/);
+  assert.match(commentAdminStore, /where\("parentId", "==", commentId\)/);
+  assert.match(commentAdminStore, /Reply comments exist/);
   assert.match(mealCard, /MealConversationPanel/);
   assert.match(mealConversationPanel, /CommentThread/);
   assert.match(commentItem, /comment-reply-button-/);

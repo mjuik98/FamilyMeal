@@ -171,6 +171,57 @@ const config = [
     },
   },
   {
+    files: ["lib/modules/comments/server/**/*.{ts,tsx}"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["@/lib/firebase-admin"],
+              message:
+                "Comment server code must depend on module-local Firestore adapters instead of firebase-admin directly.",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: ["lib/modules/reactions/server/**/*.{ts,tsx}"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["@/lib/firebase-admin"],
+              message:
+                "Reaction server code must depend on module-local Firestore adapters instead of firebase-admin directly.",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: ["lib/modules/activity/server/**/*.{ts,tsx}"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["@/lib/firebase-admin"],
+              message:
+                "Activity server code must depend on module-local Firestore adapters instead of firebase-admin directly.",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
     files: ["lib/logging.ts"],
     rules: {
       "no-console": "off",

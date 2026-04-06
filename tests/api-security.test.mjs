@@ -65,22 +65,34 @@ test("profile settings and activity logging stay on the server side", () => {
   const settingsRoute = read("app/api/profile/settings/route.ts");
   const activityLog = read("lib/activity-log.ts");
   const moduleActivityLog = read("lib/modules/activity/server/activity-log.ts");
+  const activityAdminStore = read("lib/modules/activity/adapters/firestore/activity-admin-store.ts");
   const commentUseCases = read("lib/modules/comments/server/comment-use-cases.ts");
+  const commentAdminStore = read("lib/modules/comments/adapters/firestore/comment-admin-store.ts");
   const mealReactionRoute = read("app/api/meals/[id]/reactions/route.ts");
   const commentReactionRoute = read("app/api/meals/[id]/comments/[commentId]/reactions/route.ts");
   const reactionUseCases = read("lib/modules/reactions/server/reaction-use-cases.ts");
+  const reactionAdminStore = read("lib/modules/reactions/adapters/firestore/reaction-admin-store.ts");
 
   assert.match(settingsRoute, /requireVerifiedUser/);
   assert.match(settingsRoute, /notificationPreferences/);
   assert.match(activityLog, /from "@\/lib\/modules\/activity\/server\/activity-log"/);
-  assert.match(moduleActivityLog, /users"\)\.doc\(recipientUid\)\.collection\("activity"\)/);
-  assert.match(commentUseCases, /from "@\/lib\/modules\/activity\/server\/activity-log"/);
+  assert.match(moduleActivityLog, /from "@\/lib\/modules\/activity\/adapters\/firestore\/activity-admin-store"/);
+  assert.match(activityAdminStore, /from "@\/lib\/firebase-admin"/);
+  assert.match(activityAdminStore, /users"\)\.doc\(recipientUid\)\.collection\("activity"\)/);
+  assert.match(commentUseCases, /from "@\/lib\/modules\/comments\/adapters\/firestore\/comment-admin-store"/);
+  assert.match(commentAdminStore, /from "@\/lib\/firebase-admin"/);
+  assert.match(commentAdminStore, /from "@\/lib\/modules\/activity\/server\/activity-log"/);
   assert.doesNotMatch(commentUseCases, /from "@\/lib\/activity-log"/);
   assert.match(mealReactionRoute, /from "@\/lib\/modules\/reactions\/server\/reaction-use-cases"/);
   assert.match(commentReactionRoute, /from "@\/lib\/modules\/reactions\/server\/reaction-use-cases"/);
-  assert.match(reactionUseCases, /from "@\/lib\/modules\/activity\/server\/activity-log"/);
-  assert.match(reactionUseCases, /syncMealReactionActivity/);
-  assert.match(reactionUseCases, /syncCommentReactionActivity/);
+  assert.match(reactionUseCases, /from "@\/lib\/modules\/reactions\/adapters\/firestore\/reaction-admin-store"/);
+  assert.match(reactionAdminStore, /from "@\/lib\/firebase-admin"/);
+  assert.match(reactionAdminStore, /from "@\/lib\/modules\/activity\/server\/activity-log"/);
+  assert.match(reactionAdminStore, /syncMealReactionActivity/);
+  assert.match(reactionAdminStore, /syncCommentReactionActivity/);
+  assert.doesNotMatch(moduleActivityLog, /from "@\/lib\/firebase-admin"/);
+  assert.doesNotMatch(commentUseCases, /from "@\/lib\/firebase-admin"/);
+  assert.doesNotMatch(reactionUseCases, /from "@\/lib\/firebase-admin"/);
   assert.doesNotMatch(mealReactionRoute, /adminDb\.runTransaction/);
   assert.doesNotMatch(commentReactionRoute, /adminDb\.runTransaction/);
 });
@@ -462,7 +474,7 @@ test("proxy and version routes use shared env accessors", () => {
 });
 
 test("comment delete route no longer allows role-only legacy participant deletes", () => {
-  const commentRoute = read("lib/modules/comments/server/comment-use-cases.ts");
+  const commentRoute = read("lib/modules/comments/adapters/firestore/comment-admin-store.ts");
 
   assert.match(commentRoute, /const isOwner =/);
   assert.match(commentRoute, /const isAuthor =/);
@@ -481,7 +493,7 @@ test("client meal readers use explicit serialization and remove unused activity-
 });
 
 test("comment count updates use atomic increments on create and guarded decrements on delete", () => {
-  const commentUseCases = read("lib/modules/comments/server/comment-use-cases.ts");
+  const commentUseCases = read("lib/modules/comments/adapters/firestore/comment-admin-store.ts");
 
   assert.match(commentUseCases, /FieldValue\.increment\(1\)/);
   assert.doesNotMatch(commentUseCases, /commentCount:\s*baseCount \+ 1/);
@@ -613,8 +625,10 @@ test("comment routes delegate to extracted server use cases", () => {
   assert.match(commentUseCases, /export const createMealComment = async/);
   assert.match(commentUseCases, /export const updateMealCommentById = async/);
   assert.match(commentUseCases, /export const deleteMealCommentById = async/);
+  assert.match(commentUseCases, /from "@\/lib\/modules\/comments\/adapters\/firestore\/comment-admin-store"/);
   assert.match(commentPolicy, /export const CommentCreateSchema/);
   assert.match(commentPolicy, /export const CommentUpdateSchema/);
+  assert.doesNotMatch(commentUseCases, /from "@\/lib\/firebase-admin"/);
   assert.doesNotMatch(commentCreateRoute, /adminDb\.runTransaction/);
   assert.doesNotMatch(commentMutationRoute, /adminDb\.runTransaction/);
 });

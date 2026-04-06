@@ -1,12 +1,12 @@
 import { Timestamp } from "firebase-admin/firestore";
 
-import { adminDb } from "@/lib/firebase-admin";
+import {
+  deleteStoredActivity,
+  setStoredActivity,
+} from "@/lib/modules/activity/adapters/firestore/activity-admin-store";
 import type { ReactionEmoji, UserActivityType, UserRole } from "@/lib/types";
 
 type AdminTransaction = FirebaseFirestore.Transaction;
-
-const activityRef = (recipientUid: string, activityId: string) =>
-  adminDb.collection("users").doc(recipientUid).collection("activity").doc(activityId);
 
 const writeActivity = (
   tx: AdminTransaction,
@@ -23,7 +23,7 @@ const writeActivity = (
     reactionEmoji?: ReactionEmoji;
   }
 ) => {
-  tx.set(activityRef(recipientUid, activityId), payload, { merge: true });
+  setStoredActivity(tx, recipientUid, activityId, payload);
 };
 
 const deleteActivity = (
@@ -31,7 +31,7 @@ const deleteActivity = (
   recipientUid: string,
   activityId: string
 ) => {
-  tx.delete(activityRef(recipientUid, activityId));
+  deleteStoredActivity(tx, recipientUid, activityId);
 };
 
 export const createCommentActivities = ({

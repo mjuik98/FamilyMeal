@@ -20,6 +20,9 @@ test("lint config blocks direct server imports from UI layers and direct QA inte
   assert.match(eslintConfig, /Module runtime adapters must depend on feature-specific qa adapters and focused client adapters instead of qa internals or compat barrels directly/);
   assert.match(eslintConfig, /@\/lib\/features\/\*/);
   assert.match(eslintConfig, /Production callers must import module-local application and ui entrypoints directly instead of legacy feature shims/);
+  assert.match(eslintConfig, /Comment server code must depend on module-local Firestore adapters instead of firebase-admin directly/);
+  assert.match(eslintConfig, /Reaction server code must depend on module-local Firestore adapters instead of firebase-admin directly/);
+  assert.match(eslintConfig, /Activity server code must depend on module-local Firestore adapters instead of firebase-admin directly/);
 });
 
 test("package metadata declares the OpenTelemetry API required by clean-install Firebase server imports", () => {
@@ -288,6 +291,15 @@ test("activity logging and notification helpers live in module-local paths while
     "server",
     "activity-log.ts"
   );
+  const moduleActivityAdminStorePath = path.join(
+    process.cwd(),
+    "lib",
+    "modules",
+    "activity",
+    "adapters",
+    "firestore",
+    "activity-admin-store.ts"
+  );
   const moduleNotificationDomainPath = path.join(
     process.cwd(),
     "lib",
@@ -309,19 +321,26 @@ test("activity logging and notification helpers live in module-local paths while
   const activityLogShim = read("lib/activity-log.ts");
   const notificationShim = read("lib/activity.ts");
   const notificationClientShim = read("lib/client/activity.ts");
+  const moduleActivityLog = read("lib/modules/activity/server/activity-log.ts");
+  const moduleActivityAdminStore = read("lib/modules/activity/adapters/firestore/activity-admin-store.ts");
   const profilePage = read("app/profile/page.tsx");
   const profileSession = read("lib/client/profile-session.ts");
   const qaSession = read("lib/qa/session.ts");
   const profileUseCases = read("lib/modules/profile/server/profile-use-cases.ts");
   const userSessionRuntime = read("lib/modules/profile/infrastructure/user-session-runtime.ts");
   const commentUseCases = read("lib/modules/comments/server/comment-use-cases.ts");
+  const commentAdminStore = read("lib/modules/comments/adapters/firestore/comment-admin-store.ts");
   const reactionUseCases = read("lib/modules/reactions/server/reaction-use-cases.ts");
+  const reactionAdminStore = read("lib/modules/reactions/adapters/firestore/reaction-admin-store.ts");
 
   assert.equal(fs.existsSync(moduleActivityLogPath), true);
+  assert.equal(fs.existsSync(moduleActivityAdminStorePath), true);
   assert.equal(fs.existsSync(moduleNotificationDomainPath), true);
   assert.equal(fs.existsSync(moduleNotificationClientPath), true);
 
   assert.match(activityLogShim, /from "@\/lib\/modules\/activity\/server\/activity-log"/);
+  assert.match(moduleActivityLog, /from "@\/lib\/modules\/activity\/adapters\/firestore\/activity-admin-store"/);
+  assert.match(moduleActivityAdminStore, /from "@\/lib\/firebase-admin"/);
   assert.match(notificationShim, /from "@\/lib\/modules\/profile\/domain\/notification-preferences"/);
   assert.match(
     notificationClientShim,
@@ -336,8 +355,11 @@ test("activity logging and notification helpers live in module-local paths while
     userSessionRuntime,
     /from "@\/lib\/modules\/profile\/adapters\/http\/profile-notification-client"/
   );
-  assert.match(commentUseCases, /from "@\/lib\/modules\/activity\/server\/activity-log"/);
-  assert.match(reactionUseCases, /from "@\/lib\/modules\/activity\/server\/activity-log"/);
+  assert.match(commentUseCases, /from "@\/lib\/modules\/comments\/adapters\/firestore\/comment-admin-store"/);
+  assert.match(commentAdminStore, /from "@\/lib\/modules\/activity\/server\/activity-log"/);
+  assert.match(reactionUseCases, /from "@\/lib\/modules\/reactions\/adapters\/firestore\/reaction-admin-store"/);
+  assert.match(reactionAdminStore, /from "@\/lib\/modules\/activity\/server\/activity-log"/);
+  assert.doesNotMatch(moduleActivityLog, /from "@\/lib\/firebase-admin"/);
 
   assert.doesNotMatch(profilePage, /from "@\/lib\/activity"/);
   assert.doesNotMatch(profileSession, /from "@\/lib\/activity"/);
@@ -503,6 +525,8 @@ test("server and client layers import platform auth and http helpers directly", 
   const profileAuthContext = read("lib/modules/profile/server/profile-auth-context.ts");
   const profileAdminAuth = read("lib/modules/profile/adapters/firebase/profile-admin-auth.ts");
   const profileAdminStore = read("lib/modules/profile/adapters/firebase/profile-admin-store.ts");
+  const activityLog = read("lib/modules/activity/server/activity-log.ts");
+  const activityAdminStore = read("lib/modules/activity/adapters/firestore/activity-admin-store.ts");
   const clientMeals = read("lib/client/meal-queries.ts");
   const clientMutations = read("lib/client/meal-mutations.ts");
   const commentClient = read("lib/modules/comments/adapters/firestore/comment-client.ts");
@@ -514,7 +538,9 @@ test("server and client layers import platform auth and http helpers directly", 
   const clientProfileSession = read("lib/client/profile-session.ts");
   const uploadHelper = read("lib/uploadImage.ts");
   const commentUseCases = read("lib/modules/comments/server/comment-use-cases.ts");
+  const commentAdminStore = read("lib/modules/comments/adapters/firestore/comment-admin-store.ts");
   const reactionUseCases = read("lib/modules/reactions/server/reaction-use-cases.ts");
+  const reactionAdminStore = read("lib/modules/reactions/adapters/firestore/reaction-admin-store.ts");
   const profileUseCases = read("lib/modules/profile/server/profile-use-cases.ts");
   const uploadAdapter = read("lib/modules/meals/adapters/storage/meal-image-upload.ts");
   const archiveRoute = read("app/api/archive/route.ts");
@@ -538,6 +564,15 @@ test("server and client layers import platform auth and http helpers directly", 
   assert.doesNotMatch(profileAuthContext, /from "@\/lib\/firebase-admin"/);
   assert.match(profileAdminAuth, /from "@\/lib\/firebase-admin"/);
   assert.match(profileAdminStore, /from "@\/lib\/firebase-admin"/);
+  assert.match(activityLog, /from "@\/lib\/modules\/activity\/adapters\/firestore\/activity-admin-store"/);
+  assert.doesNotMatch(activityLog, /from "@\/lib\/firebase-admin"/);
+  assert.match(commentUseCases, /from "@\/lib\/modules\/comments\/adapters\/firestore\/comment-admin-store"/);
+  assert.doesNotMatch(commentUseCases, /from "@\/lib\/firebase-admin"/);
+  assert.match(commentAdminStore, /from "@\/lib\/firebase-admin"/);
+  assert.match(reactionUseCases, /from "@\/lib\/modules\/reactions\/adapters\/firestore\/reaction-admin-store"/);
+  assert.doesNotMatch(reactionUseCases, /from "@\/lib\/firebase-admin"/);
+  assert.match(reactionAdminStore, /from "@\/lib\/firebase-admin"/);
+  assert.match(activityAdminStore, /from "@\/lib\/firebase-admin"/);
 
   for (const source of [
     clientMeals,
@@ -610,6 +645,15 @@ test("comment reaction and profile server implementations live under feature mod
     "server",
     "comment-use-cases.ts"
   );
+  const moduleCommentAdminStorePath = path.join(
+    process.cwd(),
+    "lib",
+    "modules",
+    "comments",
+    "adapters",
+    "firestore",
+    "comment-admin-store.ts"
+  );
   const moduleReactionPolicyPath = path.join(
     process.cwd(),
     "lib",
@@ -625,6 +669,24 @@ test("comment reaction and profile server implementations live under feature mod
     "reactions",
     "server",
     "reaction-use-cases.ts"
+  );
+  const moduleReactionAdminStorePath = path.join(
+    process.cwd(),
+    "lib",
+    "modules",
+    "reactions",
+    "adapters",
+    "firestore",
+    "reaction-admin-store.ts"
+  );
+  const moduleActivityAdminStorePath = path.join(
+    process.cwd(),
+    "lib",
+    "modules",
+    "activity",
+    "adapters",
+    "firestore",
+    "activity-admin-store.ts"
   );
   const moduleProfileUseCasesPath = path.join(
     process.cwd(),
@@ -656,8 +718,11 @@ test("comment reaction and profile server implementations live under feature mod
   assert.equal(fs.existsSync(moduleCommentTypesPath), true);
   assert.equal(fs.existsSync(moduleCommentPolicyPath), true);
   assert.equal(fs.existsSync(moduleCommentUseCasesPath), true);
+  assert.equal(fs.existsSync(moduleCommentAdminStorePath), true);
   assert.equal(fs.existsSync(moduleReactionPolicyPath), true);
   assert.equal(fs.existsSync(moduleReactionUseCasesPath), true);
+  assert.equal(fs.existsSync(moduleReactionAdminStorePath), true);
+  assert.equal(fs.existsSync(moduleActivityAdminStorePath), true);
   assert.equal(fs.existsSync(moduleProfileUseCasesPath), true);
   assert.equal(fs.existsSync(moduleProfileAdminAuthPath), true);
   assert.equal(fs.existsSync(moduleProfileAdminStorePath), true);
