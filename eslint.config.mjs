@@ -219,6 +219,23 @@ const config = [
     },
   },
   {
+    files: ["lib/modules/meals/server/**/*.{ts,tsx}"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["@/lib/firebase-admin"],
+              message:
+                "Meals server code must depend on module-local Firestore or storage adapters instead of firebase-admin directly.",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
     files: ["lib/modules/reactions/server/**/*.{ts,tsx}"],
     rules: {
       "no-restricted-imports": [

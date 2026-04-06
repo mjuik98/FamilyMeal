@@ -46,7 +46,13 @@ export default function MealDetailSummary({
 
         {isOwner && (
           <div className="meal-card-actions">
-            <button type="button" onClick={onEdit} title="수정" className="icon-button">
+            <button
+              type="button"
+              onClick={onEdit}
+              title="수정"
+              className="icon-button"
+              aria-label="식사 기록 수정"
+            >
               <Pencil size={15} />
             </button>
             <button
@@ -55,6 +61,7 @@ export default function MealDetailSummary({
               title="삭제"
               className="icon-button"
               disabled={deleteDisabled}
+              aria-label="식사 기록 삭제"
             >
               <Trash2 size={15} />
             </button>

@@ -1,116 +1,19 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import { ChevronLeft, Images } from "lucide-react";
 
 import MealCard from "@/components/MealCard";
 import PageHeader from "@/components/PageHeader";
-import { useUser } from "@/context/UserContext";
-import {
-  createMealRuntimeState,
-  loadMealForViewer,
-  loadSameDayMealsForViewer,
-} from "@/lib/modules/meals/application/meal-read-service";
-import { logError } from "@/lib/logging";
-import type { Meal } from "@/lib/types";
+import { useMealDetailPageController } from "@/lib/modules/meals/ui/useMealDetailPageController";
 
 export default function MealDetailPage() {
-  const { user, userProfile, loading } = useUser();
   const params = useParams();
-  const router = useRouter();
   const mealId = params.id as string;
-  const [runtimeState] = useState(() => createMealRuntimeState());
+  const controller = useMealDetailPageController(mealId);
 
-  const [meal, setMeal] = useState<Meal | null>(null);
-  const [sameDayMeals, setSameDayMeals] = useState<Meal[]>([]);
-  const [loadingMeal, setLoadingMeal] = useState(true);
-  const mealRequestSequenceRef = useRef(0);
-  const sameDayRequestSequenceRef = useRef(0);
-
-  useEffect(() => {
-    if (!loading && !userProfile?.role) {
-      router.replace("/");
-    }
-  }, [loading, router, userProfile?.role]);
-
-  useEffect(() => {
-    if (!userProfile?.role) return;
-
-    const currentRole = userProfile.role;
-    let active = true;
-    const requestId = ++mealRequestSequenceRef.current;
-    setLoadingMeal(true);
-    setSameDayMeals([]);
-
-    const loadMeal = async () => {
-      try {
-        const nextMeal = await loadMealForViewer({
-          role: currentRole,
-          mealId,
-          runtimeState,
-        });
-        if (!active || requestId !== mealRequestSequenceRef.current) {
-          return;
-        }
-        setMeal(nextMeal);
-      } catch (error) {
-        if (!active || requestId !== mealRequestSequenceRef.current) {
-          return;
-        }
-        logError("Failed to load meal detail", error);
-        setMeal(null);
-      } finally {
-        if (active && requestId === mealRequestSequenceRef.current) {
-          setLoadingMeal(false);
-        }
-      }
-    };
-
-    void loadMeal();
-
-    return () => {
-      active = false;
-    };
-  }, [mealId, runtimeState, userProfile?.role]);
-
-  useEffect(() => {
-    if (!meal || !userProfile?.role) return;
-
-    const currentRole = userProfile.role;
-    const mealDate = new Date(meal.timestamp);
-    let active = true;
-    const requestId = ++sameDayRequestSequenceRef.current;
-
-    const loadSameDayMeals = async () => {
-      try {
-        const nextMeals = await loadSameDayMealsForViewer({
-          role: currentRole,
-          mealDate,
-          runtimeState,
-        });
-        if (!active || requestId !== sameDayRequestSequenceRef.current) {
-          return;
-        }
-        setSameDayMeals(nextMeals);
-      } catch (error) {
-        if (!active || requestId !== sameDayRequestSequenceRef.current) {
-          return;
-        }
-        logError("Failed to load same-day meals", error);
-        setSameDayMeals([meal]);
-      }
-    };
-
-    void loadSameDayMeals();
-
-    return () => {
-      active = false;
-    };
-  }, [meal, runtimeState, userProfile?.role]);
-
-  if (loading) {
+  if (controller.loading) {
     return (
       <div className="loading-shell">
         <div className="spinner" />
@@ -118,11 +21,9 @@ export default function MealDetailPage() {
     );
   }
 
-  if (!user) return null;
+  if (!controller.canRender) return null;
 
-  if (!userProfile?.role) return null;
-
-  if (loadingMeal) {
+  if (controller.loadingMeal) {
     return (
       <div className="loading-shell">
         <div className="spinner" />
@@ -130,7 +31,7 @@ export default function MealDetailPage() {
     );
   }
 
-  if (!meal) {
+  if (!controller.meal) {
     return (
       <div className="page-shell">
         <div className="page-stack">
@@ -161,7 +62,7 @@ export default function MealDetailPage() {
           subtitle="사진을 크게 보고, 같은 날 기록까지 이어서 살펴보세요."
           actions={
             <div className="home-section-actions">
-              <button type="button" onClick={() => router.back()} className="link-button">
+              <button type="button" onClick={controller.goBack} className="link-button">
                 <ChevronLeft size={16} /> 뒤로
               </button>
               <Link href="/archive" className="link-button">
@@ -172,18 +73,11 @@ export default function MealDetailPage() {
         />
 
         <MealCard
-          key={meal.id}
-          meal={meal}
-          sameDayMeals={sameDayMeals}
-          onDeleted={(result) => {
-            if (result.status === "completed" || result.status === "already_deleted") {
-              router.replace("/archive");
-            }
-          }}
-          onSelectMeal={(nextMealId) => {
-            if (nextMealId === meal.id) return;
-            router.replace(`/meals/${nextMealId}`);
-          }}
+          key={controller.meal.id}
+          meal={controller.meal}
+          sameDayMeals={controller.sameDayMeals}
+          onDeleted={controller.handleDeleted}
+          onSelectMeal={controller.handleSelectMeal}
         />
       </div>
     </div>

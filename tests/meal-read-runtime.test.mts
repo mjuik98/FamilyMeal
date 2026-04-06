@@ -109,6 +109,7 @@ mock.module("@/lib/firebase-admin", {
           async get() {
             const record = mealRecords.find((meal) => meal.id === id);
             return {
+              id,
               exists: Boolean(record),
               data: () =>
                 record

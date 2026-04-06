@@ -1,13 +1,16 @@
-import { adminDb } from "@/lib/firebase-admin";
-
+import {
+  deleteStoredMealActivitiesByMealId,
+  deleteStoredMealCommentsByMealId,
+  deleteStoredMealDocumentById,
+  runMealDeletePlanningTransaction,
+  updateMealDeleteJob,
+} from "@/lib/modules/meals/adapters/firestore/meal-delete-store";
 import {
   MealRouteError,
   type StoredMealDoc,
 } from "@/lib/modules/meals/server/meal-types";
 
 const DELETE_JOB_TTL_MS = 5 * 60_000;
-const DELETE_BATCH_LIMIT = 450;
-const DELETE_JOB_COLLECTION = "_maintenanceDeleteJobs";
 
 type DeleteJobDoc = {
   status?: unknown;
@@ -38,11 +41,7 @@ export const planMealDeleteOperation = async (
   mealId: string,
   uid: string
 ): Promise<MealDeletePlan> => {
-  const mealRef = adminDb.collection("meals").doc(mealId);
-  const jobRef = adminDb.collection(DELETE_JOB_COLLECTION).doc(mealId);
-
-  return adminDb.runTransaction(async (tx) => {
-    const [mealSnap, jobSnap] = await Promise.all([tx.get(mealRef), tx.get(jobRef)]);
+  return runMealDeletePlanningTransaction(mealId, async ({ tx, jobRef, mealSnap, jobSnap }) => {
     const now = Date.now();
 
     if (!mealSnap.exists) {
@@ -94,66 +93,13 @@ export const planMealDeleteOperation = async (
   });
 };
 
-export const deleteMealCommentsByMealId = async (mealId: string): Promise<void> => {
-  const commentsRef = adminDb.collection("meals").doc(mealId).collection("comments");
-  let cursor: FirebaseFirestore.QueryDocumentSnapshot | null = null;
+export const deleteMealCommentsByMealId = deleteStoredMealCommentsByMealId;
 
-  while (true) {
-    let q: FirebaseFirestore.Query = commentsRef.orderBy("__name__").limit(DELETE_BATCH_LIMIT);
-    if (cursor) {
-      q = commentsRef.orderBy("__name__").startAfter(cursor).limit(DELETE_BATCH_LIMIT);
-    }
+export const deleteMealActivitiesByMealId = deleteStoredMealActivitiesByMealId;
 
-    const snapshot: FirebaseFirestore.QuerySnapshot = await q.get();
-    if (snapshot.empty) return;
-
-    const batch = adminDb.batch();
-    snapshot.docs.forEach((commentDoc: FirebaseFirestore.QueryDocumentSnapshot) => batch.delete(commentDoc.ref));
-    await batch.commit();
-
-    if (snapshot.size < DELETE_BATCH_LIMIT) return;
-    cursor = snapshot.docs[snapshot.docs.length - 1] ?? null;
-    if (!cursor) return;
-  }
-};
-
-export const deleteMealActivitiesByMealId = async (mealId: string): Promise<void> => {
-  const activitiesRef = adminDb.collectionGroup("activity").where("mealId", "==", mealId);
-  let cursor: FirebaseFirestore.QueryDocumentSnapshot | null = null;
-
-  while (true) {
-    let q: FirebaseFirestore.Query = activitiesRef.orderBy("__name__").limit(DELETE_BATCH_LIMIT);
-    if (cursor) {
-      q = activitiesRef.orderBy("__name__").startAfter(cursor).limit(DELETE_BATCH_LIMIT);
-    }
-
-    const snapshot: FirebaseFirestore.QuerySnapshot = await q.get();
-    if (snapshot.empty) return;
-
-    const batch = adminDb.batch();
-    snapshot.docs.forEach((activityDoc: FirebaseFirestore.QueryDocumentSnapshot) => batch.delete(activityDoc.ref));
-    await batch.commit();
-
-    if (snapshot.size < DELETE_BATCH_LIMIT) return;
-    cursor = snapshot.docs[snapshot.docs.length - 1] ?? null;
-    if (!cursor) return;
-  }
-};
-
-export const deleteMealDocumentById = async (mealId: string): Promise<void> => {
-  await adminDb.collection("meals").doc(mealId).delete();
-};
+export const deleteMealDocumentById = deleteStoredMealDocumentById;
 
 export const markMealDeleteJob = async (
   mealId: string,
   payload: Record<string, unknown>
-) => {
-  const jobRef = adminDb.collection(DELETE_JOB_COLLECTION).doc(mealId);
-  await jobRef.set(
-    {
-      ...payload,
-      updatedAt: Date.now(),
-    },
-    { merge: true }
-  );
-};
+) => updateMealDeleteJob(mealId, payload);

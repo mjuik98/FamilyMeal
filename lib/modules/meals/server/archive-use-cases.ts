@@ -1,7 +1,8 @@
-import { FieldPath, Timestamp } from "firebase-admin/firestore";
-
-import { adminDb } from "@/lib/firebase-admin";
 import { logWarn } from "@/lib/logging";
+import {
+  listStoredArchiveMealRecords,
+  listStoredOptimizedArchiveMealRecords,
+} from "@/lib/modules/meals/adapters/firestore/meal-archive-store";
 import { serializeMealDocument } from "@/lib/modules/meals/server/meal-types";
 import {
   ARCHIVE_SCAN_BATCH_SIZE,
@@ -30,10 +31,6 @@ type ArchiveBatchResult = {
   reachedCollectionEnd: boolean;
 };
 
-type ArchiveQuerySource = {
-  buildQuery: (cursor: ArchiveCursor | null) => FirebaseFirestore.Query;
-};
-
 const compareMealsDesc = (left: Meal, right: Meal): number => {
   if (left.timestamp !== right.timestamp) {
     return right.timestamp - left.timestamp;
@@ -44,76 +41,6 @@ const compareMealsDesc = (left: Meal, right: Meal): number => {
 
 const isMealVisibleToActor = (meal: Meal, actorRole: UserRole): boolean =>
   meal.userIds?.includes(actorRole) || meal.userId === actorRole;
-
-const applyArchiveCursor = (
-  query: FirebaseFirestore.Query,
-  cursor: ArchiveCursor | null
-): FirebaseFirestore.Query => {
-  if (!cursor) {
-    return query;
-  }
-
-  return query.startAfter(Timestamp.fromMillis(cursor.lastTimestamp), cursor.lastId);
-};
-
-const buildArchiveQuery = (cursor: ArchiveCursor | null): FirebaseFirestore.Query => {
-  const q: FirebaseFirestore.Query = adminDb
-    .collection("meals")
-    .orderBy("timestamp", "desc")
-    .orderBy(FieldPath.documentId(), "desc")
-    .limit(ARCHIVE_SCAN_BATCH_SIZE);
-
-  return applyArchiveCursor(q, cursor);
-};
-
-const buildOptimizedArchiveSources = (
-  params: ArchiveListParams
-): ArchiveQuerySource[] => {
-  const targetRole = params.participant ?? params.actorRole;
-  const sources: ArchiveQuerySource[] = [
-    {
-      buildQuery: (cursor) => {
-        let q: FirebaseFirestore.Query = adminDb
-          .collection("meals")
-          .where("userIds", "array-contains", targetRole);
-
-        if (params.type) {
-          q = q.where("type", "==", params.type);
-        }
-
-        q = q
-          .orderBy("timestamp", "desc")
-          .orderBy(FieldPath.documentId(), "desc")
-          .limit(ARCHIVE_SCAN_BATCH_SIZE);
-
-        return applyArchiveCursor(q, cursor);
-      },
-    },
-  ];
-
-  if (targetRole === params.actorRole) {
-    sources.push({
-      buildQuery: (cursor) => {
-        let q: FirebaseFirestore.Query = adminDb
-          .collection("meals")
-          .where("userId", "==", params.actorRole);
-
-        if (params.type) {
-          q = q.where("type", "==", params.type);
-        }
-
-        q = q
-          .orderBy("timestamp", "desc")
-          .orderBy(FieldPath.documentId(), "desc")
-          .limit(ARCHIVE_SCAN_BATCH_SIZE);
-
-        return applyArchiveCursor(q, cursor);
-      },
-    });
-  }
-
-  return sources;
-};
 
 const isArchiveOptimizationUnavailable = (error: unknown): boolean => {
   if (!error || typeof error !== "object") {
@@ -135,8 +62,11 @@ const isArchiveOptimizationUnavailable = (error: unknown): boolean => {
 const fetchArchiveBatch = async (
   cursor: ArchiveCursor | null
 ): Promise<ArchiveBatchResult> => {
-  const snapshot: FirebaseFirestore.QuerySnapshot = await buildArchiveQuery(cursor).get();
-  if (snapshot.empty) {
+  const batch = await listStoredArchiveMealRecords({
+    cursor,
+    limit: ARCHIVE_SCAN_BATCH_SIZE,
+  });
+  if (batch.records.length === 0) {
     return {
       meals: [],
       reachedCollectionEnd: true,
@@ -144,13 +74,13 @@ const fetchArchiveBatch = async (
   }
 
   return {
-    meals: snapshot.docs.map((mealDoc) =>
+    meals: batch.records.map((mealRecord) =>
       serializeMealDocument(
-        mealDoc.id,
-        mealDoc.data() as Parameters<typeof serializeMealDocument>[1]
+        mealRecord.id,
+        mealRecord.data as Parameters<typeof serializeMealDocument>[1]
       )
     ),
-    reachedCollectionEnd: snapshot.size < ARCHIVE_SCAN_BATCH_SIZE,
+    reachedCollectionEnd: batch.reachedCollectionEnd,
   };
 };
 
@@ -158,27 +88,25 @@ const fetchOptimizedArchiveBatch = async (
   params: ArchiveListParams,
   cursor: ArchiveCursor | null
 ): Promise<ArchiveBatchResult> => {
-  const sources = buildOptimizedArchiveSources(params);
-  const snapshots = await Promise.all(
-    sources.map((source) => source.buildQuery(cursor).get())
-  );
-  const mergedMeals = new Map<string, Meal>();
-
-  snapshots.forEach((snapshot) => {
-    snapshot.docs.forEach((mealDoc) => {
-      const meal = serializeMealDocument(
-        mealDoc.id,
-        mealDoc.data() as Parameters<typeof serializeMealDocument>[1]
-      );
-      mergedMeals.set(meal.id, meal);
-    });
+  const targetRole = params.participant ?? params.actorRole;
+  const batch = await listStoredOptimizedArchiveMealRecords({
+    targetRole,
+    type: params.type,
+    cursor,
+    limit: ARCHIVE_SCAN_BATCH_SIZE,
+    includeLegacyUserFallback: targetRole === params.actorRole,
   });
 
   return {
-    meals: Array.from(mergedMeals.values()).sort(compareMealsDesc),
-    reachedCollectionEnd: snapshots.every(
-      (snapshot) => snapshot.size < ARCHIVE_SCAN_BATCH_SIZE
-    ),
+    meals: batch.records
+      .map((mealRecord) =>
+        serializeMealDocument(
+          mealRecord.id,
+          mealRecord.data as Parameters<typeof serializeMealDocument>[1]
+        )
+      )
+      .sort(compareMealsDesc),
+    reachedCollectionEnd: batch.reachedCollectionEnd,
   };
 };
 

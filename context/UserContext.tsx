@@ -199,12 +199,18 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   const updateNotificationPreferences = async (
     preferences: NotificationPreferences
   ) => {
-    const nextProfile = await saveUserNotificationSelection({
-      preferences,
-      previousProfile: userProfile,
-    });
-    setUserProfile(nextProfile);
-    setAuthError(null);
+    try {
+      const nextProfile = await saveUserNotificationSelection({
+        preferences,
+        previousProfile: userProfile,
+      });
+      setUserProfile(nextProfile);
+      setAuthError(null);
+    } catch (error) {
+      logError("Error saving notification preferences", error);
+      setAuthError("알림 설정 저장에 실패했습니다. 잠시 후 다시 시도해 주세요.");
+      throw error;
+    }
   };
 
   const value: UserContextType = {

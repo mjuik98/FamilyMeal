@@ -1,8 +1,11 @@
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
 
 import { isMealType, isUserRole } from "@/lib/domain/meal-policy";
-import { adminDb } from "@/lib/firebase-admin";
 import { logError } from "@/lib/logging";
+import {
+  createStoredMealRecord,
+  runStoredMealTransaction,
+} from "@/lib/modules/meals/adapters/firestore/meal-admin-store";
 import { isOwnedMealImageUrl } from "@/lib/modules/meals/server/meal-image-url";
 import { deleteStorageObjectByUrl } from "@/lib/modules/meals/server/meal-storage";
 import {
@@ -67,8 +70,8 @@ export const createMealDocument = async ({
     }),
   };
 
-  const createdRef = await adminDb.collection("meals").add(payload);
-  return serializeMealDocument(createdRef.id, payload);
+  const createdId = await createStoredMealRecord(payload);
+  return serializeMealDocument(createdId, payload);
 };
 
 export const updateMealDocument = async ({
@@ -82,11 +85,9 @@ export const updateMealDocument = async ({
   actorRole: UserRole;
   input: UpdateMealInput;
 }): Promise<Meal> => {
-  const mealRef = adminDb.collection("meals").doc(mealId);
   let staleImageUrl: string | undefined;
 
-  const updatedMeal = await adminDb.runTransaction(async (tx) => {
-    const snapshot = await tx.get(mealRef);
+  const updatedMeal = await runStoredMealTransaction(mealId, async ({ tx, mealRef, snapshot }) => {
     if (!snapshot.exists) {
       throw new MealRouteError("Meal not found", 404);
     }

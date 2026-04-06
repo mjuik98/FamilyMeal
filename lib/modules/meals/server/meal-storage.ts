@@ -1,4 +1,4 @@
-import { adminStorage } from "@/lib/firebase-admin";
+import { deleteStoredMealImageObject } from "@/lib/modules/meals/adapters/storage/meal-storage-admin";
 import {
   getMealImageStorageBucketName,
   getMealImageStorageObjectPath,
@@ -18,6 +18,9 @@ export const deleteStorageObjectByUrl = async (
     return false;
   }
 
-  await adminStorage.bucket(bucketName).file(objectPath).delete({ ignoreNotFound: true });
+  await deleteStoredMealImageObject({
+    bucketName,
+    objectPath,
+  });
   return true;
 };

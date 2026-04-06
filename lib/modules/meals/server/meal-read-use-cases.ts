@@ -1,14 +1,15 @@
-import { Timestamp } from "firebase-admin/firestore";
-
 import {
   formatDateKey,
   getAppDayOfWeek,
   getDayRangeForDate,
   getWeekDatesForDate,
 } from "@/lib/date-utils";
-import { adminDb } from "@/lib/firebase-admin";
 import type { Meal, UserRole, WeeklyMealStat } from "@/lib/types";
 
+import {
+  getStoredMealRecordById,
+  listStoredMealRecordsInRange,
+} from "@/lib/modules/meals/adapters/firestore/meal-admin-store";
 import {
   serializeMealDocument,
   type StoredMealDoc,
@@ -22,12 +23,12 @@ export const getMealByIdForActor = async ({
   mealId: string;
   actorRole: UserRole;
 }): Promise<Meal | null> => {
-  const mealSnap = await adminDb.collection("meals").doc(mealId).get();
-  if (!mealSnap.exists) {
+  const mealRecord = await getStoredMealRecordById(mealId);
+  if (!mealRecord) {
     return null;
   }
 
-  const meal = serializeMealDocument(mealId, mealSnap.data() as StoredMealDoc);
+  const meal = serializeMealDocument(mealRecord.id, mealRecord.data as StoredMealDoc);
   return isMealVisibleToRole(meal, actorRole) ? meal : null;
 };
 
@@ -39,17 +40,13 @@ export const listMealsForDate = async ({
   date: Date;
 }): Promise<Meal[]> => {
   const { startOfDay, endOfDay } = getDayRangeForDate(date);
-  const snapshot = await adminDb
-    .collection("meals")
-    .where("timestamp", ">=", Timestamp.fromDate(startOfDay))
-    .where("timestamp", "<=", Timestamp.fromDate(endOfDay))
-    .orderBy("timestamp", "desc")
-    .get();
+  const mealRecords = await listStoredMealRecordsInRange({
+    start: startOfDay,
+    end: endOfDay,
+  });
 
-  return snapshot.docs
-    .map((docSnap: FirebaseFirestore.QueryDocumentSnapshot) =>
-      serializeMealDocument(docSnap.id, docSnap.data() as StoredMealDoc)
-    )
+  return mealRecords
+    .map((mealRecord) => serializeMealDocument(mealRecord.id, mealRecord.data as StoredMealDoc))
     .filter((meal) => isMealVisibleToRole(meal, actorRole));
 };
 
@@ -63,22 +60,18 @@ export const listWeeklyMealStats = async ({
   const dates = getWeekDatesForDate(referenceDate);
   const firstRange = getDayRangeForDate(dates[0] ?? referenceDate);
   const lastRange = getDayRangeForDate(dates[dates.length - 1] ?? referenceDate);
-  const snapshot = await adminDb
-    .collection("meals")
-    .where("timestamp", ">=", Timestamp.fromDate(firstRange.startOfDay))
-    .where("timestamp", "<=", Timestamp.fromDate(lastRange.endOfDay))
-    .orderBy("timestamp", "desc")
-    .get();
+  const mealRecords = await listStoredMealRecordsInRange({
+    start: firstRange.startOfDay,
+    end: lastRange.endOfDay,
+  });
 
   const countByDay = new Map<string, number>();
   const previewByDay = new Map<string, string>();
   const dayNames = ["일", "월", "화", "수", "목", "금", "토"];
   dates.forEach((date) => countByDay.set(formatDateKey(date), 0));
 
-  snapshot.docs
-    .map((docSnap: FirebaseFirestore.QueryDocumentSnapshot) =>
-      serializeMealDocument(docSnap.id, docSnap.data() as StoredMealDoc)
-    )
+  mealRecords
+    .map((mealRecord) => serializeMealDocument(mealRecord.id, mealRecord.data as StoredMealDoc))
     .filter((meal) => isMealVisibleToRole(meal, actorRole))
     .forEach((meal) => {
       const key = formatDateKey(new Date(meal.timestamp));

@@ -8,6 +8,7 @@ import { DEFAULT_NOTIFICATION_PREFERENCES } from "@/lib/modules/profile/domain/n
 import { USER_ROLES } from "@/lib/domain/meal-policy";
 import PageHeader from "@/components/PageHeader";
 import SurfaceSection from "@/components/SurfaceSection";
+import { useToast } from "@/components/Toast";
 import { useUser } from "@/context/UserContext";
 
 const roleEmoji: Record<string, string> = {
@@ -20,6 +21,7 @@ const roleEmoji: Record<string, string> = {
 export default function ProfilePage() {
   const { userProfile, selectRole, user, loading, signOut, updateNotificationPreferences } = useUser();
   const router = useRouter();
+  const { showToast } = useToast();
   const [savingRole, setSavingRole] = useState(false);
   const [savingSettings, setSavingSettings] = useState(false);
 
@@ -63,6 +65,9 @@ export default function ProfilePage() {
         ...notificationPreferences,
         [key]: !notificationPreferences[key],
       });
+      showToast("알림 설정이 저장되었습니다.", "success");
+    } catch {
+      showToast("알림 설정 저장에 실패했습니다.", "error");
     } finally {
       setSavingSettings(false);
     }

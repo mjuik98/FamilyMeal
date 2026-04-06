@@ -77,6 +77,9 @@ test("active callers import module-local application and ui entrypoints instead 
   const homePage = read("app/page.tsx");
   const archivePage = read("app/archive/page.tsx");
   const mealDetailPage = read("app/meals/[id]/page.tsx");
+  const homeController = read("lib/modules/meals/ui/useHomePageController.ts");
+  const archiveController = read("lib/modules/meals/ui/useArchivePageController.ts");
+  const mealDetailController = read("lib/modules/meals/ui/useMealDetailPageController.ts");
   const mealCard = read("components/MealCard.tsx");
   const commentComposer = read("components/comments/CommentComposer.tsx");
   const conversationPanel = read("components/meal-detail/MealConversationPanel.tsx");
@@ -84,11 +87,14 @@ test("active callers import module-local application and ui entrypoints instead 
   const addController = read("lib/modules/meals/ui/useAddMealPageController.ts");
   const editController = read("lib/modules/meals/ui/useEditMealPageController.ts");
 
-  assert.match(homePage, /from "@\/lib\/modules\/meals\/application\/meal-read-service"/);
-  assert.match(homePage, /from "@\/lib\/modules\/meals\/ui\/useMealsForDateController"/);
-  assert.match(homePage, /from "@\/lib\/modules\/meals\/ui\/useWeeklyStatsController"/);
-  assert.match(archivePage, /from "@\/lib\/modules\/meals\/application\/meal-read-service"/);
-  assert.match(mealDetailPage, /from "@\/lib\/modules\/meals\/application\/meal-read-service"/);
+  assert.match(homePage, /from "@\/lib\/modules\/meals\/ui\/useHomePageController"/);
+  assert.match(archivePage, /from "@\/lib\/modules\/meals\/ui\/useArchivePageController"/);
+  assert.match(mealDetailPage, /from "@\/lib\/modules\/meals\/ui\/useMealDetailPageController"/);
+  assert.match(homeController, /from "@\/lib\/modules\/meals\/application\/meal-read-service"/);
+  assert.match(homeController, /from "@\/lib\/modules\/meals\/ui\/useMealsForDateController"/);
+  assert.match(homeController, /from "@\/lib\/modules\/meals\/ui\/useWeeklyStatsController"/);
+  assert.match(archiveController, /from "@\/lib\/modules\/meals\/application\/meal-read-service"/);
+  assert.match(mealDetailController, /from "@\/lib\/modules\/meals\/application\/meal-read-service"/);
   assert.match(mealCard, /from "@\/lib\/modules\/meals\/application\/meal-editor-service"/);
   assert.match(mealCard, /from "@\/lib\/modules\/comments\/ui\/useMealCommentsController"/);
   assert.match(mealCard, /from "@\/lib\/modules\/reactions\/ui\/useMealReactionsController"/);
@@ -102,6 +108,9 @@ test("active callers import module-local application and ui entrypoints instead 
   assert.doesNotMatch(homePage, /from "@\/lib\/features\//);
   assert.doesNotMatch(archivePage, /from "@\/lib\/features\//);
   assert.doesNotMatch(mealDetailPage, /from "@\/lib\/features\//);
+  assert.doesNotMatch(homeController, /from "@\/lib\/features\//);
+  assert.doesNotMatch(archiveController, /from "@\/lib\/features\//);
+  assert.doesNotMatch(mealDetailController, /from "@\/lib\/features\//);
   assert.doesNotMatch(mealCard, /from "@\/lib\/features\//);
   assert.doesNotMatch(commentComposer, /from "@\/lib\/features\//);
   assert.doesNotMatch(conversationPanel, /from "@\/lib\/features\//);
@@ -260,6 +269,73 @@ test("meal upload and comment data adapters live inside feature modules and remo
   );
   assert.doesNotMatch(commentRuntime, /from "@\/lib\/client\/comments"/);
   assert.doesNotMatch(commentRuntime, /from "@\/lib\/meal-comments-store"/);
+});
+
+test("meals server code depends on module-local adapters instead of firebase-admin directly", () => {
+  const eslintConfig = read("eslint.config.mjs");
+  const mealReadUseCases = read("lib/modules/meals/server/meal-read-use-cases.ts");
+  const mealWriteUseCases = read("lib/modules/meals/server/meal-write-use-cases.ts");
+  const archiveUseCases = read("lib/modules/meals/server/archive-use-cases.ts");
+  const mealDeleteUseCases = read("lib/modules/meals/server/meal-delete-use-cases.ts");
+  const mealStorage = read("lib/modules/meals/server/meal-storage.ts");
+
+  const mealAdminStorePath = path.join(
+    process.cwd(),
+    "lib",
+    "modules",
+    "meals",
+    "adapters",
+    "firestore",
+    "meal-admin-store.ts"
+  );
+  const mealArchiveStorePath = path.join(
+    process.cwd(),
+    "lib",
+    "modules",
+    "meals",
+    "adapters",
+    "firestore",
+    "meal-archive-store.ts"
+  );
+  const mealDeleteStorePath = path.join(
+    process.cwd(),
+    "lib",
+    "modules",
+    "meals",
+    "adapters",
+    "firestore",
+    "meal-delete-store.ts"
+  );
+  const mealStorageAdminPath = path.join(
+    process.cwd(),
+    "lib",
+    "modules",
+    "meals",
+    "adapters",
+    "storage",
+    "meal-storage-admin.ts"
+  );
+
+  assert.match(
+    eslintConfig,
+    /Meals server code must depend on module-local Firestore or storage adapters instead of firebase-admin directly\./
+  );
+  assert.equal(fs.existsSync(mealAdminStorePath), true);
+  assert.equal(fs.existsSync(mealArchiveStorePath), true);
+  assert.equal(fs.existsSync(mealDeleteStorePath), true);
+  assert.equal(fs.existsSync(mealStorageAdminPath), true);
+
+  assert.match(mealReadUseCases, /from "@\/lib\/modules\/meals\/adapters\/firestore\/meal-admin-store"/);
+  assert.match(mealWriteUseCases, /from "@\/lib\/modules\/meals\/adapters\/firestore\/meal-admin-store"/);
+  assert.match(archiveUseCases, /from "@\/lib\/modules\/meals\/adapters\/firestore\/meal-archive-store"/);
+  assert.match(mealDeleteUseCases, /from "@\/lib\/modules\/meals\/adapters\/firestore\/meal-delete-store"/);
+  assert.match(mealStorage, /from "@\/lib\/modules\/meals\/adapters\/storage\/meal-storage-admin"/);
+
+  assert.doesNotMatch(mealReadUseCases, /from "@\/lib\/firebase-admin"/);
+  assert.doesNotMatch(mealWriteUseCases, /from "@\/lib\/firebase-admin"/);
+  assert.doesNotMatch(archiveUseCases, /from "@\/lib\/firebase-admin"/);
+  assert.doesNotMatch(mealDeleteUseCases, /from "@\/lib\/firebase-admin"/);
+  assert.doesNotMatch(mealStorage, /from "@\/lib\/firebase-admin"/);
 });
 
 test("activity logging and notification helpers live in module-local paths and legacy compat entrypoints are removed", () => {

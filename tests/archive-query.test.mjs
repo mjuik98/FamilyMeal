@@ -61,10 +61,11 @@ test("archive route threads authenticated caller identity into the server use ca
 
 test("archive listing enforces participant visibility and returns partial-scan metadata", () => {
   const archiveUseCases = read("lib/modules/meals/server/archive-use-cases.ts");
+  const archiveStore = read("lib/modules/meals/adapters/firestore/meal-archive-store.ts");
 
   assert.match(archiveUseCases, /actorRole: UserRole/);
-  assert.match(archiveUseCases, /where\("userIds", "array-contains", targetRole\)/);
-  assert.match(archiveUseCases, /where\("userId", "==", params\.actorRole\)/);
+  assert.match(archiveStore, /where\("userIds", "array-contains", targetRole\)/);
+  assert.match(archiveStore, /where\("userId", "==", targetRole\)/);
   assert.match(
     archiveUseCases,
     /logWarn\(\s*"Archive query optimization unavailable; falling back to full scan"/
