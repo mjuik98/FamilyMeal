@@ -37,7 +37,7 @@ const config = [
             },
             {
               name: "@/lib/client/http",
-              message: "This compatibility wrapper was removed. Import shared auth helpers from lib/client/auth-http.",
+              message: "This compatibility wrapper was removed. Import shared auth helpers from lib/platform/http/auth-http.",
             },
             {
               name: "@/lib/env",
@@ -50,32 +50,89 @@ const config = [
             {
               name: "@/lib/server/uploads/meal-image-use-cases",
               message:
-                "This compatibility shim remains only for legacy callers. Import the module-local upload adapter from lib/modules/meals/adapters/storage/meal-image-upload.",
+                "This legacy server shim was removed. Import the module-local upload adapter from lib/modules/meals/adapters/storage/meal-image-upload.",
             },
             {
               name: "@/lib/client/comments",
               message:
-                "This compatibility shim remains only for legacy callers. Import the module-local comment adapter from lib/modules/comments/adapters/firestore/comment-client.",
+                "This compatibility entrypoint was removed. Import the module-local comment adapter from lib/modules/comments/adapters/firestore/comment-client.",
+            },
+            {
+              name: "@/lib/client/meals",
+              message:
+                "This compatibility barrel was removed. Import focused client helpers from lib/client/meal-queries, lib/client/meal-mutations, or lib/client/meal-filters.",
+            },
+            {
+              name: "@/lib/client/auth-http",
+              message:
+                "This compatibility entrypoint was removed. Import shared auth helpers from lib/platform/http/auth-http.",
             },
             {
               name: "@/lib/meal-comments-store",
               message:
-                "This compatibility shim remains only for legacy callers. Import the module-local comment subscription store from lib/modules/comments/adapters/firestore/comment-subscription-store.",
+                "This compatibility entrypoint was removed. Import the module-local comment subscription store from lib/modules/comments/adapters/firestore/comment-subscription-store.",
             },
             {
               name: "@/lib/activity",
               message:
-                "This compatibility shim remains only for legacy callers. Import profile notification helpers from lib/modules/profile/domain/notification-preferences.",
+                "This compatibility entrypoint was removed. Import profile notification helpers from lib/modules/profile/domain/notification-preferences.",
             },
             {
               name: "@/lib/activity-log",
               message:
-                "This compatibility shim remains only for legacy callers. Import activity logging helpers from lib/modules/activity/server/activity-log.",
+                "This compatibility entrypoint was removed. Import activity logging helpers from lib/modules/activity/server/activity-log.",
             },
             {
               name: "@/lib/client/activity",
               message:
-                "This compatibility shim remains only for legacy callers. Import the module-local profile notification client from lib/modules/profile/adapters/http/profile-notification-client.",
+                "This compatibility entrypoint was removed. Import the module-local profile notification client from lib/modules/profile/adapters/http/profile-notification-client.",
+            },
+            {
+              name: "@/lib/meal-image-policy",
+              message:
+                "This compatibility entrypoint was removed. Import the meals image policy directly from lib/modules/meals/domain/meal-image-policy.",
+            },
+            {
+              name: "@/lib/meal-form",
+              message:
+                "This compatibility entrypoint was removed. Import the meals form helpers directly from lib/modules/meals/domain/meal-form.",
+            },
+            {
+              name: "@/lib/meal-draft",
+              message:
+                "This compatibility entrypoint was removed. Import the meals draft helpers directly from lib/modules/meals/domain/meal-draft.",
+            },
+            {
+              name: "@/lib/meal-copy",
+              message:
+                "This compatibility entrypoint was removed. Import the meals copy helpers directly from lib/modules/meals/domain/meal-copy.",
+            },
+            {
+              name: "@/lib/meal-errors",
+              message:
+                "This compatibility entrypoint was removed. Import meal UI error messages directly from lib/modules/meals/ui/meal-error-messages.",
+            },
+            {
+              name: "@/lib/route-errors",
+              message:
+                "This compatibility entrypoint was removed. Import route error helpers directly from lib/platform/http/route-errors.",
+            },
+            {
+              name: "@/lib/server-auth",
+              message:
+                "This compatibility entrypoint was removed. Import server auth helpers directly from lib/platform/auth/server-auth.",
+            },
+          ],
+          patterns: [
+            {
+              group: ["@/lib/server/*"],
+              message:
+                "Legacy server shims were removed. Import module-local server files or platform auth helpers directly.",
+            },
+            {
+              group: ["@/lib/features/*"],
+              message:
+                "Legacy feature shims were removed. Import module-local application and ui entrypoints directly.",
             },
           ],
         },
@@ -91,33 +148,12 @@ const config = [
         {
           patterns: [
             {
-              group: ["@/lib/server/*", "@/lib/firebase-admin"],
-              message: "UI layers must not import server-only modules directly.",
+              group: ["@/lib/firebase-admin"],
+              message: "UI layers must not import firebase-admin directly.",
             },
             {
               group: ["@/lib/client/*"],
               message: "UI layers must not import client data modules directly.",
-            },
-            {
-              group: ["@/lib/features/*"],
-              message:
-                "Production callers must import module-local application and ui entrypoints directly instead of legacy feature shims.",
-            },
-          ],
-        },
-      ],
-    },
-  },
-  {
-    files: ["lib/features/**/*.{ts,tsx}"],
-    rules: {
-      "no-restricted-imports": [
-        "error",
-        {
-          patterns: [
-            {
-              group: ["@/lib/qa/runtime"],
-              message: "Feature services must depend on runtime adapters instead of lib/qa/runtime directly.",
             },
           ],
         },
@@ -141,12 +177,7 @@ const config = [
                 "@/lib/client/meals",
               ],
               message:
-                "Module runtime adapters must depend on feature-specific qa adapters and focused client adapters instead of qa internals or compat barrels directly.",
-            },
-            {
-              group: ["@/lib/features/*"],
-              message:
-                "Production callers must import module-local application and ui entrypoints directly instead of legacy feature shims.",
+                "Module runtime adapters must depend on feature-specific QA adapters and focused client helpers instead of QA internals or removed compat barrels directly.",
             },
           ],
         },

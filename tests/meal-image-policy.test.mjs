@@ -8,7 +8,6 @@ const read = (relativePath) =>
 
 test("meal image policy centralizes accepted types and request limits", () => {
   const source = read("lib/modules/meals/domain/meal-image-policy.ts");
-  const shim = read("lib/meal-image-policy.ts");
 
   assert.match(source, /MAX_MEAL_IMAGE_UPLOAD_BYTES/);
   assert.match(source, /MAX_MEAL_IMAGE_REQUEST_BYTES/);
@@ -17,7 +16,7 @@ test("meal image policy centralizes accepted types and request limits", () => {
   assert.match(source, /image\/heif/);
   assert.match(source, /export const validateMealImageFile =/);
   assert.match(source, /export const formatMealImageFileSize =/);
-  assert.match(shim, /modules\/meals\/domain\/meal-image-policy/);
+  assert.equal(fs.existsSync(path.join(process.cwd(), "lib", "meal-image-policy.ts")), false);
 });
 
 test("meal image validation returns explicit error codes and messages", () => {

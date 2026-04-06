@@ -6,20 +6,19 @@ import path from "node:path";
 const read = (relativePath) =>
   fs.readFileSync(path.join(process.cwd(), relativePath), "utf8");
 
+const exists = (relativePath) => fs.existsSync(path.join(process.cwd(), relativePath));
+
 test("lint config blocks direct server imports from UI layers and direct QA internals imports from feature and module layers", () => {
   const eslintConfig = read("eslint.config.mjs");
 
-  assert.match(eslintConfig, /group:\s*\["@\/lib\/server\/\*", "@\/lib\/firebase-admin"\]/);
-  assert.match(eslintConfig, /UI layers must not import server-only modules directly/);
+  assert.match(eslintConfig, /Legacy server shims were removed\. Import module-local server files or platform auth helpers directly\./);
+  assert.match(eslintConfig, /UI layers must not import firebase-admin directly/);
   assert.match(eslintConfig, /group:\s*\["@\/lib\/client\/\*"\]/);
   assert.match(eslintConfig, /UI layers must not import client data modules directly/);
-  assert.match(eslintConfig, /group:\s*\["@\/lib\/qa\/runtime"\]/);
-  assert.match(eslintConfig, /Feature services must depend on runtime adapters instead of lib\/qa\/runtime directly/);
+  assert.match(eslintConfig, /Legacy feature shims were removed\. Import module-local application and ui entrypoints directly\./);
   assert.match(eslintConfig, /@\/lib\/qa\/fixtures/);
   assert.match(eslintConfig, /@\/lib\/qa\/mode/);
-  assert.match(eslintConfig, /Module runtime adapters must depend on feature-specific qa adapters and focused client adapters instead of qa internals or compat barrels directly/);
-  assert.match(eslintConfig, /@\/lib\/features\/\*/);
-  assert.match(eslintConfig, /Production callers must import module-local application and ui entrypoints directly instead of legacy feature shims/);
+  assert.match(eslintConfig, /Module runtime adapters must depend on feature-specific QA adapters and focused client helpers instead of QA internals or removed compat barrels directly/);
   assert.match(eslintConfig, /Comment server code must depend on module-local Firestore adapters instead of firebase-admin directly/);
   assert.match(eslintConfig, /Reaction server code must depend on module-local Firestore adapters instead of firebase-admin directly/);
   assert.match(eslintConfig, /Activity server code must depend on module-local Firestore adapters instead of firebase-admin directly/);
@@ -49,17 +48,12 @@ test("module-scoped contracts exist only where shared runtime contracts are need
   assert.doesNotMatch(userSessionService, /modules\/profile\/contracts/);
 });
 
-test("module application services own runtime delegation and legacy feature services stay as shims", () => {
+test("module application services own runtime delegation and the legacy feature layer is removed", () => {
   const mealReadService = read("lib/modules/meals/application/meal-read-service.ts");
   const mealEditorService = read("lib/modules/meals/application/meal-editor-service.ts");
   const commentService = read("lib/modules/comments/application/meal-comment-service.ts");
   const reactionService = read("lib/modules/reactions/application/meal-reaction-service.ts");
   const userSessionService = read("lib/modules/profile/application/user-session-service.ts");
-  const featureMealReadService = read("lib/features/meals/application/meal-read-service.ts");
-  const featureMealEditorService = read("lib/features/meals/application/meal-editor-service.ts");
-  const featureCommentService = read("lib/features/comments/application/meal-comment-service.ts");
-  const featureReactionService = read("lib/features/reactions/application/meal-reaction-service.ts");
-  const featureUserSessionService = read("lib/features/profile/application/user-session-service.ts");
 
   assert.match(mealReadService, /from "@\/lib\/modules\/meals\/infrastructure\/meal-read-runtime"/);
   assert.doesNotMatch(mealReadService, /from "@\/lib\/qa\/runtime"/);
@@ -76,17 +70,7 @@ test("module application services own runtime delegation and legacy feature serv
 
   assert.match(userSessionService, /from "@\/lib\/modules\/profile\/infrastructure\/user-session-runtime"/);
   assert.doesNotMatch(userSessionService, /from "@\/lib\/qa\/runtime"/);
-
-  assert.match(featureMealReadService, /from "@\/lib\/modules\/meals\/application\/meal-read-service"/);
-  assert.match(featureMealEditorService, /from "@\/lib\/modules\/meals\/application\/meal-editor-service"/);
-  assert.match(featureCommentService, /from "@\/lib\/modules\/comments\/application\/meal-comment-service"/);
-  assert.match(featureReactionService, /from "@\/lib\/modules\/reactions\/application\/meal-reaction-service"/);
-  assert.match(featureUserSessionService, /from "@\/lib\/modules\/profile\/application\/user-session-service"/);
-  assert.doesNotMatch(featureMealReadService, /meal-read-runtime/);
-  assert.doesNotMatch(featureMealEditorService, /meal-editor-runtime/);
-  assert.doesNotMatch(featureCommentService, /comment-runtime/);
-  assert.doesNotMatch(featureReactionService, /reaction-runtime/);
-  assert.doesNotMatch(featureUserSessionService, /user-session-runtime/);
+  assert.equal(fs.existsSync(path.join(process.cwd(), "lib", "features")), false);
 });
 
 test("active callers import module-local application and ui entrypoints instead of feature shims", () => {
@@ -170,7 +154,7 @@ test("module runtimes depend on feature-scoped QA adapters instead of shared QA 
   assert.doesNotMatch(mealEditorRuntime, /from "@\/lib\/client\/meals"/);
 });
 
-test("meal helper files are implemented inside the meals module and legacy root files stay as shims", () => {
+test("meal helper files are implemented inside the meals module and legacy root files are removed", () => {
   const moduleMealImagePolicyPath = path.join(
     process.cwd(),
     "lib",
@@ -218,14 +202,14 @@ test("meal helper files are implemented inside the meals module and legacy root 
   assert.equal(fs.existsSync(moduleMealDraftPath), true);
   assert.equal(fs.existsSync(moduleMealErrorsPath), true);
 
-  assert.match(read("lib/meal-image-policy.ts"), /from "@\/lib\/modules\/meals\/domain\/meal-image-policy"/);
-  assert.match(read("lib/meal-form.ts"), /from "@\/lib\/modules\/meals\/domain\/meal-form"/);
-  assert.match(read("lib/meal-copy.ts"), /from "@\/lib\/modules\/meals\/domain\/meal-copy"/);
-  assert.match(read("lib/meal-draft.ts"), /from "@\/lib\/modules\/meals\/domain\/meal-draft"/);
-  assert.match(read("lib/meal-errors.ts"), /from "@\/lib\/modules\/meals\/ui\/meal-error-messages"/);
+  assert.equal(exists("lib/meal-image-policy.ts"), false);
+  assert.equal(exists("lib/meal-form.ts"), false);
+  assert.equal(exists("lib/meal-copy.ts"), false);
+  assert.equal(exists("lib/meal-draft.ts"), false);
+  assert.equal(exists("lib/meal-errors.ts"), false);
 });
 
-test("meal upload and comment data adapters live inside feature modules while legacy paths stay as shims", () => {
+test("meal upload and comment data adapters live inside feature modules and removed server shims stay absent", () => {
   const mealImageUploadPath = path.join(
     process.cwd(),
     "lib",
@@ -259,16 +243,12 @@ test("meal upload and comment data adapters live inside feature modules while le
   assert.equal(fs.existsSync(mealImageUploadPath), true);
   assert.equal(fs.existsSync(commentClientPath), true);
   assert.equal(fs.existsSync(commentStorePath), true);
-
-  assert.match(
-    read("lib/server/uploads/meal-image-use-cases.ts"),
-    /from "@\/lib\/modules\/meals\/adapters\/storage\/meal-image-upload"/
+  assert.equal(
+    fs.existsSync(path.join(process.cwd(), "lib", "server", "uploads", "meal-image-use-cases.ts")),
+    false
   );
-  assert.match(read("lib/client/comments.ts"), /from "@\/lib\/modules\/comments\/adapters\/firestore\/comment-client"/);
-  assert.match(
-    read("lib/meal-comments-store.ts"),
-    /from "@\/lib\/modules\/comments\/adapters\/firestore\/comment-subscription-store"/
-  );
+  assert.equal(exists("lib/client/comments.ts"), false);
+  assert.equal(exists("lib/meal-comments-store.ts"), false);
 
   assert.match(uploadRoute, /from "@\/lib\/modules\/meals\/adapters\/storage\/meal-image-upload"/);
   assert.doesNotMatch(uploadRoute, /from "@\/lib\/server\/uploads\/meal-image-use-cases"/);
@@ -282,7 +262,7 @@ test("meal upload and comment data adapters live inside feature modules while le
   assert.doesNotMatch(commentRuntime, /from "@\/lib\/meal-comments-store"/);
 });
 
-test("activity logging and notification helpers live in module-local paths while legacy roots stay as shims", () => {
+test("activity logging and notification helpers live in module-local paths and legacy compat entrypoints are removed", () => {
   const moduleActivityLogPath = path.join(
     process.cwd(),
     "lib",
@@ -318,9 +298,6 @@ test("activity logging and notification helpers live in module-local paths while
     "profile-notification-client.ts"
   );
 
-  const activityLogShim = read("lib/activity-log.ts");
-  const notificationShim = read("lib/activity.ts");
-  const notificationClientShim = read("lib/client/activity.ts");
   const moduleActivityLog = read("lib/modules/activity/server/activity-log.ts");
   const moduleActivityAdminStore = read("lib/modules/activity/adapters/firestore/activity-admin-store.ts");
   const profilePage = read("app/profile/page.tsx");
@@ -338,14 +315,11 @@ test("activity logging and notification helpers live in module-local paths while
   assert.equal(fs.existsSync(moduleNotificationDomainPath), true);
   assert.equal(fs.existsSync(moduleNotificationClientPath), true);
 
-  assert.match(activityLogShim, /from "@\/lib\/modules\/activity\/server\/activity-log"/);
   assert.match(moduleActivityLog, /from "@\/lib\/modules\/activity\/adapters\/firestore\/activity-admin-store"/);
   assert.match(moduleActivityAdminStore, /from "@\/lib\/firebase-admin"/);
-  assert.match(notificationShim, /from "@\/lib\/modules\/profile\/domain\/notification-preferences"/);
-  assert.match(
-    notificationClientShim,
-    /from "@\/lib\/modules\/profile\/adapters\/http\/profile-notification-client"/
-  );
+  assert.equal(exists("lib/activity-log.ts"), false);
+  assert.equal(exists("lib/activity.ts"), false);
+  assert.equal(exists("lib/client/activity.ts"), false);
 
   assert.match(profilePage, /from "@\/lib\/modules\/profile\/domain\/notification-preferences"/);
   assert.match(profileSession, /from "@\/lib\/modules\/profile\/domain\/notification-preferences"/);
@@ -428,7 +402,7 @@ test("selected API routes use the shared route handler wrapper for error deliver
   });
 });
 
-test("platform auth and http helpers own the real implementations while legacy entrypoints stay as shims", () => {
+test("platform auth and http helpers own the real implementations and removed server compat entrypoints stay absent", () => {
   const platformRouteErrorsPath = path.join(
     process.cwd(),
     "lib",
@@ -471,14 +445,14 @@ test("platform auth and http helpers own the real implementations while legacy e
   assert.equal(fs.existsSync(platformServerAuthPath), true);
   assert.equal(fs.existsSync(platformRouteAuthPath), true);
   assert.equal(fs.existsSync(profileAuthContextPath), true);
+  assert.equal(fs.existsSync(path.join(process.cwd(), "lib", "server", "route-auth.ts")), false);
 
-  assert.match(read("lib/route-errors.ts"), /from "@\/lib\/platform\/http\/route-errors"/);
-  assert.match(read("lib/client/auth-http.ts"), /from "@\/lib\/platform\/http\/auth-http"/);
-  assert.match(read("lib/server-auth.ts"), /from "@\/lib\/platform\/auth\/server-auth"/);
-  assert.match(read("lib/server/route-auth.ts"), /from "@\/lib\/platform\/auth\/route-auth"/);
+  assert.equal(exists("lib/route-errors.ts"), false);
+  assert.equal(exists("lib/client/auth-http.ts"), false);
+  assert.equal(exists("lib/server-auth.ts"), false);
 });
 
-test("meals server implementations live inside the meals module and legacy server files stay as shims", () => {
+test("meals server implementations live inside the meals module and legacy server files are removed", () => {
   const moduleServerPaths = [
     path.join(process.cwd(), "lib", "modules", "meals", "server", "meal-types.ts"),
     path.join(process.cwd(), "lib", "modules", "meals", "server", "meal-read-use-cases.ts"),
@@ -489,15 +463,15 @@ test("meals server implementations live inside the meals module and legacy serve
     path.join(process.cwd(), "lib", "modules", "meals", "server", "meal-image-url.ts"),
     path.join(process.cwd(), "lib", "modules", "meals", "server", "meal-storage.ts"),
   ];
-  const legacyShimAssertions = [
-    ["lib/server/meals/meal-types.ts", /from "@\/lib\/modules\/meals\/server\/meal-types"/],
-    ["lib/server/meals/meal-read-use-cases.ts", /from "@\/lib\/modules\/meals\/server\/meal-read-use-cases"/],
-    ["lib/server/meals/meal-write-use-cases.ts", /from "@\/lib\/modules\/meals\/server\/meal-write-use-cases"/],
-    ["lib/server/meals/meal-delete-use-cases.ts", /from "@\/lib\/modules\/meals\/server\/meal-delete-use-cases"/],
-    ["lib/server/meals/archive-types.ts", /from "@\/lib\/modules\/meals\/server\/archive-types"/],
-    ["lib/server/meals/archive-use-cases.ts", /from "@\/lib\/modules\/meals\/server\/archive-use-cases"/],
-    ["lib/server/meals/meal-image-url.ts", /from "@\/lib\/modules\/meals\/server\/meal-image-url"/],
-    ["lib/server/meals/meal-storage.ts", /from "@\/lib\/modules\/meals\/server\/meal-storage"/],
+  const removedLegacyPaths = [
+    path.join(process.cwd(), "lib", "server", "meals", "meal-types.ts"),
+    path.join(process.cwd(), "lib", "server", "meals", "meal-read-use-cases.ts"),
+    path.join(process.cwd(), "lib", "server", "meals", "meal-write-use-cases.ts"),
+    path.join(process.cwd(), "lib", "server", "meals", "meal-delete-use-cases.ts"),
+    path.join(process.cwd(), "lib", "server", "meals", "archive-types.ts"),
+    path.join(process.cwd(), "lib", "server", "meals", "archive-use-cases.ts"),
+    path.join(process.cwd(), "lib", "server", "meals", "meal-image-url.ts"),
+    path.join(process.cwd(), "lib", "server", "meals", "meal-storage.ts"),
   ];
   const routeAssertions = [
     "app/api/meals/route.ts",
@@ -508,8 +482,8 @@ test("meals server implementations live inside the meals module and legacy serve
   ];
 
   moduleServerPaths.forEach((modulePath) => assert.equal(fs.existsSync(modulePath), true));
-  legacyShimAssertions.forEach(([relativePath, pattern]) => {
-    assert.match(read(relativePath), pattern);
+  removedLegacyPaths.forEach((legacyPath) => {
+    assert.equal(fs.existsSync(legacyPath), false);
   });
   routeAssertions.forEach((relativePath) => {
     const source = read(relativePath);
@@ -531,7 +505,6 @@ test("server and client layers import platform auth and http helpers directly", 
   const clientMutations = read("lib/client/meal-mutations.ts");
   const commentClient = read("lib/modules/comments/adapters/firestore/comment-client.ts");
   const clientReactions = read("lib/client/reactions.ts");
-  const clientActivity = read("lib/client/activity.ts");
   const moduleNotificationClient = read(
     "lib/modules/profile/adapters/http/profile-notification-client.ts"
   );
@@ -587,7 +560,7 @@ test("server and client layers import platform auth and http helpers directly", 
     assert.doesNotMatch(source, /@\/lib\/client\/auth-http/);
   }
 
-  assert.match(clientActivity, /from "@\/lib\/modules\/profile\/adapters\/http\/profile-notification-client"/);
+  assert.equal(exists("lib/client/activity.ts"), false);
 
   for (const source of [commentUseCases, reactionUseCases, profileUseCases, uploadAdapter]) {
     assert.match(source, /@\/lib\/platform\/http\/route-errors/);
@@ -620,7 +593,7 @@ test("server and client layers import platform auth and http helpers directly", 
   assert.doesNotMatch(mealDetailRoute, /@\/lib\/server-auth/);
 });
 
-test("comment reaction and profile server implementations live under feature modules while legacy server paths stay as shims", () => {
+test("comment reaction and profile server implementations live under feature modules and legacy server paths are removed", () => {
   const moduleCommentTypesPath = path.join(
     process.cwd(),
     "lib",
@@ -726,13 +699,12 @@ test("comment reaction and profile server implementations live under feature mod
   assert.equal(fs.existsSync(moduleProfileUseCasesPath), true);
   assert.equal(fs.existsSync(moduleProfileAdminAuthPath), true);
   assert.equal(fs.existsSync(moduleProfileAdminStorePath), true);
-
-  assert.match(read("lib/server/comments/comment-types.ts"), /modules\/comments\/server\/comment-types/);
-  assert.match(read("lib/server/comments/comment-policy.ts"), /modules\/comments\/server\/comment-policy/);
-  assert.match(read("lib/server/comments/comment-use-cases.ts"), /modules\/comments\/server\/comment-use-cases/);
-  assert.match(read("lib/server/reactions/reaction-policy.ts"), /modules\/reactions\/server\/reaction-policy/);
-  assert.match(read("lib/server/reactions/reaction-use-cases.ts"), /modules\/reactions\/server\/reaction-use-cases/);
-  assert.match(read("lib/server/profile/profile-use-cases.ts"), /modules\/profile\/server\/profile-use-cases/);
+  assert.equal(fs.existsSync(path.join(process.cwd(), "lib", "server", "comments", "comment-types.ts")), false);
+  assert.equal(fs.existsSync(path.join(process.cwd(), "lib", "server", "comments", "comment-policy.ts")), false);
+  assert.equal(fs.existsSync(path.join(process.cwd(), "lib", "server", "comments", "comment-use-cases.ts")), false);
+  assert.equal(fs.existsSync(path.join(process.cwd(), "lib", "server", "reactions", "reaction-policy.ts")), false);
+  assert.equal(fs.existsSync(path.join(process.cwd(), "lib", "server", "reactions", "reaction-use-cases.ts")), false);
+  assert.equal(fs.existsSync(path.join(process.cwd(), "lib", "server", "profile", "profile-use-cases.ts")), false);
 });
 
 test("comment reaction and profile routes import module-local server implementations directly", () => {

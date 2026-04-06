@@ -7,6 +7,7 @@
 - App Router 기반 클라이언트/서버 혼합 구조
 - Firebase Auth + Firestore + Storage 사용
 - 댓글/반응/프로필 설정은 서버 API 경유
+- 활성 애플리케이션 로직은 `lib/modules/*` 와 `lib/platform/*` 로 정리돼 있고, 예전 `lib/features/*`, `lib/server/*`, 루트 compat entrypoint 는 제거됨
 - 홈 화면은 주간 저널 중심 UI, 아카이브는 서버 API 기반 검색/필터/페이지네이션 UI
 - QA 전용 라우트는 운영 환경에서 토큰으로 차단
 - PWA 는 `NEXT_PUBLIC_ENABLE_PWA=true` 일 때만 활성화
@@ -134,11 +135,9 @@ lib/
   client/             클라이언트 읽기/API 호출
   config/             공개/서버 환경 변수 접근
   domain/             정책/상수
-  features/           화면 단위 orchestration 서비스/훅
-  modules/            feature 런타임 adapter 와 contract
-  platform/           공통 에러 계약 같은 플랫폼 유틸
+  modules/            도메인별 application/ui/infrastructure/server/adapters/domain
+  platform/           공통 auth/http/error 유틸
   qa/                 QA fixture/runtime/session
-  server/             서버 유스케이스와 route 보조 모듈
   *.ts                Firebase 초기화, 타입, 공통 유틸
 public/               아이콘, 로고, manifest 같은 커밋 대상 정적 자산
 scripts/
@@ -158,6 +157,7 @@ docs/                 설계/계획 문서와 아키텍처 문서
 - QA 라우트는 개발 환경에서는 열려 있고, 운영 환경에서는 `NEXT_PUBLIC_ENABLE_QA=true` 와 `QA_ROUTE_TOKEN` 이 모두 필요합니다.
 - PWA 가 꺼져 있으면 레이아웃에서 기존 service worker 와 캐시를 정리합니다.
 - PWA service worker (`public/sw.js`) 와 workbox helper 파일은 빌드 시 생성되는 산출물이며 저장소에는 추적하지 않습니다.
+- `next.config.ts` 는 `turbopack: {}` 를 명시해 Next 16 기본 Turbopack 경로와 `next-pwa` 구성을 함께 사용합니다.
 - 클라이언트 오류 수집 엔드포인트 `/api/client-errors` 는 Upstash 가 없으면 메모리 rate limit 으로 동작합니다.
 - `test:smoke:meals` 는 Firebase Admin 자격 증명과 allowlist 계정이 있어야 동작합니다.
 - `test:rules` 는 Java 런타임이 필요하며, 없으면 스크립트가 즉시 실패합니다.

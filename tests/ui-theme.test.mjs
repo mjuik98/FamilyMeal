@@ -6,6 +6,8 @@ import path from "node:path";
 const read = (relativePath) =>
   fs.readFileSync(path.join(process.cwd(), relativePath), "utf8");
 
+const exists = (relativePath) => fs.existsSync(path.join(process.cwd(), relativePath));
+
 test("global styles are locked to light color scheme", () => {
   const globals = read("app/globals.css");
   assert.match(globals, /color-scheme:\s*light;/);
@@ -208,14 +210,13 @@ test("qa proxy supports token-based protection", () => {
 
 test("comment mutations are handled by server APIs and update parent commentCount", () => {
   const clientComments = read("lib/modules/comments/adapters/firestore/comment-client.ts");
-  const clientCommentsShim = read("lib/client/comments.ts");
   const createRoute = read("app/api/meals/[id]/comments/route.ts");
   const deleteRoute = read("app/api/meals/[id]/comments/[commentId]/route.ts");
 
   assert.match(clientComments, /\/api\/meals\/\$\{encodedMealId\}\/comments/);
   assert.match(clientComments, /\/api\/meals\/\$\{encodedMealId\}\/comments\/\$\{encodedCommentId\}/);
   assert.doesNotMatch(clientComments, /runTransaction\(/);
-  assert.match(clientCommentsShim, /modules\/comments\/adapters\/firestore\/comment-client/);
+  assert.equal(exists("lib/client/comments.ts"), false);
   assert.match(createRoute, /createMealComment/);
   assert.match(deleteRoute, /deleteMealCommentById/);
 });
@@ -338,7 +339,6 @@ test("meal card uses extracted hooks, shared comment subscription store, and sha
   const mealCommentService = read("lib/modules/comments/application/meal-comment-service.ts");
   const commentRuntime = read("lib/modules/comments/infrastructure/comment-runtime.ts");
   const commentsStore = read("lib/modules/comments/adapters/firestore/comment-subscription-store.ts");
-  const commentsStoreShim = read("lib/meal-comments-store.ts");
   const timeUtils = read("lib/time.ts");
   const commentItem = read("components/comments/CommentItem.tsx");
   const commentThread = read("components/comments/CommentThread.tsx");
@@ -358,7 +358,7 @@ test("meal card uses extracted hooks, shared comment subscription store, and sha
   assert.match(commentRuntime, /subscribeToMealComments/);
   assert.match(commentsStore, /const commentEntries = new Map/);
   assert.match(commentsStore, /refCount/);
-  assert.match(commentsStoreShim, /modules\/comments\/adapters\/firestore\/comment-subscription-store/);
+  assert.equal(exists("lib/meal-comments-store.ts"), false);
   assert.match(timeUtils, /export const formatRelativeTime =/);
 
   assert.match(commentItem, /from "@\/lib\/time"/);
@@ -370,7 +370,6 @@ test("meal card uses extracted hooks, shared comment subscription store, and sha
 test("edit page blocks legacy meal mutation locally and maps migration-required errors", () => {
   const editPage = read("app/edit/[id]/page.tsx");
   const editController = read("lib/modules/meals/ui/useEditMealPageController.ts");
-  const mealErrorsShim = read("lib/meal-errors.ts");
   const mealErrors = read("lib/modules/meals/ui/meal-error-messages.ts");
 
   assert.match(editPage, /useEditMealPageController/);
@@ -379,7 +378,7 @@ test("edit page blocks legacy meal mutation locally and maps migration-required 
   assert.match(editController, /showToast\("등록 이전 기록은 소유자 이전 작업 후 수정할 수 있습니다\.", "error"\)/);
   assert.doesNotMatch(editController, /needsOwnerAdoption/);
   assert.doesNotMatch(editController, /ownerUid: userProfile\.uid/);
-  assert.match(mealErrorsShim, /modules\/meals\/ui\/meal-error-messages/);
+  assert.equal(exists("lib/meal-errors.ts"), false);
   assert.match(mealErrors, /code === "legacy_meal_requires_migration"/);
   assert.match(mealErrors, /기존 기록이라 아직 수정할 수 없습니다\./);
 });
@@ -424,17 +423,21 @@ test("next config is kept minimal and avoids placeholder comments", () => {
 
   assert.doesNotMatch(nextConfig, /config options here/);
   assert.match(nextConfig, /withPWA\(nextConfig\)/);
+  assert.match(nextConfig, /turbopack:\s*\{\s*\}/);
   assert.doesNotMatch(nextConfig, /optimizePackageImports/);
 });
 
-test("default build script preserves cache and exposes explicit clean build", () => {
+test("default dev and build scripts use the Turbopack-ready path and keep explicit clean build", () => {
   const packageJson = read("package.json");
   const packageJsonData = JSON.parse(packageJson);
   const gitignore = read(".gitignore");
   const cleanNextDir = read("scripts/clean-next-dir.mjs");
 
-  assert.match(packageJson, /"build":\s*"next build --webpack"/);
-  assert.match(packageJson, /"build:clean":\s*"node scripts\/clean-next-dir\.mjs && next build --webpack"/);
+  assert.match(packageJson, /"dev":\s*"next dev"/);
+  assert.match(packageJson, /"build":\s*"next build"/);
+  assert.match(packageJson, /"build:clean":\s*"node scripts\/clean-next-dir\.mjs && next build"/);
+  assert.doesNotMatch(packageJson, /next dev --webpack/);
+  assert.doesNotMatch(packageJson, /next build --webpack/);
   assert.doesNotMatch(packageJson, /"build":\s*"node scripts\/clean-next-dir\.mjs/);
   assert.match(packageJson, /"@opentelemetry\/api":\s*"\^1\.9\.0"/);
   assert.match(
@@ -620,7 +623,6 @@ test("update polling only runs when a service worker registration is available",
 
 test("profile notification settings stay wired after removing dead activity feed ui", () => {
   const types = read("lib/types.ts");
-  const clientActivity = read("lib/client/activity.ts");
   const notificationDomain = read("lib/modules/profile/domain/notification-preferences.ts");
   const profilePage = read("app/profile/page.tsx");
   const userContext = read("context/UserContext.tsx");
@@ -628,12 +630,8 @@ test("profile notification settings stay wired after removing dead activity feed
 
   assert.match(types, /notificationPreferences/);
   assert.doesNotMatch(types, /ActivityFeedItem/);
-  assert.match(clientActivity, /updateNotificationPreferences/);
-  assert.match(clientActivity, /modules\/profile\/adapters\/http\/profile-notification-client/);
+  assert.equal(exists("lib/client/activity.ts"), false);
   assert.match(notificationDomain, /DEFAULT_NOTIFICATION_PREFERENCES/);
-  assert.doesNotMatch(clientActivity, /subscribeUserActivity/);
-  assert.doesNotMatch(clientActivity, /markAllActivitiesRead/);
-  assert.doesNotMatch(clientActivity, /mapUserActivitiesToFeedItems/);
   assert.equal(fs.existsSync(activityFeedPath), false);
   assert.match(profilePage, /from "@\/lib\/modules\/profile\/domain\/notification-preferences"/);
   assert.match(profilePage, /profile-notification-toggle-browserEnabled/);
@@ -645,11 +643,8 @@ test("add flow remembers recent meal draft defaults", () => {
   const addPage = read("app/add/page.tsx");
   const addController = read("lib/modules/meals/ui/useAddMealPageController.ts");
   const mealImageField = read("components/meal-editor/MealImageField.tsx");
-  const mealDraftShim = read("lib/meal-draft.ts");
   const mealDraft = read("lib/modules/meals/domain/meal-draft.ts");
-  const mealCopyShim = read("lib/meal-copy.ts");
   const mealCopy = read("lib/modules/meals/domain/meal-copy.ts");
-  const mealErrorsShim = read("lib/meal-errors.ts");
   const mealErrors = read("lib/modules/meals/ui/meal-error-messages.ts");
   const mealEditorRuntime = read("lib/modules/meals/infrastructure/meal-editor-runtime.ts");
   const homePage = read("app/page.tsx");
@@ -666,9 +661,9 @@ test("add flow remembers recent meal draft defaults", () => {
   assert.match(addPage, /data-testid="add-quick-save"/);
   assert.match(addController, /toMealCreateErrorMessage/);
   assert.match(mealEditorRuntime, /uploadImage/);
-  assert.match(mealDraftShim, /modules\/meals\/domain\/meal-draft/);
-  assert.match(mealCopyShim, /modules\/meals\/domain\/meal-copy/);
-  assert.match(mealErrorsShim, /modules\/meals\/ui\/meal-error-messages/);
+  assert.equal(exists("lib/meal-draft.ts"), false);
+  assert.equal(exists("lib/meal-copy.ts"), false);
+  assert.equal(exists("lib/meal-errors.ts"), false);
   assert.match(mealErrors, /사진 업로드에 실패했습니다\./);
   assert.match(mealErrors, /식사 기록 저장에 실패했습니다\./);
   assert.match(homePage, /useSelectedDate/);
@@ -685,12 +680,11 @@ test("add flow remembers recent meal draft defaults", () => {
 test("edit flow uses server mutation helper and specific failure copy", () => {
   const editPage = read("app/edit/[id]/page.tsx");
   const editController = read("lib/modules/meals/ui/useEditMealPageController.ts");
-  const mealErrorsShim = read("lib/meal-errors.ts");
   const mealErrors = read("lib/modules/meals/ui/meal-error-messages.ts");
 
   assert.match(editPage, /useEditMealPageController/);
   assert.match(editController, /toMealUpdateErrorMessage/);
-  assert.match(mealErrorsShim, /modules\/meals\/ui\/meal-error-messages/);
+  assert.equal(exists("lib/meal-errors.ts"), false);
   assert.match(mealErrors, /사진 업로드에 실패했습니다\./);
   assert.match(mealErrors, /식사 기록 수정에 실패했습니다\./);
 });
@@ -699,7 +693,6 @@ test("detail actions fail closed for legacy meals and preserve delete status han
   const mealCard = read("components/MealCard.tsx");
   const mealMutations = read("lib/client/meal-mutations.ts");
   const mealContracts = read("lib/modules/meals/contracts.ts");
-  const mealErrorsShim = read("lib/meal-errors.ts");
   const mealErrors = read("lib/modules/meals/ui/meal-error-messages.ts");
   const mealDetailSummary = read("components/meal-detail/MealDetailSummary.tsx");
 
@@ -715,7 +708,7 @@ test("detail actions fail closed for legacy meals and preserve delete status han
   assert.match(mealCard, /case "already_processing":/);
   assert.match(mealCard, /삭제 작업이 이미 진행 중입니다\./);
   assert.match(mealCard, /"info"/);
-  assert.match(mealErrorsShim, /modules\/meals\/ui\/meal-error-messages/);
+  assert.equal(exists("lib/meal-errors.ts"), false);
   assert.match(mealErrors, /기존 기록이라 아직 삭제할 수 없습니다\./);
   assert.match(mealCard, /case "already_deleted":/);
   assert.match(mealCard, /이미 삭제된 기록입니다\./);
@@ -777,7 +770,6 @@ test("detail page exits to archive after terminal delete outcomes and keyword se
 test("meal delete route uses idempotent server cleanup flow", () => {
   const deleteRoute = read("app/api/meals/[id]/route.ts");
   const mealDeleteUseCases = read("lib/modules/meals/server/meal-delete-use-cases.ts");
-  const mealDeleteShim = read("lib/server/meals/meal-delete-use-cases.ts");
   assert.match(deleteRoute, /planMealDeleteOperation/);
   assert.match(deleteRoute, /deleteMealCommentsByMealId/);
   assert.match(deleteRoute, /markMealDeleteJob/);
@@ -786,7 +778,7 @@ test("meal delete route uses idempotent server cleanup flow", () => {
   assert.match(deleteRoute, /status:\s*"completed"/);
   assert.match(deleteRoute, /status:\s*"failed"/);
   assert.match(mealDeleteUseCases, /deleteMealCommentsByMealId/);
-  assert.match(mealDeleteShim, /from "@\/lib\/modules\/meals\/server\/meal-delete-use-cases"/);
+  assert.equal(fs.existsSync(path.join(process.cwd(), "lib", "server", "meals", "meal-delete-use-cases.ts")), false);
 });
 
 test("qa mock mode is disabled in production by env guard", () => {
@@ -812,13 +804,10 @@ test("client data access is split into focused adapters and user context delegat
   const mealMutations = read("lib/client/meal-mutations.ts");
   const mealFilters = read("lib/client/meal-filters.ts");
   const commentClient = read("lib/modules/comments/adapters/firestore/comment-client.ts");
-  const clientCommentsShim = read("lib/client/comments.ts");
   const clientReactions = read("lib/client/reactions.ts");
-  const clientActivity = read("lib/client/activity.ts");
   const clientProfile = read("lib/client/profile.ts");
   const profileSession = read("lib/client/profile-session.ts");
   const notificationClient = read("lib/modules/profile/adapters/http/profile-notification-client.ts");
-  const authHttpShim = read("lib/client/auth-http.ts");
   const authHttp = read("lib/platform/http/auth-http.ts");
   const mealCommentService = read("lib/modules/comments/application/meal-comment-service.ts");
   const mealReactionService = read("lib/modules/reactions/application/meal-reaction-service.ts");
@@ -842,6 +831,10 @@ test("client data access is split into focused adapters and user context delegat
   const removedCompatFiles = [
     path.join(process.cwd(), "lib", "data.ts"),
     path.join(process.cwd(), "lib", "client", "http.ts"),
+    path.join(process.cwd(), "lib", "client", "activity.ts"),
+    path.join(process.cwd(), "lib", "client", "auth-http.ts"),
+    path.join(process.cwd(), "lib", "client", "comments.ts"),
+    path.join(process.cwd(), "lib", "client", "meals.ts"),
   ];
 
   assert.match(clientMeals, /export const getMealsForDate = async/);
@@ -852,16 +845,12 @@ test("client data access is split into focused adapters and user context delegat
   assert.match(commentClient, /export const addMealComment = async/);
   assert.match(commentClient, /export const updateMealComment = async/);
   assert.match(commentClient, /export const deleteMealComment = async/);
-  assert.match(clientCommentsShim, /modules\/comments\/adapters\/firestore\/comment-client/);
   assert.match(clientReactions, /export const toggleMealReaction = async/);
   assert.match(clientReactions, /export const toggleMealCommentReaction = async/);
-  assert.match(clientActivity, /updateNotificationPreferences/);
-  assert.match(clientActivity, /modules\/profile\/adapters\/http\/profile-notification-client/);
   assert.match(clientProfile, /export const users =/);
   assert.match(profileSession, /export const loadUserProfile = async/);
   assert.match(profileSession, /export const saveUserRole = async/);
   assert.match(notificationClient, /export const updateNotificationPreferences = async/);
-  assert.match(authHttpShim, /from "@\/lib\/platform\/http\/auth-http"/);
   assert.match(authHttp, /export const getAccessToken = async/);
   assert.match(authHttp, /export const parseErrorMessage = async/);
   removedCompatFiles.forEach((filePath) => assert.equal(fs.existsSync(filePath), false));
@@ -934,7 +923,6 @@ test("runtime pages avoid compat meal barrel and comment store reuses shared ser
   const addController = read("lib/modules/meals/ui/useAddMealPageController.ts");
   const editController = read("lib/modules/meals/ui/useEditMealPageController.ts");
   const commentsStore = read("lib/modules/comments/adapters/firestore/comment-subscription-store.ts");
-  const commentsStoreShim = read("lib/meal-comments-store.ts");
 
   assert.match(addPage, /from "@\/lib\/modules\/meals\/ui\/useAddMealPageController"/);
   assert.match(editPage, /from "@\/lib\/modules\/meals\/ui\/useEditMealPageController"/);
@@ -946,7 +934,7 @@ test("runtime pages avoid compat meal barrel and comment store reuses shared ser
   assert.doesNotMatch(editController, /@\/lib\/data/);
 
   assert.match(commentsStore, /from "@\/lib\/client\/serializers"/);
-  assert.match(commentsStoreShim, /modules\/comments\/adapters\/firestore\/comment-subscription-store/);
+  assert.equal(exists("lib/meal-comments-store.ts"), false);
   assert.doesNotMatch(commentsStore, /const normalizeComment =/);
   assert.doesNotMatch(commentsStore, /const convertCommentDoc =/);
 });
@@ -969,9 +957,7 @@ test("meal editor pages reuse focused meal form helpers and direct public env co
   const editController = read("lib/modules/meals/ui/useEditMealPageController.ts");
   const mealImageField = read("components/meal-editor/MealImageField.tsx");
   const mealDetailsSection = read("components/meal-editor/MealDetailsSection.tsx");
-  const mealFormShim = read("lib/meal-form.ts");
   const mealForm = read("lib/modules/meals/domain/meal-form.ts");
-  const imagePolicyShim = read("lib/meal-image-policy.ts");
   const imagePolicy = read("lib/modules/meals/domain/meal-image-policy.ts");
   const imageHook = read("components/hooks/useMealImageSelection.ts");
   const mealEditorService = read("lib/modules/meals/application/meal-editor-service.ts");
@@ -986,13 +972,13 @@ test("meal editor pages reuse focused meal form helpers and direct public env co
   assert.match(mealForm, /export const readMealImageDataUrl = async/);
   assert.match(mealForm, /export const toggleMealParticipant =/);
   assert.doesNotMatch(mealForm, /export const isLocalMealImagePreview =/);
-  assert.match(mealFormShim, /modules\/meals\/domain\/meal-form/);
+  assert.equal(exists("lib/meal-form.ts"), false);
 
   assert.match(imagePolicy, /MAX_MEAL_IMAGE_UPLOAD_BYTES/);
   assert.match(imagePolicy, /ALLOWED_MEAL_IMAGE_TYPES/);
   assert.match(imagePolicy, /export const validateMealImageFile =/);
   assert.match(imagePolicy, /export const formatMealImageFileSize =/);
-  assert.match(imagePolicyShim, /modules\/meals\/domain\/meal-image-policy/);
+  assert.equal(exists("lib/meal-image-policy.ts"), false);
 
   assert.match(imageHook, /export const useMealImageSelection =/);
   assert.match(imageHook, /validateMealImageFile/);

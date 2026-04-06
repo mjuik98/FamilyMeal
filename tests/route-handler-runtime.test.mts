@@ -26,8 +26,8 @@ test("handleRoute converts RouteError throws into structured json payloads", asy
     importFresh<typeof import("../lib/platform/http/route-handler.ts")>(
       "../lib/platform/http/route-handler.ts"
     ),
-    importFresh<typeof import("../lib/route-errors.ts")>(
-      "../lib/route-errors.ts"
+    importFresh<typeof import("../lib/platform/http/route-errors.ts")>(
+      "../lib/platform/http/route-errors.ts"
     ),
   ]);
 

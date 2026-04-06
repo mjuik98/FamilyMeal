@@ -2,7 +2,7 @@
 
 ## Current status
 - `npm audit fix` was run on 2026-02-21.
-- `npm run audit:prod:check` passes as of 2026-04-04.
+- `npm run audit:prod:check` passes as of 2026-04-06.
 - `@ducanh2912/next-pwa` was moved to `devDependencies` because it is only used from `next.config.ts` during build time, which removes the `workbox-*` chain from the production audit surface.
 - Any remaining `npm audit` findings are outside the production gate unless they re-enter runtime dependencies.
 - `npm audit --json` is uploaded as a CI artifact (`dependency-audit-report`) on every run.

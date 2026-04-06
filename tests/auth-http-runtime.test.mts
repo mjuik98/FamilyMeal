@@ -39,8 +39,8 @@ test("fetchAuthedJson throws a typed error with status and code from structured 
   ) as typeof fetch;
 
   try {
-    const authHttp = await importFresh<typeof import("../lib/client/auth-http.ts")>(
-      "../lib/client/auth-http.ts"
+    const authHttp = await importFresh<typeof import("../lib/platform/http/auth-http.ts")>(
+      "../lib/platform/http/auth-http.ts"
     );
 
     await assert.rejects(

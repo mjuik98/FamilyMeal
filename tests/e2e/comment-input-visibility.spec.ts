@@ -138,7 +138,7 @@ test("qa mock mode can add comments without auth", async ({ page }) => {
   await page.locator(".comment-send-btn").click();
 
   await expect(page.locator(".comment-item")).toHaveCount(2);
-  await expect(page.locator(".comment-text").last()).toHaveText("qa local add");
+  await expect(page.locator(".comment-text").filter({ hasText: "qa local add" })).toHaveCount(1);
   await expect(toggleButton).toContainText("댓글 2");
 });
 
@@ -165,7 +165,10 @@ test("qa mock mode can toggle comment reactions locally", async ({ page }) => {
 
   await ensureCommentsOpen(page);
 
-  const commentReaction = page.getByTestId("comment-reaction-chip-heart");
+  const fixtureComment = page.locator(".comment-item").filter({
+    hasText: "댓글 입력 가독성 테스트",
+  });
+  const commentReaction = fixtureComment.getByTestId("comment-reaction-chip-heart");
   await expect(commentReaction).toBeVisible();
   await expect(commentReaction).toContainText("1");
 
