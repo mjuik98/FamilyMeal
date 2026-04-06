@@ -15,7 +15,7 @@ import {
 import {
   loadEditableMeal,
   updateExistingMealRecord,
-} from "@/lib/features/meals/application/meal-editor-service";
+} from "@/lib/modules/meals/application/meal-editor-service";
 import { logError } from "@/lib/logging";
 import {
   hasMealParticipants,

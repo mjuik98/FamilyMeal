@@ -2,7 +2,7 @@
 
 import { Send, X } from "lucide-react";
 
-import type { ReplyTarget } from "@/lib/features/comments/ui/types";
+import type { ReplyTarget } from "@/lib/modules/comments/ui/types";
 
 export default function CommentComposer({
   value,

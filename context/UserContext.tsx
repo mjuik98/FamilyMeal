@@ -18,7 +18,7 @@ import {
   loadUserProfileWithFallback,
   saveSelectedUserRole,
   saveUserNotificationSelection,
-} from "@/lib/features/profile/application/user-session-service";
+} from "@/lib/modules/profile/application/user-session-service";
 import { logError } from "@/lib/logging";
 import { NotificationPreferences, UserProfile, UserRole } from "@/lib/types";
 

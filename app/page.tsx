@@ -12,9 +12,9 @@ import WeekDateStrip from "@/components/WeekDateStrip";
 import { useSelectedDate } from "@/components/hooks/useSelectedDate";
 import { useUser } from "@/context/UserContext";
 import { formatDateKey } from "@/lib/date-utils";
-import { createMealRuntimeState } from "@/lib/features/meals/application/meal-read-service";
-import { useMealsForDateController as useMealsForDate } from "@/lib/features/meals/ui/useMealsForDateController";
-import { useWeeklyStatsController as useWeeklyStats } from "@/lib/features/meals/ui/useWeeklyStatsController";
+import { createMealRuntimeState } from "@/lib/modules/meals/application/meal-read-service";
+import { useMealsForDateController as useMealsForDate } from "@/lib/modules/meals/ui/useMealsForDateController";
+import { useWeeklyStatsController as useWeeklyStats } from "@/lib/modules/meals/ui/useWeeklyStatsController";
 
 const roleEmoji: Record<string, string> = {
   아빠: "👨",

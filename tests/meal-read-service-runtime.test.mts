@@ -109,8 +109,8 @@ const importFresh = async <T,>(specifier: string): Promise<T> =>
   import(`${specifier}?test=${Date.now()}-${Math.random()}`) as Promise<T>;
 
 test("watchMealsForViewerDate reads QA meals without subscribing to remote data", async () => {
-  const service = await importFresh<typeof import("../lib/features/meals/application/meal-read-service.ts")>(
-    "../lib/features/meals/application/meal-read-service.ts"
+  const service = await importFresh<typeof import("../lib/modules/meals/application/meal-read-service.ts")>(
+    "../lib/modules/meals/application/meal-read-service.ts"
   );
 
   const seen: Meal[][] = [];
@@ -131,8 +131,8 @@ test("watchMealsForViewerDate reads QA meals without subscribing to remote data"
 });
 
 test("loadArchiveMealsForViewer and loadWeeklyStatsForViewer delegate to runtime-specific sources", async () => {
-  const service = await importFresh<typeof import("../lib/features/meals/application/meal-read-service.ts")>(
-    "../lib/features/meals/application/meal-read-service.ts"
+  const service = await importFresh<typeof import("../lib/modules/meals/application/meal-read-service.ts")>(
+    "../lib/modules/meals/application/meal-read-service.ts"
   );
 
   const remoteArchive = await service.loadArchiveMealsForViewer({

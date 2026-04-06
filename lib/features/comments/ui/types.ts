@@ -1,6 +1,1 @@
-import type { UserRole } from "@/lib/types";
-
-export type ReplyTarget = {
-  id: string;
-  author: UserRole;
-};
+export type { ReplyTarget } from "@/lib/modules/comments/ui/types";

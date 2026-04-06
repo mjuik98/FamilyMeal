@@ -12,7 +12,7 @@ import { useUser } from "@/context/UserContext";
 import {
   createMealRuntimeState,
   loadArchiveMealsForViewer,
-} from "@/lib/features/meals/application/meal-read-service";
+} from "@/lib/modules/meals/application/meal-read-service";
 import { logError } from "@/lib/logging";
 import type { Meal, UserRole } from "@/lib/types";
 

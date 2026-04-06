@@ -68,8 +68,8 @@ const importFresh = async <T,>(specifier: string): Promise<T> =>
   import(`${specifier}?test=${Date.now()}-${Math.random()}`) as Promise<T>;
 
 test("reaction service delegates to remote adapters outside QA mode", async () => {
-  const service = await importFresh<typeof import("../lib/features/reactions/application/meal-reaction-service.ts")>(
-    "../lib/features/reactions/application/meal-reaction-service.ts"
+  const service = await importFresh<typeof import("../lib/modules/reactions/application/meal-reaction-service.ts")>(
+    "../lib/modules/reactions/application/meal-reaction-service.ts"
   );
 
   const mealReactions = await service.toggleMealReactionForViewer({
@@ -94,8 +94,8 @@ test("reaction service delegates to remote adapters outside QA mode", async () =
 
 test("reaction service applies local QA toggles without remote adapters", async () => {
   qaMode = true;
-  const service = await importFresh<typeof import("../lib/features/reactions/application/meal-reaction-service.ts")>(
-    "../lib/features/reactions/application/meal-reaction-service.ts"
+  const service = await importFresh<typeof import("../lib/modules/reactions/application/meal-reaction-service.ts")>(
+    "../lib/modules/reactions/application/meal-reaction-service.ts"
   );
 
   const mealReactions = await service.toggleMealReactionForViewer({

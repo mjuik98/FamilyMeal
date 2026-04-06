@@ -132,8 +132,8 @@ const importFresh = async <T,>(specifier: string): Promise<T> =>
 
 test("watchMealCommentsForViewer uses fallback comments in QA mode without remote subscription", async () => {
   qaMode = true;
-  const service = await importFresh<typeof import("../lib/features/comments/application/meal-comment-service.ts")>(
-    "../lib/features/comments/application/meal-comment-service.ts"
+  const service = await importFresh<typeof import("../lib/modules/comments/application/meal-comment-service.ts")>(
+    "../lib/modules/comments/application/meal-comment-service.ts"
   );
 
   const seen: MealComment[][] = [];
@@ -151,8 +151,8 @@ test("watchMealCommentsForViewer uses fallback comments in QA mode without remot
 });
 
 test("comment service delegates remote create update and delete outside QA mode", async () => {
-  const service = await importFresh<typeof import("../lib/features/comments/application/meal-comment-service.ts")>(
-    "../lib/features/comments/application/meal-comment-service.ts"
+  const service = await importFresh<typeof import("../lib/modules/comments/application/meal-comment-service.ts")>(
+    "../lib/modules/comments/application/meal-comment-service.ts"
   );
 
   const created = await service.createMealCommentForViewer({
@@ -183,8 +183,8 @@ test("comment service delegates remote create update and delete outside QA mode"
 
 test("comment service synthesizes QA comment mutations without remote adapters", async () => {
   qaMode = true;
-  const service = await importFresh<typeof import("../lib/features/comments/application/meal-comment-service.ts")>(
-    "../lib/features/comments/application/meal-comment-service.ts"
+  const service = await importFresh<typeof import("../lib/modules/comments/application/meal-comment-service.ts")>(
+    "../lib/modules/comments/application/meal-comment-service.ts"
   );
 
   const created = await service.createMealCommentForViewer({

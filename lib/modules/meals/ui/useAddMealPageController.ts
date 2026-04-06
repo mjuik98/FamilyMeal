@@ -8,9 +8,9 @@ import { useMealImageSelection } from "@/components/hooks/useMealImageSelection"
 import { useToast } from "@/components/Toast";
 import { useUser } from "@/context/UserContext";
 import { formatDateKey, parseDateKey } from "@/lib/date-utils";
-import { createMealRecord } from "@/lib/features/meals/application/meal-editor-service";
-import { createMealRuntimeState } from "@/lib/features/meals/application/meal-read-service";
 import { logError } from "@/lib/logging";
+import { createMealRecord } from "@/lib/modules/meals/application/meal-editor-service";
+import { createMealRuntimeState } from "@/lib/modules/meals/application/meal-read-service";
 import {
   buildAutoMealDescription,
 } from "@/lib/modules/meals/domain/meal-copy";

@@ -7,9 +7,9 @@ import { useUser } from "@/context/UserContext";
 import {
   deleteMealRecord,
   type MealDeleteResult,
-} from "@/lib/features/meals/application/meal-editor-service";
-import { useMealCommentsController as useMealComments } from "@/lib/features/comments/ui/useMealCommentsController";
-import { useMealReactionsController as useMealReactions } from "@/lib/features/reactions/ui/useMealReactionsController";
+} from "@/lib/modules/meals/application/meal-editor-service";
+import { useMealCommentsController as useMealComments } from "@/lib/modules/comments/ui/useMealCommentsController";
+import { useMealReactionsController as useMealReactions } from "@/lib/modules/reactions/ui/useMealReactionsController";
 import { logError } from "@/lib/logging";
 import { toMealDeleteErrorMessage } from "@/lib/modules/meals/ui/meal-error-messages";
 import type { Meal } from "@/lib/types";

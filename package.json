@@ -30,6 +30,7 @@
     "migrate:owners:dry": "node scripts/backfill-meal-owners.mjs --dry-run"
   },
   "dependencies": {
+    "@opentelemetry/api": "^1.9.0",
     "@upstash/ratelimit": "^2.0.8",
     "@upstash/redis": "^1.36.2",
     "firebase": "^12.9.0",

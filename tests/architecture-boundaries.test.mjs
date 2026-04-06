@@ -18,6 +18,17 @@ test("lint config blocks direct server imports from UI layers and direct QA inte
   assert.match(eslintConfig, /@\/lib\/qa\/fixtures/);
   assert.match(eslintConfig, /@\/lib\/qa\/mode/);
   assert.match(eslintConfig, /Module runtime adapters must depend on feature-specific qa adapters and focused client adapters instead of qa internals or compat barrels directly/);
+  assert.match(eslintConfig, /@\/lib\/features\/\*/);
+  assert.match(eslintConfig, /Production callers must import module-local application and ui entrypoints directly instead of legacy feature shims/);
+});
+
+test("package metadata declares the OpenTelemetry API required by clean-install Firebase server imports", () => {
+  const packageJson = JSON.parse(read("package.json"));
+
+  assert.equal(
+    packageJson.dependencies?.["@opentelemetry/api"],
+    "^1.9.0"
+  );
 });
 
 test("module-scoped contracts exist only where shared runtime contracts are needed", () => {
@@ -25,7 +36,7 @@ test("module-scoped contracts exist only where shared runtime contracts are need
   const commentContractsPath = path.join(process.cwd(), "lib", "modules", "comments", "contracts.ts");
   const profileContractsPath = path.join(process.cwd(), "lib", "modules", "profile", "contracts.ts");
   const mealMutations = read("lib/client/meal-mutations.ts");
-  const userSessionService = read("lib/features/profile/application/user-session-service.ts");
+  const userSessionService = read("lib/modules/profile/application/user-session-service.ts");
 
   assert.equal(fs.existsSync(mealContractsPath), true);
   assert.equal(fs.existsSync(commentContractsPath), true);
@@ -35,12 +46,17 @@ test("module-scoped contracts exist only where shared runtime contracts are need
   assert.doesNotMatch(userSessionService, /modules\/profile\/contracts/);
 });
 
-test("feature services delegate runtime selection to infrastructure adapters", () => {
-  const mealReadService = read("lib/features/meals/application/meal-read-service.ts");
-  const mealEditorService = read("lib/features/meals/application/meal-editor-service.ts");
-  const commentService = read("lib/features/comments/application/meal-comment-service.ts");
-  const reactionService = read("lib/features/reactions/application/meal-reaction-service.ts");
-  const userSessionService = read("lib/features/profile/application/user-session-service.ts");
+test("module application services own runtime delegation and legacy feature services stay as shims", () => {
+  const mealReadService = read("lib/modules/meals/application/meal-read-service.ts");
+  const mealEditorService = read("lib/modules/meals/application/meal-editor-service.ts");
+  const commentService = read("lib/modules/comments/application/meal-comment-service.ts");
+  const reactionService = read("lib/modules/reactions/application/meal-reaction-service.ts");
+  const userSessionService = read("lib/modules/profile/application/user-session-service.ts");
+  const featureMealReadService = read("lib/features/meals/application/meal-read-service.ts");
+  const featureMealEditorService = read("lib/features/meals/application/meal-editor-service.ts");
+  const featureCommentService = read("lib/features/comments/application/meal-comment-service.ts");
+  const featureReactionService = read("lib/features/reactions/application/meal-reaction-service.ts");
+  const featureUserSessionService = read("lib/features/profile/application/user-session-service.ts");
 
   assert.match(mealReadService, /from "@\/lib\/modules\/meals\/infrastructure\/meal-read-runtime"/);
   assert.doesNotMatch(mealReadService, /from "@\/lib\/qa\/runtime"/);
@@ -57,6 +73,54 @@ test("feature services delegate runtime selection to infrastructure adapters", (
 
   assert.match(userSessionService, /from "@\/lib\/modules\/profile\/infrastructure\/user-session-runtime"/);
   assert.doesNotMatch(userSessionService, /from "@\/lib\/qa\/runtime"/);
+
+  assert.match(featureMealReadService, /from "@\/lib\/modules\/meals\/application\/meal-read-service"/);
+  assert.match(featureMealEditorService, /from "@\/lib\/modules\/meals\/application\/meal-editor-service"/);
+  assert.match(featureCommentService, /from "@\/lib\/modules\/comments\/application\/meal-comment-service"/);
+  assert.match(featureReactionService, /from "@\/lib\/modules\/reactions\/application\/meal-reaction-service"/);
+  assert.match(featureUserSessionService, /from "@\/lib\/modules\/profile\/application\/user-session-service"/);
+  assert.doesNotMatch(featureMealReadService, /meal-read-runtime/);
+  assert.doesNotMatch(featureMealEditorService, /meal-editor-runtime/);
+  assert.doesNotMatch(featureCommentService, /comment-runtime/);
+  assert.doesNotMatch(featureReactionService, /reaction-runtime/);
+  assert.doesNotMatch(featureUserSessionService, /user-session-runtime/);
+});
+
+test("active callers import module-local application and ui entrypoints instead of feature shims", () => {
+  const homePage = read("app/page.tsx");
+  const archivePage = read("app/archive/page.tsx");
+  const mealDetailPage = read("app/meals/[id]/page.tsx");
+  const mealCard = read("components/MealCard.tsx");
+  const commentComposer = read("components/comments/CommentComposer.tsx");
+  const conversationPanel = read("components/meal-detail/MealConversationPanel.tsx");
+  const userContext = read("context/UserContext.tsx");
+  const addController = read("lib/modules/meals/ui/useAddMealPageController.ts");
+  const editController = read("lib/modules/meals/ui/useEditMealPageController.ts");
+
+  assert.match(homePage, /from "@\/lib\/modules\/meals\/application\/meal-read-service"/);
+  assert.match(homePage, /from "@\/lib\/modules\/meals\/ui\/useMealsForDateController"/);
+  assert.match(homePage, /from "@\/lib\/modules\/meals\/ui\/useWeeklyStatsController"/);
+  assert.match(archivePage, /from "@\/lib\/modules\/meals\/application\/meal-read-service"/);
+  assert.match(mealDetailPage, /from "@\/lib\/modules\/meals\/application\/meal-read-service"/);
+  assert.match(mealCard, /from "@\/lib\/modules\/meals\/application\/meal-editor-service"/);
+  assert.match(mealCard, /from "@\/lib\/modules\/comments\/ui\/useMealCommentsController"/);
+  assert.match(mealCard, /from "@\/lib\/modules\/reactions\/ui\/useMealReactionsController"/);
+  assert.match(commentComposer, /from "@\/lib\/modules\/comments\/ui\/types"/);
+  assert.match(conversationPanel, /from "@\/lib\/modules\/comments\/ui\/types"/);
+  assert.match(userContext, /from "@\/lib\/modules\/profile\/application\/user-session-service"/);
+  assert.match(addController, /from "@\/lib\/modules\/meals\/application\/meal-editor-service"/);
+  assert.match(addController, /from "@\/lib\/modules\/meals\/application\/meal-read-service"/);
+  assert.match(editController, /from "@\/lib\/modules\/meals\/application\/meal-editor-service"/);
+
+  assert.doesNotMatch(homePage, /from "@\/lib\/features\//);
+  assert.doesNotMatch(archivePage, /from "@\/lib\/features\//);
+  assert.doesNotMatch(mealDetailPage, /from "@\/lib\/features\//);
+  assert.doesNotMatch(mealCard, /from "@\/lib\/features\//);
+  assert.doesNotMatch(commentComposer, /from "@\/lib\/features\//);
+  assert.doesNotMatch(conversationPanel, /from "@\/lib\/features\//);
+  assert.doesNotMatch(userContext, /from "@\/lib\/features\//);
+  assert.doesNotMatch(addController, /from "@\/lib\/features\//);
+  assert.doesNotMatch(editController, /from "@\/lib\/features\//);
 });
 
 test("UI layers do not import lib/client modules directly", () => {

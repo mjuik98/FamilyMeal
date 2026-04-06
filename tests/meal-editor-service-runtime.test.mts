@@ -112,8 +112,8 @@ afterEach(() => {
 
 test("createMealRecord cleans up uploaded image when saving the meal fails", async () => {
   shouldFailCreate = true;
-  const service = await importFresh<typeof import("../lib/features/meals/application/meal-editor-service.ts")>(
-    "../lib/features/meals/application/meal-editor-service.ts"
+  const service = await importFresh<typeof import("../lib/modules/meals/application/meal-editor-service.ts")>(
+    "../lib/modules/meals/application/meal-editor-service.ts"
   );
 
   await assert.rejects(
@@ -138,8 +138,8 @@ test("createMealRecord cleans up uploaded image when saving the meal fails", asy
 });
 
 test("createMealRecord saves QA meals without remote upload and loadEditableMeal marks legacy records", async () => {
-  const service = await importFresh<typeof import("../lib/features/meals/application/meal-editor-service.ts")>(
-    "../lib/features/meals/application/meal-editor-service.ts"
+  const service = await importFresh<typeof import("../lib/modules/meals/application/meal-editor-service.ts")>(
+    "../lib/modules/meals/application/meal-editor-service.ts"
   );
 
   await service.createMealRecord({
@@ -170,8 +170,8 @@ test("createMealRecord saves QA meals without remote upload and loadEditableMeal
 
 test("updateExistingMealRecord cleans up uploaded image when updating the meal fails", async () => {
   shouldFailUpdate = true;
-  const service = await importFresh<typeof import("../lib/features/meals/application/meal-editor-service.ts")>(
-    "../lib/features/meals/application/meal-editor-service.ts"
+  const service = await importFresh<typeof import("../lib/modules/meals/application/meal-editor-service.ts")>(
+    "../lib/modules/meals/application/meal-editor-service.ts"
   );
 
   await assert.rejects(

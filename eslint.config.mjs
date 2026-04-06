@@ -83,6 +83,11 @@ const config = [
               group: ["@/lib/client/*"],
               message: "UI layers must not import client data modules directly.",
             },
+            {
+              group: ["@/lib/features/*"],
+              message:
+                "Production callers must import module-local application and ui entrypoints directly instead of legacy feature shims.",
+            },
           ],
         },
       ],
@@ -120,7 +125,13 @@ const config = [
                 "@/lib/qa/storage",
                 "@/lib/client/meals",
               ],
-              message: "Module runtime adapters must depend on feature-specific qa adapters and focused client adapters instead of qa internals or compat barrels directly.",
+              message:
+                "Module runtime adapters must depend on feature-specific qa adapters and focused client adapters instead of qa internals or compat barrels directly.",
+            },
+            {
+              group: ["@/lib/features/*"],
+              message:
+                "Production callers must import module-local application and ui entrypoints directly instead of legacy feature shims.",
             },
           ],
         },
