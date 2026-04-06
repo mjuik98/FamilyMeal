@@ -464,14 +464,19 @@ test("archive search defers remote querying until input settles", () => {
   assert.match(mealReadRuntime, /listArchiveMeals\(\{/);
 });
 
-test("client error route lazy-loads Upstash only when credentials exist", () => {
+test("client error route delegates ingestion to a platform helper", () => {
   const clientErrorsRoute = read("app/api/client-errors/route.ts");
+  const clientErrorIngest = read("lib/platform/http/client-error-ingest.ts");
 
-  assert.doesNotMatch(clientErrorsRoute, /^import \{ Ratelimit \} from "@upstash\/ratelimit";/m);
-  assert.doesNotMatch(clientErrorsRoute, /^import \{ Redis \} from "@upstash\/redis";/m);
-  assert.match(clientErrorsRoute, /import\("@upstash\/ratelimit"\)/);
-  assert.match(clientErrorsRoute, /import\("@upstash\/redis"\)/);
-  assert.match(clientErrorsRoute, /getUpstashLimiter/);
+  assert.match(clientErrorsRoute, /from "@\/lib\/platform\/http\/client-error-ingest"/);
+  assert.match(clientErrorsRoute, /from "@\/lib\/platform\/http\/route-handler"/);
+  assert.match(clientErrorsRoute, /return handleRoute\(\(\) => ingestClientErrorReport\(request\)\);/);
+  assert.doesNotMatch(clientErrorsRoute, /import\("@upstash\/ratelimit"\)/);
+  assert.doesNotMatch(clientErrorsRoute, /import\("@upstash\/redis"\)/);
+  assert.doesNotMatch(clientErrorsRoute, /const validateContentLengthHeader =/);
+  assert.match(clientErrorIngest, /getUpstashLimiter/);
+  assert.match(clientErrorIngest, /import\("@upstash\/ratelimit"\)/);
+  assert.match(clientErrorIngest, /import\("@upstash\/redis"\)/);
 });
 
 test("public runtime env is centralized for pwa and qa UI gates", () => {
@@ -591,13 +596,12 @@ test("date-driven hooks clear stale meal state and cache weekly stats by week", 
 });
 
 test("client error route rejects oversized content-length before reading the body", () => {
-  const clientErrorsRoute = read("app/api/client-errors/route.ts");
+  const clientErrorIngest = read("lib/platform/http/client-error-ingest.ts");
 
-  assert.match(clientErrorsRoute, /const validateContentLengthHeader = \(request: Request\): NextResponse \| null =>/);
-  assert.match(clientErrorsRoute, /const tooLargeHeaderResponse = validateContentLengthHeader\(request\);/);
-  assert.match(clientErrorsRoute, /if \(tooLargeHeaderResponse\) return tooLargeHeaderResponse;/);
-  assert.match(clientErrorsRoute, /const validateBodyByteLength = \(body: string\): NextResponse \| null =>/);
-  assert.match(clientErrorsRoute, /const tooLargeBodyResponse = validateBodyByteLength\(raw\);/);
+  assert.match(clientErrorIngest, /const validateContentLengthHeader = \(request: Request\): void =>/);
+  assert.match(clientErrorIngest, /validateContentLengthHeader\(request\);/);
+  assert.match(clientErrorIngest, /const validateBodyByteLength = \(body: string\): void =>/);
+  assert.match(clientErrorIngest, /validateBodyByteLength\(raw\);/);
 });
 
 test("update polling only runs when a service worker registration is available", () => {

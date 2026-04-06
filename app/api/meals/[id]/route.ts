@@ -1,4 +1,3 @@
-import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import {
@@ -9,13 +8,11 @@ import {
   VALID_MEAL_TYPES,
 } from "@/lib/domain/meal-policy";
 import { logError } from "@/lib/logging";
-import {
-  getRouteErrorMessage,
-  getRouteErrorPayload,
-  getRouteErrorStatus,
-} from "@/lib/platform/http/route-errors";
 import { requireValidatedUserRole } from "@/lib/platform/auth/route-auth";
 import { AuthError } from "@/lib/platform/auth/server-auth";
+import { parseJsonBody } from "@/lib/platform/http/request-body";
+import { handleRoute } from "@/lib/platform/http/route-handler";
+import { getRouteErrorMessage } from "@/lib/platform/http/route-errors";
 import {
   deleteMealCommentsByMealId,
   deleteMealDocumentById,
@@ -29,6 +26,9 @@ import { updateMealDocument } from "@/lib/modules/meals/server/meal-write-use-ca
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+const createMealRouteError = (message: string, status = 400) =>
+  new MealRouteError(message, status);
 
 type Params = {
   id: string;
@@ -61,7 +61,7 @@ export async function GET(
   request: Request,
   context: { params: Promise<Params> }
 ) {
-  try {
+  return handleRoute(async () => {
     const { role } = await requireValidatedUserRole(request);
     const mealId = await decodeMealId(context.params);
     const meal = await getMealByIdForActor({
@@ -69,112 +69,90 @@ export async function GET(
       actorRole: role,
     });
 
-    return NextResponse.json({ ok: true, meal });
-  } catch (error) {
-    return NextResponse.json(
-      { ok: false, error: getRouteErrorPayload(error) },
-      { status: getRouteErrorStatus(error) }
-    );
-  }
+    return { ok: true, meal };
+  });
 }
 
 export async function DELETE(
   request: Request,
   context: { params: Promise<Params> }
 ) {
-  let mealId: string | null = null;
+  return handleRoute(async () => {
+    let mealId: string | null = null;
 
-  try {
-    const { user } = await requireValidatedUserRole(request);
-    mealId = await decodeMealId(context.params);
+    try {
+      const { user } = await requireValidatedUserRole(request);
+      mealId = await decodeMealId(context.params);
 
-    const plan = await planMealDeleteOperation(mealId, user.uid);
-    if (plan.action === "already_deleted") {
-      return NextResponse.json({ ok: true, deleted: false, status: "already_deleted" });
-    }
-
-    if (plan.action === "wait_for_inflight") {
-      return NextResponse.json(
-        { ok: true, deleted: false, status: "already_processing" },
-        { status: 202 }
-      );
-    }
-
-    await deleteMealCommentsByMealId(mealId);
-    await deleteMealDocumentById(mealId);
-    if (plan.action === "delete_now" && plan.mealImageUrl) {
-      try {
-        await deleteStorageObjectByUrl(plan.mealImageUrl, { uid: user.uid });
-      } catch (error) {
-        logError("Failed to delete meal image during delete cleanup", error);
+      const plan = await planMealDeleteOperation(mealId, user.uid);
+      if (plan.action === "already_deleted") {
+        return { ok: true, deleted: false, status: "already_deleted" };
       }
-    }
-    await markMealDeleteJob(mealId, {
-      status: "completed",
-      deletedAt: Date.now(),
-      completedBy: user.uid,
-    });
 
-    return NextResponse.json({ ok: true, deleted: true, status: "completed" });
-  } catch (error) {
-    const status = getRouteErrorStatus(error);
-    const message = getRouteErrorMessage(error);
-
-    if (!(error instanceof AuthError) && mealId) {
-      try {
-        await markMealDeleteJob(mealId, {
-          status: "failed",
-          lastError: message,
-        });
-      } catch {
-        // Ignore secondary failure in best-effort error reporting.
+      if (plan.action === "wait_for_inflight") {
+        return Response.json(
+          { ok: true, deleted: false, status: "already_processing" },
+          { status: 202 }
+        );
       }
-    }
 
-    return NextResponse.json(
-      {
-        ok: false,
-        error: getRouteErrorPayload(error),
-      },
-      { status }
-    );
-  }
+      await deleteMealCommentsByMealId(mealId);
+      await deleteMealDocumentById(mealId);
+      if (plan.action === "delete_now" && plan.mealImageUrl) {
+        try {
+          await deleteStorageObjectByUrl(plan.mealImageUrl, { uid: user.uid });
+        } catch (error) {
+          logError("Failed to delete meal image during delete cleanup", error);
+        }
+      }
+      await markMealDeleteJob(mealId, {
+        status: "completed",
+        deletedAt: Date.now(),
+        completedBy: user.uid,
+      });
+
+      return { ok: true, deleted: true, status: "completed" };
+    } catch (error) {
+      const message = getRouteErrorMessage(error);
+
+      if (!(error instanceof AuthError) && mealId) {
+        try {
+          await markMealDeleteJob(mealId, {
+            status: "failed",
+            lastError: message,
+          });
+        } catch {
+          // Ignore secondary failure in best-effort error reporting.
+        }
+      }
+
+      throw error;
+    }
+  });
 }
 
 export async function PATCH(
   request: Request,
   context: { params: Promise<Params> }
 ) {
-  try {
+  return handleRoute(async () => {
     const { user, role } = await requireValidatedUserRole(request);
     const mealId = await decodeMealId(context.params);
     if (!isUserRole(role)) {
       throw new MealRouteError("Valid user role is required", 403);
     }
 
-    let body: unknown;
-    try {
-      body = await request.json();
-    } catch {
-      throw new MealRouteError("Invalid JSON body", 400);
-    }
-
-    const parsed = MealUpdateSchema.safeParse(body);
-    if (!parsed.success) {
-      throw new MealRouteError("Invalid payload", 400);
-    }
+    const input = await parseJsonBody(request, {
+      schema: MealUpdateSchema,
+      createError: createMealRouteError,
+    });
 
     const meal = await updateMealDocument({
       mealId,
       uid: user.uid,
-      input: parsed.data as UpdateMealInput,
+      input: input as UpdateMealInput,
     });
 
-    return NextResponse.json({ ok: true, meal });
-  } catch (error) {
-    return NextResponse.json(
-      { ok: false, error: getRouteErrorPayload(error) },
-      { status: getRouteErrorStatus(error) }
-    );
-  }
+    return { ok: true, meal };
+  });
 }

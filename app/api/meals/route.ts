@@ -1,4 +1,3 @@
-import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { parseDateKey } from "@/lib/date-utils";
@@ -9,12 +8,10 @@ import {
   VALID_MEAL_TYPES,
 } from "@/lib/domain/meal-policy";
 import { logError } from "@/lib/logging";
-import {
-  getRouteErrorPayload,
-  getRouteErrorStatus,
-  RouteError,
-} from "@/lib/platform/http/route-errors";
 import { requireValidatedUserRole } from "@/lib/platform/auth/route-auth";
+import { parseJsonBody } from "@/lib/platform/http/request-body";
+import { handleRoute } from "@/lib/platform/http/route-handler";
+import { RouteError } from "@/lib/platform/http/route-errors";
 import { listMealsForDate } from "@/lib/modules/meals/server/meal-read-use-cases";
 import { deleteStorageObjectByUrl } from "@/lib/modules/meals/server/meal-storage";
 import { createMealDocument } from "@/lib/modules/meals/server/meal-write-use-cases";
@@ -22,6 +19,9 @@ import { MealRouteError } from "@/lib/modules/meals/server/meal-types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+
+const createMealRouteError = (message: string, status = 400) =>
+  new MealRouteError(message, status);
 
 const MealCreateSchema = z.object({
   userIds: z.array(z.enum(USER_ROLES)).min(1),
@@ -32,7 +32,7 @@ const MealCreateSchema = z.object({
 });
 
 export async function GET(request: Request) {
-  try {
+  return handleRoute(async () => {
     const { role } = await requireValidatedUserRole(request);
     const date = parseDateKey(new URL(request.url).searchParams.get("date"));
     if (!date) {
@@ -43,55 +43,43 @@ export async function GET(request: Request) {
       actorRole: role,
       date,
     });
-    return NextResponse.json({ ok: true, meals });
-  } catch (error) {
-    return NextResponse.json(
-      { ok: false, error: getRouteErrorPayload(error) },
-      { status: getRouteErrorStatus(error) }
-    );
-  }
+
+    return { ok: true, meals };
+  });
 }
 
 export async function POST(request: Request) {
-  let uid: string | null = null;
-  let uploadedImageUrl: string | null = null;
+  return handleRoute(async () => {
+    let uid: string | null = null;
+    let uploadedImageUrl: string | null = null;
 
-  try {
-    const { user, role } = await requireValidatedUserRole(request);
-    uid = user.uid;
-
-    let body: unknown;
     try {
-      body = await request.json();
-    } catch {
-      throw new MealRouteError("Invalid JSON body", 400);
-    }
+      const { user, role } = await requireValidatedUserRole(request);
+      uid = user.uid;
 
-    const parsed = MealCreateSchema.safeParse(body);
-    if (!parsed.success) {
-      throw new MealRouteError("Invalid payload", 400);
-    }
-    uploadedImageUrl = parsed.data.imageUrl;
+      const input = await parseJsonBody(request, {
+        schema: MealCreateSchema,
+        createError: createMealRouteError,
+      });
+      uploadedImageUrl = input.imageUrl;
 
-    const meal = await createMealDocument({
-      uid: user.uid,
-      actorRole: role,
-      input: parsed.data,
-    });
+      const meal = await createMealDocument({
+        uid: user.uid,
+        actorRole: role,
+        input,
+      });
 
-    return NextResponse.json({ ok: true, meal }, { status: 201 });
-  } catch (error) {
-    if (uid && uploadedImageUrl) {
-      try {
-        await deleteStorageObjectByUrl(uploadedImageUrl, { uid });
-      } catch (cleanupError) {
-        logError("Failed to cleanup uploaded meal image after create error", cleanupError);
+      return Response.json({ ok: true, meal }, { status: 201 });
+    } catch (error) {
+      if (uid && uploadedImageUrl) {
+        try {
+          await deleteStorageObjectByUrl(uploadedImageUrl, { uid });
+        } catch (cleanupError) {
+          logError("Failed to cleanup uploaded meal image after create error", cleanupError);
+        }
       }
-    }
 
-    return NextResponse.json(
-      { ok: false, error: getRouteErrorPayload(error) },
-      { status: getRouteErrorStatus(error) }
-    );
-  }
+      throw error;
+    }
+  });
 }

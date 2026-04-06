@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { ALLOWED_REACTION_EMOJIS, isReactionEmoji } from "@/lib/reactions";
+import { parseJsonBody } from "@/lib/platform/http/request-body";
 import { RouteError } from "@/lib/platform/http/route-errors";
 import type { ReactionEmoji } from "@/lib/types";
 
@@ -19,19 +20,11 @@ const decodeParam = (value: string, label: string): string => {
 export const parseReactionPayload = async (
   request: Request
 ): Promise<{ emoji: ReactionEmoji }> => {
-  let body: unknown;
-  try {
-    body = await request.json();
-  } catch {
-    throw new RouteError("Invalid JSON body", 400);
-  }
+  const parsed = await parseJsonBody(request, {
+    schema: ReactionSchema,
+  });
 
-  const parsed = ReactionSchema.safeParse(body);
-  if (!parsed.success) {
-    throw new RouteError("Invalid payload", 400);
-  }
-
-  const emoji = parsed.data.emoji;
+  const emoji = parsed.emoji;
   if (!isReactionEmoji(emoji)) {
     throw new RouteError(
       `Invalid reaction emoji. Allowed: ${ALLOWED_REACTION_EMOJIS.join(", ")}`,

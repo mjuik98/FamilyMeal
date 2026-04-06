@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { MAX_COMMENT_LENGTH } from "@/lib/domain/meal-policy";
+import { parseJsonBody } from "@/lib/platform/http/request-body";
 import { RouteError } from "@/lib/platform/http/route-errors";
 
 import type { CommentRouteParams } from "@/lib/modules/comments/server/comment-types";
@@ -42,38 +43,22 @@ export const getCommentRouteParams = async (params: Promise<CommentRouteParams>)
 };
 
 export const parseCommentCreatePayload = async (request: Request) => {
-  let body: unknown;
-  try {
-    body = await request.json();
-  } catch {
-    throw new RouteError("Invalid JSON body", 400);
-  }
-
-  const parsed = CommentCreateSchema.safeParse(body);
-  if (!parsed.success) {
-    throw new RouteError("Invalid payload", 400);
-  }
+  const parsed = await parseJsonBody(request, {
+    schema: CommentCreateSchema,
+  });
 
   return {
-    text: parsed.data.text.trim(),
-    parentId: parsed.data.parentId?.trim(),
+    text: parsed.text.trim(),
+    parentId: parsed.parentId?.trim(),
   };
 };
 
 export const parseCommentUpdatePayload = async (request: Request) => {
-  let body: unknown;
-  try {
-    body = await request.json();
-  } catch {
-    throw new RouteError("Invalid JSON body", 400);
-  }
-
-  const parsed = CommentUpdateSchema.safeParse(body);
-  if (!parsed.success) {
-    throw new RouteError("Invalid payload", 400);
-  }
+  const parsed = await parseJsonBody(request, {
+    schema: CommentUpdateSchema,
+  });
 
   return {
-    text: parsed.data.text.trim(),
+    text: parsed.text.trim(),
   };
 };

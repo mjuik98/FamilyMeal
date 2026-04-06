@@ -1,19 +1,14 @@
-import { NextResponse } from "next/server";
-
 import { parseDateKey } from "@/lib/date-utils";
 import { requireValidatedUserRole } from "@/lib/platform/auth/route-auth";
-import {
-  getRouteErrorPayload,
-  getRouteErrorStatus,
-  RouteError,
-} from "@/lib/platform/http/route-errors";
+import { handleRoute } from "@/lib/platform/http/route-handler";
+import { RouteError } from "@/lib/platform/http/route-errors";
 import { listWeeklyMealStats } from "@/lib/modules/meals/server/meal-read-use-cases";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
-  try {
+  return handleRoute(async () => {
     const { role } = await requireValidatedUserRole(request);
     const referenceDate = parseDateKey(new URL(request.url).searchParams.get("date"));
     if (!referenceDate) {
@@ -25,17 +20,12 @@ export async function GET(request: Request) {
       referenceDate,
     });
 
-    return NextResponse.json({
+    return {
       ok: true,
       stats: stats.map((stat) => ({
         ...stat,
         date: stat.date.getTime(),
       })),
-    });
-  } catch (error) {
-    return NextResponse.json(
-      { ok: false, error: getRouteErrorPayload(error) },
-      { status: getRouteErrorStatus(error) }
-    );
-  }
+    };
+  });
 }

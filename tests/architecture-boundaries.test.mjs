@@ -301,6 +301,10 @@ test("add and edit pages delegate orchestration to meal page controllers", () =>
 
 test("selected API routes use the shared route handler wrapper for error delivery", () => {
   const routeFiles = [
+    "app/api/client-errors/route.ts",
+    "app/api/meals/route.ts",
+    "app/api/meals/[id]/route.ts",
+    "app/api/meals/weekly-stats/route.ts",
     "app/api/profile/session/route.ts",
     "app/api/profile/role/route.ts",
     "app/api/profile/settings/route.ts",
@@ -494,7 +498,9 @@ test("server and client layers import platform auth and http helpers directly", 
     assert.doesNotMatch(source, /@\/lib\/server\/route-auth/);
   }
 
-  assert.match(clientErrorsRoute, /@\/lib\/platform\/http\/route-errors/);
+  assert.match(clientErrorsRoute, /@\/lib\/platform\/http\/client-error-ingest/);
+  assert.match(clientErrorsRoute, /@\/lib\/platform\/http\/route-handler/);
+  assert.doesNotMatch(clientErrorsRoute, /@\/lib\/platform\/http\/route-errors/);
   assert.doesNotMatch(clientErrorsRoute, /@\/lib\/route-errors/);
   assert.match(mealDetailRoute, /@\/lib\/platform\/auth\/server-auth/);
   assert.doesNotMatch(mealDetailRoute, /@\/lib\/server-auth/);

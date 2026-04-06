@@ -411,13 +411,18 @@ test("route handlers share common route error helpers", () => {
 
 test("client error collection uses shared config and logging helpers", () => {
   const clientErrorRoute = read("app/api/client-errors/route.ts");
+  const clientErrorIngest = read("lib/platform/http/client-error-ingest.ts");
   const serverEnv = read("lib/config/server-env.ts");
   const logger = read("lib/logging.ts");
 
-  assert.match(clientErrorRoute, /from "@\/lib\/config\/server-env"/);
-  assert.match(clientErrorRoute, /from "@\/lib\/logging"/);
-  assert.match(clientErrorRoute, /serverEnv\.upstash/);
-  assert.match(clientErrorRoute, /logError/);
+  assert.match(clientErrorRoute, /from "@\/lib\/platform\/http\/client-error-ingest"/);
+  assert.match(clientErrorRoute, /from "@\/lib\/platform\/http\/route-handler"/);
+  assert.doesNotMatch(clientErrorRoute, /from "@\/lib\/config\/server-env"/);
+  assert.doesNotMatch(clientErrorRoute, /from "@\/lib\/logging"/);
+  assert.match(clientErrorIngest, /from "@\/lib\/config\/server-env"/);
+  assert.match(clientErrorIngest, /from "@\/lib\/logging"/);
+  assert.match(clientErrorIngest, /serverEnv\.upstash/);
+  assert.match(clientErrorIngest, /logError/);
   assert.doesNotMatch(clientErrorRoute, /process\.env\.UPSTASH_REDIS_REST_URL/);
   assert.doesNotMatch(clientErrorRoute, /console\.error/);
   assert.match(serverEnv, /upstash:/);

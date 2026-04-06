@@ -3,6 +3,7 @@ import { storeMealImageFile } from "@/lib/modules/meals/adapters/storage/meal-im
 import { MAX_MEAL_IMAGE_REQUEST_BYTES } from "@/lib/modules/meals/domain/meal-image-policy";
 import { deleteStorageObjectByUrl } from "@/lib/modules/meals/server/meal-storage";
 import { requireVerifiedUser } from "@/lib/platform/auth/route-auth";
+import { parseJsonBody } from "@/lib/platform/http/request-body";
 import { handleRoute } from "@/lib/platform/http/route-handler";
 import { RouteError } from "@/lib/platform/http/route-errors";
 
@@ -65,12 +66,7 @@ export async function DELETE(request: Request) {
   return handleRoute(async () => {
     const user = await requireVerifiedUser(request);
 
-    let body: unknown;
-    try {
-      body = await request.json();
-    } catch {
-      throw new RouteError("Invalid JSON body", 400);
-    }
+    const body = await parseJsonBody(request);
 
     const imageUrl =
       body &&
