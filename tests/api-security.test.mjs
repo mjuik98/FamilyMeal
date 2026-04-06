@@ -89,13 +89,23 @@ test("profile routes delegate to extracted server profile use cases", () => {
   const roleRoute = read("app/api/profile/role/route.ts");
   const settingsRoute = read("app/api/profile/settings/route.ts");
   const profileUseCases = read("lib/modules/profile/server/profile-use-cases.ts");
+  const profileAuthContext = read("lib/modules/profile/server/profile-auth-context.ts");
+  const profileAdminAuth = read("lib/modules/profile/adapters/firebase/profile-admin-auth.ts");
+  const profileAdminStore = read("lib/modules/profile/adapters/firebase/profile-admin-store.ts");
 
   assert.match(roleRoute, /from "@\/lib\/modules\/profile\/server\/profile-use-cases"/);
   assert.match(settingsRoute, /from "@\/lib\/modules\/profile\/server\/profile-use-cases"/);
   assert.match(profileUseCases, /export const saveUserRoleProfile = async/);
   assert.match(profileUseCases, /export const saveUserNotificationPreferences = async/);
+  assert.match(profileUseCases, /from "@\/lib\/modules\/profile\/adapters\/firebase\/profile-admin-auth"/);
+  assert.match(profileUseCases, /from "@\/lib\/modules\/profile\/adapters\/firebase\/profile-admin-store"/);
+  assert.match(profileAuthContext, /from "@\/lib\/modules\/profile\/adapters\/firebase\/profile-admin-store"/);
+  assert.match(profileAdminAuth, /from "@\/lib\/firebase-admin"/);
+  assert.match(profileAdminStore, /from "@\/lib\/firebase-admin"/);
   assert.doesNotMatch(roleRoute, /from "@\/lib\/firebase-admin"/);
   assert.doesNotMatch(settingsRoute, /from "@\/lib\/firebase-admin"/);
+  assert.doesNotMatch(profileUseCases, /from "@\/lib\/firebase-admin"/);
+  assert.doesNotMatch(profileAuthContext, /from "@\/lib\/firebase-admin"/);
   assert.doesNotMatch(roleRoute, /adminDb\.runTransaction/);
   assert.doesNotMatch(roleRoute, /adminAuth\.getUser/);
   assert.doesNotMatch(settingsRoute, /adminDb\.collection/);
@@ -546,6 +556,7 @@ test("server config and meal policy are centralized in shared modules", () => {
   const serverAuth = read("lib/server-auth.ts");
   const platformServerAuth = read("lib/platform/auth/server-auth.ts");
   const profileAuthContext = read("lib/modules/profile/server/profile-auth-context.ts");
+  const profileAdminStore = read("lib/modules/profile/adapters/firebase/profile-admin-store.ts");
   const mealImageUrl = read("lib/modules/meals/server/meal-image-url.ts");
   const mealImageUrlShim = read("lib/server/meals/meal-image-url.ts");
   const mealStorage = read("lib/modules/meals/server/meal-storage.ts");
@@ -568,7 +579,8 @@ test("server config and meal policy are centralized in shared modules", () => {
   assert.match(firebaseAdmin, /from "@\/lib\/config\/server-env"/);
   assert.match(serverAuth, /from "@\/lib\/platform\/auth\/server-auth"/);
   assert.match(platformServerAuth, /from "@\/lib\/config\/server-env"/);
-  assert.match(profileAuthContext, /from "@\/lib\/firebase-admin"/);
+  assert.match(profileAuthContext, /from "@\/lib\/modules\/profile\/adapters\/firebase\/profile-admin-store"/);
+  assert.match(profileAdminStore, /from "@\/lib\/firebase-admin"/);
   assert.match(mealImageUrl, /from "@\/lib\/config\/server-env"/);
   assert.match(mealImageUrlShim, /from "@\/lib\/modules\/meals\/server\/meal-image-url"/);
   assert.match(mealStorage, /from "@\/lib\/modules\/meals\/server\/meal-image-url"/);

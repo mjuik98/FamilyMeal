@@ -501,6 +501,8 @@ test("server and client layers import platform auth and http helpers directly", 
   const platformRouteAuth = read("lib/platform/auth/route-auth.ts");
   const platformServerAuth = read("lib/platform/auth/server-auth.ts");
   const profileAuthContext = read("lib/modules/profile/server/profile-auth-context.ts");
+  const profileAdminAuth = read("lib/modules/profile/adapters/firebase/profile-admin-auth.ts");
+  const profileAdminStore = read("lib/modules/profile/adapters/firebase/profile-admin-store.ts");
   const clientMeals = read("lib/client/meal-queries.ts");
   const clientMutations = read("lib/client/meal-mutations.ts");
   const commentClient = read("lib/modules/comments/adapters/firestore/comment-client.ts");
@@ -532,7 +534,10 @@ test("server and client layers import platform auth and http helpers directly", 
   assert.match(routeHandler, /from "@\/lib\/platform\/http\/route-errors"/);
   assert.match(platformRouteAuth, /modules\/profile\/server\/profile-auth-context/);
   assert.doesNotMatch(platformServerAuth, /adminDb/);
-  assert.match(profileAuthContext, /from "@\/lib\/firebase-admin"/);
+  assert.match(profileAuthContext, /from "@\/lib\/modules\/profile\/adapters\/firebase\/profile-admin-store"/);
+  assert.doesNotMatch(profileAuthContext, /from "@\/lib\/firebase-admin"/);
+  assert.match(profileAdminAuth, /from "@\/lib\/firebase-admin"/);
+  assert.match(profileAdminStore, /from "@\/lib\/firebase-admin"/);
 
   for (const source of [
     clientMeals,
@@ -629,6 +634,24 @@ test("comment reaction and profile server implementations live under feature mod
     "server",
     "profile-use-cases.ts"
   );
+  const moduleProfileAdminAuthPath = path.join(
+    process.cwd(),
+    "lib",
+    "modules",
+    "profile",
+    "adapters",
+    "firebase",
+    "profile-admin-auth.ts"
+  );
+  const moduleProfileAdminStorePath = path.join(
+    process.cwd(),
+    "lib",
+    "modules",
+    "profile",
+    "adapters",
+    "firebase",
+    "profile-admin-store.ts"
+  );
 
   assert.equal(fs.existsSync(moduleCommentTypesPath), true);
   assert.equal(fs.existsSync(moduleCommentPolicyPath), true);
@@ -636,6 +659,8 @@ test("comment reaction and profile server implementations live under feature mod
   assert.equal(fs.existsSync(moduleReactionPolicyPath), true);
   assert.equal(fs.existsSync(moduleReactionUseCasesPath), true);
   assert.equal(fs.existsSync(moduleProfileUseCasesPath), true);
+  assert.equal(fs.existsSync(moduleProfileAdminAuthPath), true);
+  assert.equal(fs.existsSync(moduleProfileAdminStorePath), true);
 
   assert.match(read("lib/server/comments/comment-types.ts"), /modules\/comments\/server\/comment-types/);
   assert.match(read("lib/server/comments/comment-policy.ts"), /modules\/comments\/server\/comment-policy/);

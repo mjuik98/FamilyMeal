@@ -2,8 +2,13 @@ import {
   DEFAULT_NOTIFICATION_PREFERENCES,
   normalizeNotificationPreferences,
 } from "@/lib/modules/profile/domain/notification-preferences";
+import { loadProfileAuthUser } from "@/lib/modules/profile/adapters/firebase/profile-admin-auth";
+import {
+  loadStoredUserProfile,
+  runStoredUserProfileTransaction,
+  saveStoredUserProfile,
+} from "@/lib/modules/profile/adapters/firebase/profile-admin-store";
 import { isUserRole } from "@/lib/domain/meal-policy";
-import { adminAuth, adminDb } from "@/lib/firebase-admin";
 import { type VerifiedUser } from "@/lib/platform/auth/server-auth";
 import { RouteError } from "@/lib/platform/http/route-errors";
 import type {
@@ -11,14 +16,6 @@ import type {
   UserProfile,
   UserRole,
 } from "@/lib/types";
-
-type UserProfileDoc = {
-  uid?: unknown;
-  email?: unknown;
-  displayName?: unknown;
-  role?: unknown;
-  notificationPreferences?: unknown;
-};
 
 const toStringOrNull = (value: unknown): string | null =>
   typeof value === "string" && value.trim().length > 0 ? value : null;
@@ -28,13 +25,12 @@ export const loadUserProfileSession = async ({
 }: {
   user: VerifiedUser;
 }): Promise<UserProfile | null> => {
-  const userRef = adminDb.collection("users").doc(user.uid);
-  const snapshot = await userRef.get();
-  if (!snapshot.exists) {
+  const { exists, data } = await loadStoredUserProfile(user.uid);
+
+  if (!exists) {
     return null;
   }
 
-  const data = (snapshot.data() ?? {}) as UserProfileDoc;
   return {
     uid: user.uid,
     email: toStringOrNull(data.email) ?? user.email,
@@ -55,14 +51,11 @@ export const saveUserRoleProfile = async ({
   requestedRole: UserRole;
   allowRoleReassign: boolean;
 }) => {
-  const userRef = adminDb.collection("users").doc(user.uid);
-  const authUser = await adminAuth.getUser(user.uid);
-  const authEmail = toStringOrNull(authUser.email) ?? user.email;
-  const authDisplayName = toStringOrNull(authUser.displayName);
+  const authUser = await loadProfileAuthUser(user.uid);
+  const authEmail = authUser.email ?? user.email;
+  const authDisplayName = authUser.displayName;
 
-  return adminDb.runTransaction(async (tx) => {
-    const snap = await tx.get(userRef);
-    const existing = (snap.data() ?? {}) as UserProfileDoc;
+  return runStoredUserProfileTransaction(user.uid, async (existing) => {
     const currentRole = toStringOrNull(existing.role);
 
     if (currentRole && currentRole !== requestedRole && !allowRoleReassign) {
@@ -83,8 +76,10 @@ export const saveUserRoleProfile = async ({
       throw new RouteError("Authenticated email is required", 403);
     }
 
-    tx.set(userRef, nextProfile, { merge: true });
-    return nextProfile;
+    return {
+      nextProfile,
+      result: nextProfile,
+    };
   });
 };
 
@@ -95,16 +90,9 @@ export const saveUserNotificationPreferences = async ({
   user: VerifiedUser;
   notificationPreferences: NotificationPreferences;
 }) => {
-  const userRef = adminDb.collection("users").doc(user.uid);
-  await userRef.set(
-    {
-      uid: user.uid,
-      email: user.email,
-      notificationPreferences: normalizeNotificationPreferences(notificationPreferences),
-    },
-    { merge: true }
-  );
-
-  const snapshot = await userRef.get();
-  return snapshot.data() ?? {};
+  return saveStoredUserProfile(user.uid, {
+    uid: user.uid,
+    email: user.email,
+    notificationPreferences: normalizeNotificationPreferences(notificationPreferences),
+  });
 };

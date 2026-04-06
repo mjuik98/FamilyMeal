@@ -154,6 +154,23 @@ const config = [
     },
   },
   {
+    files: ["lib/modules/profile/server/**/*.{ts,tsx}"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["@/lib/firebase-admin"],
+              message:
+                "Profile server code must depend on module-local Firebase adapters instead of firebase-admin directly.",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
     files: ["lib/logging.ts"],
     rules: {
       "no-console": "off",
