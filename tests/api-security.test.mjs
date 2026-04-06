@@ -64,6 +64,7 @@ test("firestore rules lock client-side role changes and validate optional fields
 test("profile settings and activity logging stay on the server side", () => {
   const settingsRoute = read("app/api/profile/settings/route.ts");
   const activityLog = read("lib/activity-log.ts");
+  const moduleActivityLog = read("lib/modules/activity/server/activity-log.ts");
   const commentUseCases = read("lib/modules/comments/server/comment-use-cases.ts");
   const mealReactionRoute = read("app/api/meals/[id]/reactions/route.ts");
   const commentReactionRoute = read("app/api/meals/[id]/comments/[commentId]/reactions/route.ts");
@@ -71,10 +72,13 @@ test("profile settings and activity logging stay on the server side", () => {
 
   assert.match(settingsRoute, /requireVerifiedUser/);
   assert.match(settingsRoute, /notificationPreferences/);
-  assert.match(activityLog, /users"\)\.doc\(recipientUid\)\.collection\("activity"\)/);
-  assert.match(commentUseCases, /createCommentActivities/);
+  assert.match(activityLog, /from "@\/lib\/modules\/activity\/server\/activity-log"/);
+  assert.match(moduleActivityLog, /users"\)\.doc\(recipientUid\)\.collection\("activity"\)/);
+  assert.match(commentUseCases, /from "@\/lib\/modules\/activity\/server\/activity-log"/);
+  assert.doesNotMatch(commentUseCases, /from "@\/lib\/activity-log"/);
   assert.match(mealReactionRoute, /from "@\/lib\/modules\/reactions\/server\/reaction-use-cases"/);
   assert.match(commentReactionRoute, /from "@\/lib\/modules\/reactions\/server\/reaction-use-cases"/);
+  assert.match(reactionUseCases, /from "@\/lib\/modules\/activity\/server\/activity-log"/);
   assert.match(reactionUseCases, /syncMealReactionActivity/);
   assert.match(reactionUseCases, /syncCommentReactionActivity/);
   assert.doesNotMatch(mealReactionRoute, /adminDb\.runTransaction/);

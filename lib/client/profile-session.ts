@@ -1,6 +1,9 @@
 import type { User } from "firebase/auth";
 
-import { DEFAULT_NOTIFICATION_PREFERENCES, normalizeNotificationPreferences } from "@/lib/activity";
+import {
+  DEFAULT_NOTIFICATION_PREFERENCES,
+  normalizeNotificationPreferences,
+} from "@/lib/modules/profile/domain/notification-preferences";
 import { fetchAuthedJson } from "@/lib/platform/http/auth-http";
 import type { UserProfile, UserRole } from "@/lib/types";
 

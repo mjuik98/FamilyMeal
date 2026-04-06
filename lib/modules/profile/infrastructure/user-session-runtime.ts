@@ -1,6 +1,6 @@
 import type { User } from "firebase/auth";
 
-import { updateNotificationPreferences as saveNotificationPreferences } from "@/lib/client/activity";
+import { updateNotificationPreferences as saveNotificationPreferences } from "@/lib/modules/profile/adapters/http/profile-notification-client";
 import {
   buildFallbackUserProfile,
   loadUserProfile,

@@ -1,11 +1,11 @@
 import { isUserRole } from "@/lib/domain/meal-policy";
 import { adminDb } from "@/lib/firebase-admin";
+import { syncCommentReactionActivity, syncMealReactionActivity } from "@/lib/modules/activity/server/activity-log";
 import { RouteError } from "@/lib/platform/http/route-errors";
 import {
   normalizeReactionMap,
   toggleReactionInMap,
 } from "@/lib/reactions";
-import { syncCommentReactionActivity, syncMealReactionActivity } from "@/lib/activity-log";
 import type { ReactionEmoji, ReactionMap, UserRole } from "@/lib/types";
 
 const assertActorRole = (role: string | null): UserRole => {

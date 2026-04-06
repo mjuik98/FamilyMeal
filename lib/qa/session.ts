@@ -1,7 +1,7 @@
 import {
   DEFAULT_NOTIFICATION_PREFERENCES,
   normalizeNotificationPreferences,
-} from "@/lib/activity";
+} from "@/lib/modules/profile/domain/notification-preferences";
 import type { NotificationPreferences, UserRole } from "@/lib/types";
 
 import {

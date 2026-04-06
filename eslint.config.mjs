@@ -62,6 +62,21 @@ const config = [
               message:
                 "This compatibility shim remains only for legacy callers. Import the module-local comment subscription store from lib/modules/comments/adapters/firestore/comment-subscription-store.",
             },
+            {
+              name: "@/lib/activity",
+              message:
+                "This compatibility shim remains only for legacy callers. Import profile notification helpers from lib/modules/profile/domain/notification-preferences.",
+            },
+            {
+              name: "@/lib/activity-log",
+              message:
+                "This compatibility shim remains only for legacy callers. Import activity logging helpers from lib/modules/activity/server/activity-log.",
+            },
+            {
+              name: "@/lib/client/activity",
+              message:
+                "This compatibility shim remains only for legacy callers. Import the module-local profile notification client from lib/modules/profile/adapters/http/profile-notification-client.",
+            },
           ],
         },
       ],

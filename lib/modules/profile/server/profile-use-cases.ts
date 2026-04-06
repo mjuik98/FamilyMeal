@@ -1,7 +1,7 @@
 import {
   DEFAULT_NOTIFICATION_PREFERENCES,
   normalizeNotificationPreferences,
-} from "@/lib/activity";
+} from "@/lib/modules/profile/domain/notification-preferences";
 import { isUserRole } from "@/lib/domain/meal-policy";
 import { adminAuth, adminDb } from "@/lib/firebase-admin";
 import { type VerifiedUser } from "@/lib/platform/auth/server-auth";

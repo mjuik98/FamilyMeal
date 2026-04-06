@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { LogOut } from "lucide-react";
 import { useRouter } from "next/navigation";
 
-import { DEFAULT_NOTIFICATION_PREFERENCES } from "@/lib/activity";
+import { DEFAULT_NOTIFICATION_PREFERENCES } from "@/lib/modules/profile/domain/notification-preferences";
 import { USER_ROLES } from "@/lib/domain/meal-policy";
 import PageHeader from "@/components/PageHeader";
 import SurfaceSection from "@/components/SurfaceSection";

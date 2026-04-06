@@ -619,6 +619,7 @@ test("update polling only runs when a service worker registration is available",
 test("profile notification settings stay wired after removing dead activity feed ui", () => {
   const types = read("lib/types.ts");
   const clientActivity = read("lib/client/activity.ts");
+  const notificationDomain = read("lib/modules/profile/domain/notification-preferences.ts");
   const profilePage = read("app/profile/page.tsx");
   const userContext = read("context/UserContext.tsx");
   const activityFeedPath = path.join(process.cwd(), "components", "ActivityFeed.tsx");
@@ -626,10 +627,13 @@ test("profile notification settings stay wired after removing dead activity feed
   assert.match(types, /notificationPreferences/);
   assert.doesNotMatch(types, /ActivityFeedItem/);
   assert.match(clientActivity, /updateNotificationPreferences/);
+  assert.match(clientActivity, /modules\/profile\/adapters\/http\/profile-notification-client/);
+  assert.match(notificationDomain, /DEFAULT_NOTIFICATION_PREFERENCES/);
   assert.doesNotMatch(clientActivity, /subscribeUserActivity/);
   assert.doesNotMatch(clientActivity, /markAllActivitiesRead/);
   assert.doesNotMatch(clientActivity, /mapUserActivitiesToFeedItems/);
   assert.equal(fs.existsSync(activityFeedPath), false);
+  assert.match(profilePage, /from "@\/lib\/modules\/profile\/domain\/notification-preferences"/);
   assert.match(profilePage, /profile-notification-toggle-browserEnabled/);
   assert.match(profilePage, /profile-notification-toggle-reactionAlerts/);
   assert.match(userContext, /updateNotificationPreferences/);
@@ -811,6 +815,7 @@ test("client data access is split into focused adapters and user context delegat
   const clientActivity = read("lib/client/activity.ts");
   const clientProfile = read("lib/client/profile.ts");
   const profileSession = read("lib/client/profile-session.ts");
+  const notificationClient = read("lib/modules/profile/adapters/http/profile-notification-client.ts");
   const authHttpShim = read("lib/client/auth-http.ts");
   const authHttp = read("lib/platform/http/auth-http.ts");
   const mealCommentService = read("lib/modules/comments/application/meal-comment-service.ts");
@@ -848,10 +853,12 @@ test("client data access is split into focused adapters and user context delegat
   assert.match(clientCommentsShim, /modules\/comments\/adapters\/firestore\/comment-client/);
   assert.match(clientReactions, /export const toggleMealReaction = async/);
   assert.match(clientReactions, /export const toggleMealCommentReaction = async/);
-  assert.match(clientActivity, /export const updateNotificationPreferences = async/);
+  assert.match(clientActivity, /updateNotificationPreferences/);
+  assert.match(clientActivity, /modules\/profile\/adapters\/http\/profile-notification-client/);
   assert.match(clientProfile, /export const users =/);
   assert.match(profileSession, /export const loadUserProfile = async/);
   assert.match(profileSession, /export const saveUserRole = async/);
+  assert.match(notificationClient, /export const updateNotificationPreferences = async/);
   assert.match(authHttpShim, /from "@\/lib\/platform\/http\/auth-http"/);
   assert.match(authHttp, /export const getAccessToken = async/);
   assert.match(authHttp, /export const parseErrorMessage = async/);
@@ -872,7 +879,8 @@ test("client data access is split into focused adapters and user context delegat
   assert.doesNotMatch(mealEditorRuntime, /from "@\/lib\/client\/meals"/);
   assert.match(userSessionService, /from "@\/lib\/modules\/profile\/infrastructure\/user-session-runtime"/);
   assert.match(userSessionRuntime, /from "@\/lib\/client\/profile-session"/);
-  assert.match(userSessionRuntime, /from "@\/lib\/client\/activity"/);
+  assert.match(userSessionRuntime, /from "@\/lib\/modules\/profile\/adapters\/http\/profile-notification-client"/);
+  assert.doesNotMatch(userSessionRuntime, /from "@\/lib\/client\/activity"/);
   assert.match(mealsHook, /from "@\/lib\/modules\/meals\/application\/meal-read-service"/);
   assert.match(weeklyStatsHook, /from "@\/lib\/modules\/meals\/application\/meal-read-service"/);
   assert.match(archivePage, /from "@\/lib\/modules\/meals\/application\/meal-read-service"/);
@@ -947,6 +955,9 @@ test("eslint guards forbid compat barrels and direct console usage", () => {
   assert.match(eslintConfig, /no-console/);
   assert.match(eslintConfig, /@\/lib\/data/);
   assert.match(eslintConfig, /@\/lib\/server-meals/);
+  assert.match(eslintConfig, /@\/lib\/activity/);
+  assert.match(eslintConfig, /@\/lib\/activity-log/);
+  assert.match(eslintConfig, /@\/lib\/client\/activity/);
 });
 
 test("meal editor pages reuse focused meal form helpers and direct public env config", () => {

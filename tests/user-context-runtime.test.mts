@@ -38,7 +38,7 @@ mock.module("@/lib/qa/adapters/profile", {
   }),
 });
 
-mock.module("@/lib/client/activity", {
+mock.module("@/lib/modules/profile/adapters/http/profile-notification-client", {
   ...mockModuleOptions({
     updateNotificationPreferences: async (preferences: unknown) => preferences,
   }),

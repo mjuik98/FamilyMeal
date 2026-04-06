@@ -279,6 +279,75 @@ test("meal upload and comment data adapters live inside feature modules while le
   assert.doesNotMatch(commentRuntime, /from "@\/lib\/meal-comments-store"/);
 });
 
+test("activity logging and notification helpers live in module-local paths while legacy roots stay as shims", () => {
+  const moduleActivityLogPath = path.join(
+    process.cwd(),
+    "lib",
+    "modules",
+    "activity",
+    "server",
+    "activity-log.ts"
+  );
+  const moduleNotificationDomainPath = path.join(
+    process.cwd(),
+    "lib",
+    "modules",
+    "profile",
+    "domain",
+    "notification-preferences.ts"
+  );
+  const moduleNotificationClientPath = path.join(
+    process.cwd(),
+    "lib",
+    "modules",
+    "profile",
+    "adapters",
+    "http",
+    "profile-notification-client.ts"
+  );
+
+  const activityLogShim = read("lib/activity-log.ts");
+  const notificationShim = read("lib/activity.ts");
+  const notificationClientShim = read("lib/client/activity.ts");
+  const profilePage = read("app/profile/page.tsx");
+  const profileSession = read("lib/client/profile-session.ts");
+  const qaSession = read("lib/qa/session.ts");
+  const profileUseCases = read("lib/modules/profile/server/profile-use-cases.ts");
+  const userSessionRuntime = read("lib/modules/profile/infrastructure/user-session-runtime.ts");
+  const commentUseCases = read("lib/modules/comments/server/comment-use-cases.ts");
+  const reactionUseCases = read("lib/modules/reactions/server/reaction-use-cases.ts");
+
+  assert.equal(fs.existsSync(moduleActivityLogPath), true);
+  assert.equal(fs.existsSync(moduleNotificationDomainPath), true);
+  assert.equal(fs.existsSync(moduleNotificationClientPath), true);
+
+  assert.match(activityLogShim, /from "@\/lib\/modules\/activity\/server\/activity-log"/);
+  assert.match(notificationShim, /from "@\/lib\/modules\/profile\/domain\/notification-preferences"/);
+  assert.match(
+    notificationClientShim,
+    /from "@\/lib\/modules\/profile\/adapters\/http\/profile-notification-client"/
+  );
+
+  assert.match(profilePage, /from "@\/lib\/modules\/profile\/domain\/notification-preferences"/);
+  assert.match(profileSession, /from "@\/lib\/modules\/profile\/domain\/notification-preferences"/);
+  assert.match(qaSession, /from "@\/lib\/modules\/profile\/domain\/notification-preferences"/);
+  assert.match(profileUseCases, /from "@\/lib\/modules\/profile\/domain\/notification-preferences"/);
+  assert.match(
+    userSessionRuntime,
+    /from "@\/lib\/modules\/profile\/adapters\/http\/profile-notification-client"/
+  );
+  assert.match(commentUseCases, /from "@\/lib\/modules\/activity\/server\/activity-log"/);
+  assert.match(reactionUseCases, /from "@\/lib\/modules\/activity\/server\/activity-log"/);
+
+  assert.doesNotMatch(profilePage, /from "@\/lib\/activity"/);
+  assert.doesNotMatch(profileSession, /from "@\/lib\/activity"/);
+  assert.doesNotMatch(qaSession, /from "@\/lib\/activity"/);
+  assert.doesNotMatch(profileUseCases, /from "@\/lib\/activity"/);
+  assert.doesNotMatch(userSessionRuntime, /from "@\/lib\/client\/activity"/);
+  assert.doesNotMatch(commentUseCases, /from "@\/lib\/activity-log"/);
+  assert.doesNotMatch(reactionUseCases, /from "@\/lib\/activity-log"/);
+});
+
 test("add and edit pages delegate orchestration to meal page controllers", () => {
   const addPage = read("app/add/page.tsx");
   const editPage = read("app/edit/[id]/page.tsx");
@@ -437,6 +506,9 @@ test("server and client layers import platform auth and http helpers directly", 
   const commentClient = read("lib/modules/comments/adapters/firestore/comment-client.ts");
   const clientReactions = read("lib/client/reactions.ts");
   const clientActivity = read("lib/client/activity.ts");
+  const moduleNotificationClient = read(
+    "lib/modules/profile/adapters/http/profile-notification-client.ts"
+  );
   const clientProfileSession = read("lib/client/profile-session.ts");
   const uploadHelper = read("lib/uploadImage.ts");
   const commentUseCases = read("lib/modules/comments/server/comment-use-cases.ts");
@@ -467,13 +539,15 @@ test("server and client layers import platform auth and http helpers directly", 
     clientMutations,
     commentClient,
     clientReactions,
-    clientActivity,
+    moduleNotificationClient,
     clientProfileSession,
     uploadHelper,
   ]) {
     assert.match(source, /@\/lib\/platform\/http\/auth-http/);
     assert.doesNotMatch(source, /@\/lib\/client\/auth-http/);
   }
+
+  assert.match(clientActivity, /from "@\/lib\/modules\/profile\/adapters\/http\/profile-notification-client"/);
 
   for (const source of [commentUseCases, reactionUseCases, profileUseCases, uploadAdapter]) {
     assert.match(source, /@\/lib\/platform\/http\/route-errors/);

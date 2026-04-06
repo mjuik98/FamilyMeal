@@ -1,8 +1,8 @@
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
 
-import { createCommentActivities } from "@/lib/activity-log";
 import { USER_ROLES } from "@/lib/domain/meal-policy";
 import { adminDb } from "@/lib/firebase-admin";
+import { createCommentActivities } from "@/lib/modules/activity/server/activity-log";
 import { RouteError } from "@/lib/platform/http/route-errors";
 import { normalizeReactionMap } from "@/lib/reactions";
 import type { UserRole } from "@/lib/types";
