@@ -21,11 +21,16 @@ test("server auth uses server-only allowlist and production fail-closed guard", 
   assert.equal(exists("lib/server-auth.ts"), false);
 });
 
-test("comment creation route only requires authenticated role", () => {
+test("comment creation rechecks meal visibility on the server", () => {
   const commentRoute = read("app/api/meals/[id]/comments/route.ts");
   const commentUseCases = read("lib/modules/comments/server/comment-use-cases.ts");
+  const commentAdminStore = read("lib/modules/comments/adapters/firestore/comment-admin-store.ts");
+  const mealVisibility = read("lib/modules/meals/server/meal-visibility.ts");
   assert.match(commentRoute, /assertValidCommentRole/);
   assert.match(commentUseCases, /Valid user role is required/);
+  assert.match(commentAdminStore, /assertMealVisibleToRole/);
+  assert.match(mealVisibility, /export const assertMealVisibleToRole =/);
+  assert.match(mealVisibility, /export const isMealVisibleToRole =/);
   assert.doesNotMatch(commentUseCases, /const canCommentOnMeal =/);
   assert.doesNotMatch(commentUseCases, /Meal participants must include your role/);
 });
@@ -80,12 +85,14 @@ test("profile settings and activity logging stay on the server side", () => {
   assert.match(commentUseCases, /from "@\/lib\/modules\/comments\/adapters\/firestore\/comment-admin-store"/);
   assert.match(commentAdminStore, /from "@\/lib\/firebase-admin"/);
   assert.match(commentAdminStore, /from "@\/lib\/modules\/activity\/server\/activity-log"/);
+  assert.match(commentAdminStore, /from "@\/lib\/modules\/meals\/server\/meal-visibility"/);
   assert.doesNotMatch(commentUseCases, /from "@\/lib\/activity-log"/);
   assert.match(mealReactionRoute, /from "@\/lib\/modules\/reactions\/server\/reaction-use-cases"/);
   assert.match(commentReactionRoute, /from "@\/lib\/modules\/reactions\/server\/reaction-use-cases"/);
   assert.match(reactionUseCases, /from "@\/lib\/modules\/reactions\/adapters\/firestore\/reaction-admin-store"/);
   assert.match(reactionAdminStore, /from "@\/lib\/firebase-admin"/);
   assert.match(reactionAdminStore, /from "@\/lib\/modules\/activity\/server\/activity-log"/);
+  assert.match(reactionAdminStore, /from "@\/lib\/modules\/meals\/server\/meal-visibility"/);
   assert.match(reactionAdminStore, /syncMealReactionActivity/);
   assert.match(reactionAdminStore, /syncCommentReactionActivity/);
   assert.doesNotMatch(moduleActivityLog, /from "@\/lib\/firebase-admin"/);
@@ -127,22 +134,28 @@ test("meal image uploads are handled by authenticated server route", () => {
   const uploadHelper = read("lib/uploadImage.ts");
   const uploadAdapter = read("lib/modules/meals/adapters/storage/meal-image-upload.ts");
   const imagePolicy = read("lib/modules/meals/domain/meal-image-policy.ts");
+  const multipartHelper = read("lib/platform/http/multipart-file.ts");
   const packageJson = read("package.json");
 
   assert.match(uploadRoute, /requireVerifiedUser/);
   assert.match(uploadRoute, /from "@\/lib\/platform\/http\/route-handler"/);
+  assert.match(uploadRoute, /from "@\/lib\/platform\/http\/multipart-file"/);
   assert.match(uploadRoute, /serverEnv\.storageBucket/);
   assert.match(uploadRoute, /from "@\/lib\/modules\/meals\/adapters\/storage\/meal-image-upload"/);
   assert.match(uploadRoute, /export async function DELETE/);
   assert.match(uploadRoute, /deleteStorageObjectByUrl/);
   assert.match(uploadRoute, /validateUploadContentLength/);
   assert.match(uploadRoute, /validateUploadContentType/);
+  assert.match(uploadRoute, /parseMultipartFileFromRequest/);
   assert.match(uploadRoute, /request\.headers\.get\("content-length"\)/);
   assert.match(uploadRoute, /request\.headers\.get\("content-type"\)/);
   assert.match(uploadRoute, /multipart\/form-data/);
-  assert.match(uploadRoute, /await request\.formData\(\)/);
+  assert.doesNotMatch(uploadRoute, /await request\.formData\(\)/);
   assert.doesNotMatch(uploadRoute, /getRouteErrorPayload/);
   assert.doesNotMatch(uploadRoute, /getRouteErrorStatus/);
+  assert.match(multipartHelper, /from "busboy"/);
+  assert.match(multipartHelper, /Readable\.fromWeb/);
+  assert.match(multipartHelper, /Image upload request is too large/);
   assert.match(uploadAdapter, /export const storeMealImageFile = async/);
   assert.match(uploadAdapter, /from "sharp"/);
   assert.match(uploadAdapter, /\.rotate\(\)/);
@@ -158,6 +171,7 @@ test("meal image uploads are handled by authenticated server route", () => {
     false
   );
   assert.match(packageJson, /"sharp":\s*"/);
+  assert.match(packageJson, /"busboy":\s*"/);
   assert.equal(exists("lib/meal-image-policy.ts"), false);
   assert.match(imagePolicy, /MAX_MEAL_IMAGE_REQUEST_BYTES/);
   assert.match(uploadHelper, /\/api\/uploads\/meal-image/);
@@ -213,8 +227,13 @@ test("meal routes delegate to extracted server meal modules", () => {
   assert.match(mealRoute, /from "@\/lib\/modules\/meals\/server\/meal-storage"/);
   assert.match(mealRoute, /from "@\/lib\/platform\/auth\/route-auth"/);
   assert.match(mealRoute, /updateMealDocument/);
+  assert.match(
+    mealRoute,
+    /updateMealDocument\(\{[\s\S]*actorRole:\s*role,[\s\S]*input:\s*input as UpdateMealInput,/s
+  );
   assert.match(mealRoute, /planMealDeleteOperation/);
   assert.match(mealRoute, /deleteMealCommentsByMealId/);
+  assert.match(mealRoute, /deleteMealActivitiesByMealId/);
   assert.match(mealRoute, /deleteMealDocumentById/);
   assert.match(mealRoute, /markMealDeleteJob/);
   assert.doesNotMatch(mealRoute, /from "@\/lib\/firebase-admin"/);
@@ -233,6 +252,7 @@ test("meal routes delegate to extracted server meal modules", () => {
   assert.match(mealWriteUseCases, /export const updateMealDocument = async/);
   assert.match(mealDeleteUseCases, /export const planMealDeleteOperation = async/);
   assert.match(mealDeleteUseCases, /export const deleteMealCommentsByMealId = async/);
+  assert.match(mealDeleteUseCases, /export const deleteMealActivitiesByMealId = async/);
   assert.match(mealDeleteUseCases, /export const deleteMealDocumentById = async/);
   assert.match(mealDeleteUseCases, /export const markMealDeleteJob = async/);
   assert.match(mealStorage, /export const deleteStorageObjectByUrl = async/);
@@ -428,6 +448,7 @@ test("route handlers share common route error helpers", () => {
 test("client error collection uses shared config and logging helpers", () => {
   const clientErrorRoute = read("app/api/client-errors/route.ts");
   const clientErrorIngest = read("lib/platform/http/client-error-ingest.ts");
+  const observabilityReporter = read("lib/platform/observability/error-reporter.ts");
   const serverEnv = read("lib/config/server-env.ts");
   const logger = read("lib/logging.ts");
 
@@ -437,12 +458,35 @@ test("client error collection uses shared config and logging helpers", () => {
   assert.doesNotMatch(clientErrorRoute, /from "@\/lib\/logging"/);
   assert.match(clientErrorIngest, /from "@\/lib\/config\/server-env"/);
   assert.match(clientErrorIngest, /from "@\/lib\/logging"/);
+  assert.match(clientErrorIngest, /from "@\/lib\/platform\/observability\/error-reporter"/);
   assert.match(clientErrorIngest, /serverEnv\.upstash/);
   assert.match(clientErrorIngest, /logError/);
+  assert.match(clientErrorIngest, /const normalizeUrlForLogging =/);
+  assert.match(clientErrorIngest, /const sanitizeClientErrorPayload =/);
+  assert.match(clientErrorIngest, /search = ""/);
+  assert.match(clientErrorIngest, /hash = ""/);
+  assert.match(clientErrorIngest, /delete sanitizedPayload\.userAgent/);
+  assert.match(observabilityReporter, /from "@opentelemetry\/api"/);
+  assert.match(observabilityReporter, /serverEnv\.observability/);
+  assert.match(observabilityReporter, /recordException/);
+  assert.match(observabilityReporter, /fetch\(serverEnv\.observability\.webhookUrl/);
   assert.doesNotMatch(clientErrorRoute, /process\.env\.UPSTASH_REDIS_REST_URL/);
   assert.doesNotMatch(clientErrorRoute, /console\.error/);
   assert.match(serverEnv, /upstash:/);
+  assert.match(serverEnv, /observability:/);
   assert.match(logger, /export const logError =/);
+});
+
+test("firebase config includes firestore indexes for archive optimization", () => {
+  const firebaseConfig = read("firebase.json");
+  const firestoreIndexes = read("firestore.indexes.json");
+
+  assert.match(firebaseConfig, /"indexes":\s*"firestore\.indexes\.json"/);
+  assert.match(firestoreIndexes, /"collectionGroup":\s*"meals"/);
+  assert.match(firestoreIndexes, /"fieldPath":\s*"userIds"[\s\S]*"arrayConfig":\s*"CONTAINS"/);
+  assert.match(firestoreIndexes, /"fieldPath":\s*"userId"[\s\S]*"order":\s*"ASCENDING"/);
+  assert.match(firestoreIndexes, /"fieldPath":\s*"type"[\s\S]*"order":\s*"ASCENDING"/);
+  assert.match(firestoreIndexes, /"fieldPath":\s*"timestamp"[\s\S]*"order":\s*"DESCENDING"/);
 });
 
 test("proxy and version routes use shared env accessors", () => {

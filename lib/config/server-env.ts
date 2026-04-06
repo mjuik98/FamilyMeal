@@ -37,6 +37,13 @@ export const serverEnv = {
     url: normalizeEnvValue(process.env.UPSTASH_REDIS_REST_URL),
     token: normalizeEnvValue(process.env.UPSTASH_REDIS_REST_TOKEN),
   },
+  observability: {
+    webhookUrl: normalizeEnvValue(process.env.OBSERVABILITY_ERROR_WEBHOOK_URL),
+    token: normalizeEnvValue(process.env.OBSERVABILITY_ERROR_WEBHOOK_TOKEN),
+    serviceName:
+      normalizeEnvValue(process.env.OBSERVABILITY_SERVICE_NAME) ??
+      "family-meal-tracker",
+  },
   qaRouteToken: normalizeEnvValue(process.env.QA_ROUTE_TOKEN) ?? "",
   deploymentVersion:
     normalizeEnvValue(process.env.VERCEL_GIT_COMMIT_SHA) ??

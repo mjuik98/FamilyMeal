@@ -1,7 +1,10 @@
+import { createHash } from "node:crypto";
+
 import { z } from "zod";
 
 import { serverEnv } from "@/lib/config/server-env";
 import { logError } from "@/lib/logging";
+import { reportErrorToObservability } from "@/lib/platform/observability/error-reporter";
 import { RouteError } from "@/lib/platform/http/route-errors";
 
 const MAX_REQUEST_BYTES = 16 * 1024;
@@ -17,6 +20,8 @@ type RateBucket = {
 type UpstashLimiter = {
   limit: (key: string) => Promise<{ success: boolean }>;
 };
+
+type ClientErrorPayload = z.infer<typeof ClientErrorSchema>;
 
 const ClientErrorSchema = z.object({
   type: z.string().trim().min(1).max(64),
@@ -75,19 +80,31 @@ const parseForwardedIp = (value: string | null): string | null => {
   return candidate || null;
 };
 
+const buildAnonymousClientKey = (request: Request): string => {
+  const fingerprint = createHash("sha256")
+    .update(
+      JSON.stringify({
+        userAgent: request.headers.get("user-agent") ?? "",
+        acceptLanguage: request.headers.get("accept-language") ?? "",
+        secChUa: request.headers.get("sec-ch-ua") ?? "",
+        secChUaPlatform: request.headers.get("sec-ch-ua-platform") ?? "",
+        origin: request.headers.get("origin") ?? "",
+        host: request.headers.get("host") ?? "",
+      })
+    )
+    .digest("hex")
+    .slice(0, 24);
+
+  return `anonymous:${fingerprint}`;
+};
+
 const getClientKey = (request: Request): string => {
   const vercelForwarded = parseForwardedIp(request.headers.get("x-vercel-forwarded-for"));
   if (vercelForwarded) {
     return vercelForwarded;
   }
 
-  const realIp = request.headers.get("x-real-ip")?.trim();
-  if (realIp) {
-    return realIp;
-  }
-
-  const forwardedFor = parseForwardedIp(request.headers.get("x-forwarded-for"));
-  return forwardedFor || "unknown";
+  return buildAnonymousClientKey(request);
 };
 
 const trimMemoryBuckets = () => {
@@ -142,6 +159,61 @@ const validateBodyByteLength = (body: string): void => {
   }
 };
 
+const normalizeUrlForLogging = (value?: string): string | undefined => {
+  if (!value) {
+    return undefined;
+  }
+
+  try {
+    const normalizedUrl = new URL(value);
+    normalizedUrl.search = "";
+    normalizedUrl.hash = "";
+    return normalizedUrl.toString();
+  } catch {
+    return value.split("#", 1)[0]?.split("?", 1)[0]?.trim() || undefined;
+  }
+};
+
+const normalizeStackForLogging = (stack?: string): string | undefined => {
+  if (!stack) {
+    return undefined;
+  }
+
+  const trimmedStack = stack
+    .split("\n")
+    .map((line) => line.trimEnd())
+    .filter(Boolean)
+    .slice(0, 12)
+    .join("\n");
+
+  return trimmedStack || undefined;
+};
+
+const sanitizeClientErrorPayload = (
+  payload: ClientErrorPayload
+): Omit<ClientErrorPayload, "userAgent"> => {
+  const sanitizedPayload: ClientErrorPayload & { userAgent?: string } = {
+    ...payload,
+    source: normalizeUrlForLogging(payload.source),
+    url: normalizeUrlForLogging(payload.url),
+    stack: normalizeStackForLogging(payload.stack),
+  };
+
+  delete sanitizedPayload.userAgent;
+
+  if (!sanitizedPayload.source) {
+    delete sanitizedPayload.source;
+  }
+  if (!sanitizedPayload.url) {
+    delete sanitizedPayload.url;
+  }
+  if (!sanitizedPayload.stack) {
+    delete sanitizedPayload.stack;
+  }
+
+  return sanitizedPayload;
+};
+
 const parseClientErrorPayload = (raw: string) => {
   let json: unknown;
   try {
@@ -155,7 +227,7 @@ const parseClientErrorPayload = (raw: string) => {
     throw new RouteError("invalid payload", 400);
   }
 
-  return parsed.data;
+  return parsed.data satisfies ClientErrorPayload;
 };
 
 export const ingestClientErrorReport = async (
@@ -173,7 +245,16 @@ export const ingestClientErrorReport = async (
     validateBodyByteLength(raw);
 
     const payload = parseClientErrorPayload(raw);
-    logError("[client-error]", undefined, payload);
+    const sanitizedPayload = sanitizeClientErrorPayload(payload);
+    logError("[client-error]", undefined, sanitizedPayload);
+    await reportErrorToObservability({
+      source: "client-error",
+      code: "client_error",
+      message: payload.message,
+      error: payload.stack ? new Error(payload.message) : undefined,
+      stack: payload.stack,
+      context: sanitizedPayload,
+    });
 
     return { ok: true };
   } catch (error) {
@@ -182,6 +263,12 @@ export const ingestClientErrorReport = async (
     }
 
     logError("[client-error] route failure", error);
+    await reportErrorToObservability({
+      source: "client-error-route",
+      code: "internal_error",
+      message: "Client error route failure",
+      error,
+    });
     throw new RouteError("internal error", 500);
   }
 };

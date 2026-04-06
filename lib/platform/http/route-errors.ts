@@ -5,6 +5,7 @@ import {
 } from "@/lib/platform/errors/error-contract";
 
 type ErrorWithStatus = Error & { status: number };
+type ErrorWithCode = Error & { code: string };
 
 export type RouteErrorPayload = {
   code: string;
@@ -15,6 +16,12 @@ const hasStatus = (error: unknown): error is ErrorWithStatus =>
   error instanceof Error &&
   "status" in error &&
   typeof (error as { status?: unknown }).status === "number";
+
+const hasCode = (error: unknown): error is ErrorWithCode =>
+  error instanceof Error &&
+  "code" in error &&
+  typeof (error as { code?: unknown }).code === "string" &&
+  (error as { code: string }).code.trim().length > 0;
 
 export class RouteError extends Error {
   code: string;
@@ -37,7 +44,9 @@ export const getRouteErrorMessage = (error: unknown): string =>
   getErrorMessage(error) || "internal error";
 
 export const getRouteErrorCode = (error: unknown): string =>
-  getErrorCode(error) ??
+  (!hasCode(error) && getRouteErrorStatus(error) >= 500
+    ? "internal_error"
+    : getErrorCode(error)) ??
   normalizeErrorCode(
     getRouteErrorMessage(error),
     getRouteErrorStatus(error) >= 500 ? "internal_error" : "request_failed"

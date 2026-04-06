@@ -114,3 +114,35 @@ test("parseJsonBody supports custom error factories for module-specific route er
       error.status === 400
   );
 });
+
+test("parseJsonBody rejects oversized JSON request bodies", async () => {
+  const [{ parseJsonBody }, { RouteError }] = await Promise.all([
+    importFresh<typeof import("../lib/platform/http/request-body.ts")>(
+      "../lib/platform/http/request-body.ts"
+    ),
+    importFresh<typeof import("../lib/platform/http/route-errors.ts")>(
+      "../lib/platform/http/route-errors.ts"
+    ),
+  ]);
+
+  const body = JSON.stringify({
+    value: "x".repeat(70_000),
+  });
+
+  await assert.rejects(
+    () =>
+      parseJsonBody(
+        new Request("http://localhost/api/test", {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+          },
+          body,
+        })
+      ),
+    (error: unknown) =>
+      error instanceof RouteError &&
+      error.status === 413 &&
+      error.message.toLowerCase().includes("too large")
+  );
+});

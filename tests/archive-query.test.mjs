@@ -63,14 +63,20 @@ test("archive listing enforces participant visibility and returns partial-scan m
   const archiveUseCases = read("lib/modules/meals/server/archive-use-cases.ts");
 
   assert.match(archiveUseCases, /actorRole: UserRole/);
+  assert.match(archiveUseCases, /where\("userIds", "array-contains", targetRole\)/);
+  assert.match(archiveUseCases, /where\("userId", "==", params\.actorRole\)/);
   assert.match(
     archiveUseCases,
-    /if \(!meal\.userIds\?\.includes\(params\.actorRole\)\) \{\s*if \(meal\.userId !== params\.actorRole\) \{\s*continue;\s*\}\s*\}/
+    /logWarn\(\s*"Archive query optimization unavailable; falling back to full scan"/
+  );
+  assert.match(
+    archiveUseCases,
+    /const isMealVisibleToActor = \(meal: Meal, actorRole: UserRole\): boolean =>/
   );
   assert.match(archiveUseCases, /isPartial: exhaustedScanLimit && hasMore/);
   assert.match(
     archiveUseCases,
-    /nextCursor: hasMore && cursorAnchor \? encodeArchiveCursor\(cursorAnchor\.timestamp, cursorAnchor\.id, cursorMode\) : null/
+    /nextCursor:[\s\S]*encodeArchiveCursor\([\s\S]*cursorAnchor\.timestamp,[\s\S]*cursorAnchor\.id,[\s\S]*cursorMode[\s\S]*\)[\s\S]*: null/s
   );
   assert.equal(fs.existsSync(path.join(process.cwd(), "lib", "server", "meals", "archive-use-cases.ts")), false);
 });

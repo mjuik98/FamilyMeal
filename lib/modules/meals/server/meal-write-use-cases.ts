@@ -74,10 +74,12 @@ export const createMealDocument = async ({
 export const updateMealDocument = async ({
   mealId,
   uid,
+  actorRole,
   input,
 }: {
   mealId: string;
   uid: string;
+  actorRole: UserRole;
   input: UpdateMealInput;
 }): Promise<Meal> => {
   const mealRef = adminDb.collection("meals").doc(mealId);
@@ -133,6 +135,9 @@ export const updateMealDocument = async ({
 
     if ("userIds" in input && input.userIds !== undefined) {
       nextUserIds = normalizeMealParticipants(input.userIds);
+      if (!nextUserIds.includes(actorRole)) {
+        throw new MealRouteError("Meal participants must include your role", 403);
+      }
       dataToUpdate.userIds = nextUserIds;
     }
 

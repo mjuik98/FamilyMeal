@@ -14,6 +14,7 @@ import { parseJsonBody } from "@/lib/platform/http/request-body";
 import { handleRoute } from "@/lib/platform/http/route-handler";
 import { getRouteErrorMessage } from "@/lib/platform/http/route-errors";
 import {
+  deleteMealActivitiesByMealId,
   deleteMealCommentsByMealId,
   deleteMealDocumentById,
   markMealDeleteJob,
@@ -97,6 +98,7 @@ export async function DELETE(
       }
 
       await deleteMealCommentsByMealId(mealId);
+      await deleteMealActivitiesByMealId(mealId);
       await deleteMealDocumentById(mealId);
       if (plan.action === "delete_now" && plan.mealImageUrl) {
         try {
@@ -150,6 +152,7 @@ export async function PATCH(
     const meal = await updateMealDocument({
       mealId,
       uid: user.uid,
+      actorRole: role,
       input: input as UpdateMealInput,
     });
 

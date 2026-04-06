@@ -3,6 +3,7 @@ import { storeMealImageFile } from "@/lib/modules/meals/adapters/storage/meal-im
 import { MAX_MEAL_IMAGE_REQUEST_BYTES } from "@/lib/modules/meals/domain/meal-image-policy";
 import { deleteStorageObjectByUrl } from "@/lib/modules/meals/server/meal-storage";
 import { requireVerifiedUser } from "@/lib/platform/auth/route-auth";
+import { parseMultipartFileFromRequest } from "@/lib/platform/http/multipart-file";
 import { parseJsonBody } from "@/lib/platform/http/request-body";
 import { handleRoute } from "@/lib/platform/http/route-handler";
 import { RouteError } from "@/lib/platform/http/route-errors";
@@ -31,17 +32,10 @@ export async function POST(request: Request) {
     validateUploadContentLength(request);
     validateUploadContentType(request);
 
-    let formData: FormData;
-    try {
-      formData = await request.formData();
-    } catch {
-      throw new RouteError("Invalid form data", 400);
-    }
-
-    const file = formData.get("file");
-    if (!(file instanceof File)) {
-      throw new RouteError("Image file is required", 400);
-    }
+    const file = await parseMultipartFileFromRequest(request, {
+      fieldName: "file",
+      maxBytes: MAX_MEAL_IMAGE_REQUEST_BYTES,
+    });
 
     const bucketName = serverEnv.storageBucket?.trim();
     if (!bucketName) {

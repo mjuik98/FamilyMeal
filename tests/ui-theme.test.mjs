@@ -18,6 +18,8 @@ test("viewport metadata uses fixed light theme color", () => {
   const layout = read("app/layout.tsx");
   assert.match(layout, /colorScheme:\s*"light"/);
   assert.match(layout, /themeColor:\s*"#FAFAF5"/);
+  assert.doesNotMatch(layout, /maximumScale:\s*1/);
+  assert.doesNotMatch(layout, /userScalable:\s*false/);
   assert.doesNotMatch(layout, /prefers-color-scheme/);
 });
 
@@ -61,6 +63,7 @@ test("edit page waits for auth loading before redirecting", () => {
 test("login view uses the refreshed onboarding layout and shared CSS hooks", () => {
   const loginView = read("components/LoginView.tsx");
   const layoutStyles = read("app/styles/layout.css");
+  const userContext = read("context/UserContext.tsx");
 
   assert.match(loginView, /login-screen/);
   assert.match(loginView, /login-brand-mark/);
@@ -76,6 +79,15 @@ test("login view uses the refreshed onboarding layout and shared CSS hooks", () 
   assert.match(layoutStyles, /\.login-screen\s*\{/);
   assert.match(layoutStyles, /\.login-google-button\s*\{/);
   assert.match(layoutStyles, /\.role-selection-card\s*\{/);
+  assert.match(
+    userContext,
+    /const shouldUseRedirectSignIn = \(code: string\): boolean =>\s*code === "auth\/popup-blocked" \|\|\s*code === "auth\/operation-not-supported-in-this-environment";/s
+  );
+  assert.match(
+    userContext,
+    /const shouldIgnorePopupDismissal = \(code: string\): boolean =>\s*code === "auth\/popup-closed-by-user" \|\|\s*code === "auth\/cancelled-popup-request";/s
+  );
+  assert.match(userContext, /if \(shouldIgnorePopupDismissal\(code\)\) \{\s*return;\s*\}/s);
 });
 
 test("update banner is wired into root layout", () => {
@@ -797,12 +809,14 @@ test("meal delete route uses idempotent server cleanup flow", () => {
   const mealDeleteUseCases = read("lib/modules/meals/server/meal-delete-use-cases.ts");
   assert.match(deleteRoute, /planMealDeleteOperation/);
   assert.match(deleteRoute, /deleteMealCommentsByMealId/);
+  assert.match(deleteRoute, /deleteMealActivitiesByMealId/);
   assert.match(deleteRoute, /markMealDeleteJob/);
   assert.match(mealDeleteUseCases, /_maintenanceDeleteJobs/);
   assert.match(mealDeleteUseCases, /status:\s*"processing"/);
   assert.match(deleteRoute, /status:\s*"completed"/);
   assert.match(deleteRoute, /status:\s*"failed"/);
   assert.match(mealDeleteUseCases, /deleteMealCommentsByMealId/);
+  assert.match(mealDeleteUseCases, /deleteMealActivitiesByMealId/);
   assert.equal(fs.existsSync(path.join(process.cwd(), "lib", "server", "meals", "meal-delete-use-cases.ts")), false);
 });
 

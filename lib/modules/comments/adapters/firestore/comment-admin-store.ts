@@ -6,6 +6,7 @@ import type {
   MealCommentDoc,
   MealDoc,
 } from "@/lib/modules/comments/server/comment-types";
+import { assertMealVisibleToRole } from "@/lib/modules/meals/server/meal-visibility";
 import { RouteError } from "@/lib/platform/http/route-errors";
 import { normalizeReactionMap } from "@/lib/reactions";
 import type { UserRole } from "@/lib/types";
@@ -52,6 +53,7 @@ export const createStoredMealComment = async ({
     }
 
     const mealData = mealSnap.data() as MealDoc;
+    assertMealVisibleToRole(mealData, actorRole);
     const now = Date.now();
     const nowTs = Timestamp.fromMillis(now);
     let mentionedAuthor: string | undefined;

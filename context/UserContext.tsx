@@ -37,6 +37,14 @@ type UserContextType = {
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
 
+const shouldUseRedirectSignIn = (code: string): boolean =>
+  code === "auth/popup-blocked" ||
+  code === "auth/operation-not-supported-in-this-environment";
+
+const shouldIgnorePopupDismissal = (code: string): boolean =>
+  code === "auth/popup-closed-by-user" ||
+  code === "auth/cancelled-popup-request";
+
 export function UserProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
@@ -127,13 +135,12 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
           ? String((error as { code?: string }).code)
           : "";
 
-      if (
-        code === "auth/popup-blocked" ||
-        code === "auth/popup-closed-by-user" ||
-        code === "auth/cancelled-popup-request" ||
-        code === "auth/operation-not-supported-in-this-environment"
-      ) {
+      if (shouldUseRedirectSignIn(code)) {
         await signInWithRedirect(auth, provider);
+        return;
+      }
+
+      if (shouldIgnorePopupDismissal(code)) {
         return;
       }
 

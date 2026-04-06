@@ -1,5 +1,6 @@
 import { adminDb } from "@/lib/firebase-admin";
 import { syncCommentReactionActivity, syncMealReactionActivity } from "@/lib/modules/activity/server/activity-log";
+import { assertMealVisibleToRole } from "@/lib/modules/meals/server/meal-visibility";
 import { RouteError } from "@/lib/platform/http/route-errors";
 import {
   normalizeReactionMap,
@@ -29,8 +30,11 @@ export const toggleStoredMealReactionForUser = async ({
     const mealData = mealSnap.data() as {
       reactions?: unknown;
       ownerUid?: unknown;
+      userId?: unknown;
+      userIds?: unknown;
       description?: unknown;
     };
+    assertMealVisibleToRole(mealData, actorRole);
     const previousReactions = normalizeReactionMap(mealData.reactions);
     const hadReaction = previousReactions[emoji]?.includes(uid) ?? false;
     const nextReactions = toggleReactionInMap(previousReactions, emoji, uid);
@@ -69,6 +73,7 @@ export const toggleStoredCommentReactionForUser = async ({
   actorRole: UserRole;
   emoji: ReactionEmoji;
 }): Promise<ReactionMap> => {
+  const mealRef = adminDb.collection("meals").doc(mealId);
   const commentRef = adminDb
     .collection("meals")
     .doc(mealId)
@@ -76,7 +81,15 @@ export const toggleStoredCommentReactionForUser = async ({
     .doc(commentId);
 
   return adminDb.runTransaction(async (tx) => {
-    const commentSnap = await tx.get(commentRef);
+    const [mealSnap, commentSnap] = await Promise.all([tx.get(mealRef), tx.get(commentRef)]);
+    if (!mealSnap.exists) {
+      throw new RouteError("Meal not found", 404);
+    }
+    const mealData = mealSnap.data() as {
+      userId?: unknown;
+      userIds?: unknown;
+    };
+    assertMealVisibleToRole(mealData, actorRole);
     if (!commentSnap.exists) {
       throw new RouteError("Comment not found", 404);
     }

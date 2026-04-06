@@ -117,6 +117,29 @@ export const deleteMealCommentsByMealId = async (mealId: string): Promise<void> 
   }
 };
 
+export const deleteMealActivitiesByMealId = async (mealId: string): Promise<void> => {
+  const activitiesRef = adminDb.collectionGroup("activity").where("mealId", "==", mealId);
+  let cursor: FirebaseFirestore.QueryDocumentSnapshot | null = null;
+
+  while (true) {
+    let q: FirebaseFirestore.Query = activitiesRef.orderBy("__name__").limit(DELETE_BATCH_LIMIT);
+    if (cursor) {
+      q = activitiesRef.orderBy("__name__").startAfter(cursor).limit(DELETE_BATCH_LIMIT);
+    }
+
+    const snapshot: FirebaseFirestore.QuerySnapshot = await q.get();
+    if (snapshot.empty) return;
+
+    const batch = adminDb.batch();
+    snapshot.docs.forEach((activityDoc: FirebaseFirestore.QueryDocumentSnapshot) => batch.delete(activityDoc.ref));
+    await batch.commit();
+
+    if (snapshot.size < DELETE_BATCH_LIMIT) return;
+    cursor = snapshot.docs[snapshot.docs.length - 1] ?? null;
+    if (!cursor) return;
+  }
+};
+
 export const deleteMealDocumentById = async (mealId: string): Promise<void> => {
   await adminDb.collection("meals").doc(mealId).delete();
 };

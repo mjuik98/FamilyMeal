@@ -104,6 +104,9 @@ npm run migrate:owners
 | `QA_ROUTE_TOKEN` | 운영 QA 라우트 접근 토큰 |
 | `UPSTASH_REDIS_REST_URL` | `/api/client-errors` 분산 rate limit |
 | `UPSTASH_REDIS_REST_TOKEN` | `/api/client-errors` 분산 rate limit |
+| `OBSERVABILITY_ERROR_WEBHOOK_URL` | 서버 오류와 클라이언트 오류를 외부 수집기로 POST 할 webhook URL |
+| `OBSERVABILITY_ERROR_WEBHOOK_TOKEN` | 외부 수집기 인증용 bearer token |
+| `OBSERVABILITY_SERVICE_NAME` | 외부 수집기 payload 에 포함할 서비스 이름 |
 | `SMOKE_HOST` | 스모크 테스트 호스트 |
 | `SMOKE_PORT` | 스모크 테스트 포트 |
 | `SMOKE_ENV_PATH` | meal mutation smoke test 에서 읽을 env 파일 경로 |
@@ -156,11 +159,13 @@ docs/                 설계/계획 문서와 아키텍처 문서
 ## 운영 메모
 
 - QA 라우트는 개발 환경에서는 열려 있고, 운영 환경에서는 `NEXT_PUBLIC_ENABLE_QA=true` 와 `QA_ROUTE_TOKEN` 이 모두 필요합니다.
+- Firestore 인덱스는 `firestore.indexes.json` 에 정의돼 있고, 배포 시 `firebase deploy --only firestore:indexes` 로 반영할 수 있습니다.
 - PWA 가 꺼져 있으면 레이아웃에서 기존 service worker 와 캐시를 정리합니다.
 - PWA service worker (`public/sw.js`) 와 workbox helper 파일은 빌드 시 생성되는 산출물이며 저장소에는 추적하지 않습니다.
 - `next.config.ts` 는 `turbopack: {}` 를 유지하고, `npm run build` 는 `NEXT_PUBLIC_ENABLE_PWA=true` 일 때만 webpack 빌드로 자동 전환해 service worker 산출을 보장합니다.
 - PWA 관련 변경 후에는 `npm run test:smoke:pwa` 로 생성 자산과 cleanup 흐름을 함께 확인할 수 있습니다.
 - 클라이언트 오류 수집 엔드포인트 `/api/client-errors` 는 Upstash 가 없으면 메모리 rate limit 으로 동작합니다.
+- `OBSERVABILITY_ERROR_WEBHOOK_URL` 이 설정되면 서버 500 오류와 클라이언트 오류 수집 payload 를 외부 관측 수집기로도 전달합니다.
 - `test:smoke:meals` 는 Firebase Admin 자격 증명과 allowlist 계정이 있어야 동작합니다.
 - `test:rules` 는 Java 런타임이 필요하며, 없으면 스크립트가 즉시 실패합니다.
 

@@ -13,10 +13,7 @@ import {
   serializeMealDocument,
   type StoredMealDoc,
 } from "@/lib/modules/meals/server/meal-types";
-
-const isMealVisibleToRole = (meal: Meal, actorRole: UserRole): boolean =>
-  (Array.isArray(meal.userIds) && meal.userIds.includes(actorRole)) ||
-  meal.userId === actorRole;
+import { isMealVisibleToRole } from "@/lib/modules/meals/server/meal-visibility";
 
 export const getMealByIdForActor = async ({
   mealId,

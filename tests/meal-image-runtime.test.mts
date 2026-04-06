@@ -7,6 +7,8 @@ import sharp from "sharp";
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
+const TEST_MAX_MEAL_IMAGE_REQUEST_BYTES = 26 * 1024 * 1024;
+
 const TEST_BUCKET = "family-meal.appspot.com";
 const TEST_SERVER_ENV = {
   firebaseAdmin: {
@@ -107,6 +109,43 @@ const createPngBuffer = (width: number, height: number): Promise<Buffer> =>
   })
     .png()
     .toBuffer();
+
+const concatUint8Arrays = (parts: Uint8Array[]): Uint8Array => {
+  const total = parts.reduce((sum, part) => sum + part.byteLength, 0);
+  const combined = new Uint8Array(total);
+  let offset = 0;
+  for (const part of parts) {
+    combined.set(part, offset);
+    offset += part.byteLength;
+  }
+  return combined;
+};
+
+const buildMultipartBody = ({
+  boundary,
+  fileName,
+  fileType,
+  fileBytes,
+  paddingText,
+}: {
+  boundary: string;
+  fileName: string;
+  fileType: string;
+  fileBytes: Uint8Array;
+  paddingText: string;
+}): Uint8Array => {
+  const encoder = new TextEncoder();
+  return concatUint8Arrays([
+    encoder.encode(
+      `--${boundary}\r\nContent-Disposition: form-data; name="padding"\r\n\r\n${paddingText}\r\n`
+    ),
+    encoder.encode(
+      `--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="${fileName}"\r\nContent-Type: ${fileType}\r\n\r\n`
+    ),
+    fileBytes,
+    encoder.encode(`\r\n--${boundary}--\r\n`),
+  ]);
+};
 
 const resetTestHandlers = () => {
   currentUserUid = "user-1";
@@ -224,6 +263,41 @@ test("upload route exposes authenticated cleanup for uploaded meal images", asyn
 
   assert.equal(response.status, 200);
   assert.deepEqual(deletedPaths, [`${TEST_BUCKET}:meals/user-1/cleanup.jpg`]);
+});
+
+test("upload route rejects oversized multipart bodies even when content-length is missing", async () => {
+  const savedFiles: StorageSaveCall[] = [];
+  onStorageSave = async (call) => {
+    savedFiles.push(call);
+  };
+
+  const { POST } = await importFresh<typeof import("../app/api/uploads/meal-image/route.ts")>(
+    "../app/api/uploads/meal-image/route.ts"
+  );
+
+  const inputBuffer = await createPngBuffer(32, 32);
+  const boundary = `----family-meal-${Date.now()}`;
+  const body = buildMultipartBody({
+    boundary,
+    fileName: "meal.png",
+    fileType: "image/png",
+    fileBytes: Uint8Array.from(inputBuffer),
+    paddingText: "x".repeat(TEST_MAX_MEAL_IMAGE_REQUEST_BYTES + 1_024),
+  });
+
+  const response = await POST(
+    new Request("http://localhost/api/uploads/meal-image", {
+      method: "POST",
+      headers: {
+        Authorization: "Bearer test-token",
+        "content-type": `multipart/form-data; boundary=${boundary}`,
+      },
+      body: Buffer.from(body),
+    })
+  );
+
+  assert.equal(response.status, 413);
+  assert.equal(savedFiles.length, 0);
 });
 
 test("useMealImageSelection manages preview lifecycle for local files", async () => {
