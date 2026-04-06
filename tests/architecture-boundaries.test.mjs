@@ -298,11 +298,20 @@ test("platform auth and http helpers own the real implementations while legacy e
     "auth",
     "route-auth.ts"
   );
+  const profileAuthContextPath = path.join(
+    process.cwd(),
+    "lib",
+    "modules",
+    "profile",
+    "server",
+    "profile-auth-context.ts"
+  );
 
   assert.equal(fs.existsSync(platformRouteErrorsPath), true);
   assert.equal(fs.existsSync(platformAuthHttpPath), true);
   assert.equal(fs.existsSync(platformServerAuthPath), true);
   assert.equal(fs.existsSync(platformRouteAuthPath), true);
+  assert.equal(fs.existsSync(profileAuthContextPath), true);
 
   assert.match(read("lib/route-errors.ts"), /from "@\/lib\/platform\/http\/route-errors"/);
   assert.match(read("lib/client/auth-http.ts"), /from "@\/lib\/platform\/http\/auth-http"/);
@@ -352,6 +361,9 @@ test("meals server implementations live inside the meals module and legacy serve
 
 test("server and client layers import platform auth and http helpers directly", () => {
   const routeHandler = read("lib/platform/http/route-handler.ts");
+  const platformRouteAuth = read("lib/platform/auth/route-auth.ts");
+  const platformServerAuth = read("lib/platform/auth/server-auth.ts");
+  const profileAuthContext = read("lib/modules/profile/server/profile-auth-context.ts");
   const clientMeals = read("lib/client/meal-queries.ts");
   const clientMutations = read("lib/client/meal-mutations.ts");
   const commentClient = read("lib/modules/comments/adapters/firestore/comment-client.ts");
@@ -378,6 +390,9 @@ test("server and client layers import platform auth and http helpers directly", 
   const clientErrorsRoute = read("app/api/client-errors/route.ts");
 
   assert.match(routeHandler, /from "@\/lib\/platform\/http\/route-errors"/);
+  assert.match(platformRouteAuth, /modules\/profile\/server\/profile-auth-context/);
+  assert.doesNotMatch(platformServerAuth, /adminDb/);
+  assert.match(profileAuthContext, /from "@\/lib\/firebase-admin"/);
 
   for (const source of [
     clientMeals,

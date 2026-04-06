@@ -11,9 +11,12 @@ test("server auth uses server-only allowlist and production fail-closed guard", 
   const platformServerAuth = read("lib/platform/auth/server-auth.ts");
   assert.match(serverAuth, /from "@\/lib\/platform\/auth\/server-auth"/);
   assert.match(platformServerAuth, /from "@\/lib\/config\/server-env"/);
+  assert.match(platformServerAuth, /from "@\/lib\/firebase-admin"/);
   assert.match(platformServerAuth, /serverEnv\.allowedEmails/);
   assert.match(platformServerAuth, /Server allowlist is not configured/);
   assert.match(platformServerAuth, /assertAllowlistConfigured/);
+  assert.doesNotMatch(platformServerAuth, /adminDb/);
+  assert.doesNotMatch(platformServerAuth, /getUserRole/);
   assert.doesNotMatch(serverAuth, /NEXT_PUBLIC_ALLOWED_EMAILS/);
 });
 
@@ -479,6 +482,7 @@ test("server auth can reject non-allowlisted emails before full token verificati
 test("route auth helpers centralize verified-user and role loading", () => {
   const routeAuth = read("lib/server/route-auth.ts");
   const platformRouteAuth = read("lib/platform/auth/route-auth.ts");
+  const profileAuthContext = read("lib/modules/profile/server/profile-auth-context.ts");
   const mealCreateRoute = read("app/api/meals/route.ts");
   const archiveRoute = read("app/api/archive/route.ts");
   const commentCreateRoute = read("app/api/meals/[id]/comments/route.ts");
@@ -490,10 +494,13 @@ test("route auth helpers centralize verified-user and role loading", () => {
   const uploadRoute = read("app/api/uploads/meal-image/route.ts");
 
   assert.match(routeAuth, /from "@\/lib\/platform\/auth\/route-auth"/);
+  assert.match(profileAuthContext, /export const loadUserRoleForUser = async/);
   assert.match(platformRouteAuth, /export const requireVerifiedUser = async/);
   assert.match(platformRouteAuth, /export const requireValidatedUserRole = async/);
   assert.match(platformRouteAuth, /verifyRequestUser/);
-  assert.match(platformRouteAuth, /getUserRole/);
+  assert.match(platformRouteAuth, /from "@\/lib\/modules\/profile\/server\/profile-auth-context"/);
+  assert.match(platformRouteAuth, /loadUserRoleForUser/);
+  assert.doesNotMatch(platformRouteAuth, /getUserRole/);
 
   for (const source of [
     mealCreateRoute,
@@ -529,6 +536,7 @@ test("server config and meal policy are centralized in shared modules", () => {
   const firebaseAdmin = read("lib/firebase-admin.ts");
   const serverAuth = read("lib/server-auth.ts");
   const platformServerAuth = read("lib/platform/auth/server-auth.ts");
+  const profileAuthContext = read("lib/modules/profile/server/profile-auth-context.ts");
   const mealImageUrl = read("lib/modules/meals/server/meal-image-url.ts");
   const mealImageUrlShim = read("lib/server/meals/meal-image-url.ts");
   const mealStorage = read("lib/modules/meals/server/meal-storage.ts");
@@ -551,6 +559,7 @@ test("server config and meal policy are centralized in shared modules", () => {
   assert.match(firebaseAdmin, /from "@\/lib\/config\/server-env"/);
   assert.match(serverAuth, /from "@\/lib\/platform\/auth\/server-auth"/);
   assert.match(platformServerAuth, /from "@\/lib\/config\/server-env"/);
+  assert.match(profileAuthContext, /from "@\/lib\/firebase-admin"/);
   assert.match(mealImageUrl, /from "@\/lib\/config\/server-env"/);
   assert.match(mealImageUrlShim, /from "@\/lib\/modules\/meals\/server\/meal-image-url"/);
   assert.match(mealStorage, /from "@\/lib\/modules\/meals\/server\/meal-image-url"/);

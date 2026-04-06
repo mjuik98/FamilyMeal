@@ -1,7 +1,7 @@
 import { isUserRole } from "@/lib/domain/meal-policy";
+import { loadUserRoleForUser } from "@/lib/modules/profile/server/profile-auth-context";
 import { RouteError } from "@/lib/platform/http/route-errors";
 import {
-  getUserRole,
   verifyRequestUser,
   type VerifiedUser,
 } from "@/lib/platform/auth/server-auth";
@@ -16,7 +16,7 @@ export const requireValidatedUserRole = async (
   validateRole?: (role: string | null) => UserRole
 ): Promise<{ user: VerifiedUser; role: UserRole }> => {
   const user = await verifyRequestUser(request);
-  const role = await getUserRole(user.uid);
+  const role = await loadUserRoleForUser(user.uid);
 
   if (validateRole) {
     return { user, role: validateRole(role) };

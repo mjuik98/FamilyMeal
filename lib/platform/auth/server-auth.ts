@@ -1,7 +1,7 @@
 import type { DecodedIdToken } from "firebase-admin/auth";
 
 import { serverEnv } from "@/lib/config/server-env";
-import { adminAuth, adminDb } from "@/lib/firebase-admin";
+import { adminAuth } from "@/lib/firebase-admin";
 import { normalizeErrorCode } from "@/lib/platform/errors/error-contract";
 
 export class AuthError extends Error {
@@ -21,10 +21,6 @@ export class AuthError extends Error {
 export type VerifiedUser = {
   uid: string;
   email: string | null;
-};
-
-type UserProfileSnapshot = {
-  role: string | null;
 };
 
 const toVerifiedUser = (decoded: DecodedIdToken): VerifiedUser => ({
@@ -152,15 +148,4 @@ export const verifyRequestUser = async (request: Request): Promise<VerifiedUser>
     }
     throw new AuthError("Invalid auth token", 401);
   }
-};
-
-export const getUserRole = async (uid: string): Promise<string | null> => {
-  const userRef = adminDb.collection("users").doc(uid);
-  const userSnap = await userRef.get();
-  if (!userSnap.exists) {
-    throw new AuthError("User profile is required", 403);
-  }
-
-  const data = userSnap.data() as Partial<UserProfileSnapshot>;
-  return typeof data.role === "string" ? data.role : null;
 };

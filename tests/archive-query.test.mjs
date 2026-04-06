@@ -51,11 +51,13 @@ test("archive route threads authenticated caller identity into the server use ca
   const archiveRoute = read("app/api/archive/route.ts");
   const routeAuthShim = read("lib/server/route-auth.ts");
   const routeAuth = read("lib/platform/auth/route-auth.ts");
+  const profileAuthContext = read("lib/modules/profile/server/profile-auth-context.ts");
 
   assert.match(archiveRoute, /const \{ user, role \} = await requireValidatedUserRole\(request\);/);
   assert.match(routeAuthShim, /from "@\/lib\/platform\/auth\/route-auth"/);
   assert.match(routeAuth, /verifyRequestUser/);
-  assert.match(routeAuth, /getUserRole/);
+  assert.match(routeAuth, /loadUserRoleForUser/);
+  assert.match(profileAuthContext, /export const loadUserRoleForUser = async/);
   assert.match(archiveRoute, /const result = await listArchiveMeals\(\{\s*\.\.\.query,\s*uid: user\.uid,\s*actorRole: role,\s*\}\);/s);
 });
 
