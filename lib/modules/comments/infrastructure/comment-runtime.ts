@@ -2,8 +2,8 @@ import {
   addMealComment,
   deleteMealComment,
   updateMealComment,
-} from "@/lib/client/comments";
-import { subscribeToMealComments } from "@/lib/meal-comments-store";
+} from "@/lib/modules/comments/adapters/firestore/comment-client";
+import { subscribeToMealComments } from "@/lib/modules/comments/adapters/firestore/comment-subscription-store";
 import type { MealComment } from "@/lib/types";
 
 import type {

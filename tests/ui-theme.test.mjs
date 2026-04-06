@@ -207,13 +207,15 @@ test("qa proxy supports token-based protection", () => {
 });
 
 test("comment mutations are handled by server APIs and update parent commentCount", () => {
-  const clientComments = read("lib/client/comments.ts");
+  const clientComments = read("lib/modules/comments/adapters/firestore/comment-client.ts");
+  const clientCommentsShim = read("lib/client/comments.ts");
   const createRoute = read("app/api/meals/[id]/comments/route.ts");
   const deleteRoute = read("app/api/meals/[id]/comments/[commentId]/route.ts");
 
   assert.match(clientComments, /\/api\/meals\/\$\{encodedMealId\}\/comments/);
   assert.match(clientComments, /\/api\/meals\/\$\{encodedMealId\}\/comments\/\$\{encodedCommentId\}/);
   assert.doesNotMatch(clientComments, /runTransaction\(/);
+  assert.match(clientCommentsShim, /modules\/comments\/adapters\/firestore\/comment-client/);
   assert.match(createRoute, /createMealComment/);
   assert.match(deleteRoute, /deleteMealCommentById/);
 });
@@ -333,7 +335,8 @@ test("meal card uses extracted hooks, shared comment subscription store, and sha
   const mealReactionsHook = read("lib/features/reactions/ui/useMealReactionsController.ts");
   const mealCommentService = read("lib/features/comments/application/meal-comment-service.ts");
   const commentRuntime = read("lib/modules/comments/infrastructure/comment-runtime.ts");
-  const commentsStore = read("lib/meal-comments-store.ts");
+  const commentsStore = read("lib/modules/comments/adapters/firestore/comment-subscription-store.ts");
+  const commentsStoreShim = read("lib/meal-comments-store.ts");
   const timeUtils = read("lib/time.ts");
   const commentItem = read("components/comments/CommentItem.tsx");
   const commentThread = read("components/comments/CommentThread.tsx");
@@ -349,9 +352,11 @@ test("meal card uses extracted hooks, shared comment subscription store, and sha
   assert.match(mealCommentsHook, /useMealCommentsController/);
   assert.match(mealReactionsHook, /useMealReactionsController/);
   assert.match(mealCommentService, /watchMealCommentsForViewerInRuntime/);
+  assert.match(commentRuntime, /comment-subscription-store/);
   assert.match(commentRuntime, /subscribeToMealComments/);
   assert.match(commentsStore, /const commentEntries = new Map/);
   assert.match(commentsStore, /refCount/);
+  assert.match(commentsStoreShim, /modules\/comments\/adapters\/firestore\/comment-subscription-store/);
   assert.match(timeUtils, /export const formatRelativeTime =/);
 
   assert.match(commentItem, /from "@\/lib\/time"/);
@@ -796,7 +801,8 @@ test("client data access is split into focused adapters and user context delegat
   const clientMeals = read("lib/client/meal-queries.ts");
   const mealMutations = read("lib/client/meal-mutations.ts");
   const mealFilters = read("lib/client/meal-filters.ts");
-  const clientComments = read("lib/client/comments.ts");
+  const commentClient = read("lib/modules/comments/adapters/firestore/comment-client.ts");
+  const clientCommentsShim = read("lib/client/comments.ts");
   const clientReactions = read("lib/client/reactions.ts");
   const clientActivity = read("lib/client/activity.ts");
   const clientProfile = read("lib/client/profile.ts");
@@ -832,9 +838,10 @@ test("client data access is split into focused adapters and user context delegat
   assert.match(mealMutations, /export const addMeal = async/);
   assert.match(mealMutations, /export const updateMeal = async/);
   assert.match(mealFilters, /export const filterAndSortMeals =/);
-  assert.match(clientComments, /export const addMealComment = async/);
-  assert.match(clientComments, /export const updateMealComment = async/);
-  assert.match(clientComments, /export const deleteMealComment = async/);
+  assert.match(commentClient, /export const addMealComment = async/);
+  assert.match(commentClient, /export const updateMealComment = async/);
+  assert.match(commentClient, /export const deleteMealComment = async/);
+  assert.match(clientCommentsShim, /modules\/comments\/adapters\/firestore\/comment-client/);
   assert.match(clientReactions, /export const toggleMealReaction = async/);
   assert.match(clientReactions, /export const toggleMealCommentReaction = async/);
   assert.match(clientActivity, /export const updateNotificationPreferences = async/);
@@ -848,7 +855,7 @@ test("client data access is split into focused adapters and user context delegat
 
   assert.match(mealCommentService, /from "@\/lib\/modules\/comments\/infrastructure\/comment-runtime"/);
   assert.match(mealReactionService, /from "@\/lib\/modules\/reactions\/infrastructure\/reaction-runtime"/);
-  assert.match(commentRuntime, /from "@\/lib\/client\/comments"/);
+  assert.match(commentRuntime, /from "@\/lib\/modules\/comments\/adapters\/firestore\/comment-client"/);
   assert.match(reactionRuntime, /from "@\/lib\/client\/reactions"/);
   assert.match(mealCommentsHook, /from "@\/lib\/features\/comments\/application\/meal-comment-service"/);
   assert.match(mealReactionsHook, /from "@\/lib\/features\/reactions\/application\/meal-reaction-service"/);
@@ -912,7 +919,8 @@ test("runtime pages avoid compat meal barrel and comment store reuses shared ser
   const editPage = read("app/edit/[id]/page.tsx");
   const addController = read("lib/modules/meals/ui/useAddMealPageController.ts");
   const editController = read("lib/modules/meals/ui/useEditMealPageController.ts");
-  const commentsStore = read("lib/meal-comments-store.ts");
+  const commentsStore = read("lib/modules/comments/adapters/firestore/comment-subscription-store.ts");
+  const commentsStoreShim = read("lib/meal-comments-store.ts");
 
   assert.match(addPage, /from "@\/lib\/modules\/meals\/ui\/useAddMealPageController"/);
   assert.match(editPage, /from "@\/lib\/modules\/meals\/ui\/useEditMealPageController"/);
@@ -924,6 +932,7 @@ test("runtime pages avoid compat meal barrel and comment store reuses shared ser
   assert.doesNotMatch(editController, /@\/lib\/data/);
 
   assert.match(commentsStore, /from "@\/lib\/client\/serializers"/);
+  assert.match(commentsStoreShim, /modules\/comments\/adapters\/firestore\/comment-subscription-store/);
   assert.doesNotMatch(commentsStore, /const normalizeComment =/);
   assert.doesNotMatch(commentsStore, /const convertCommentDoc =/);
 });

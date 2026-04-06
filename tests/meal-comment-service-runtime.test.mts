@@ -43,7 +43,7 @@ const callLog = {
 const mockModuleOptions = (exports: Record<string, unknown>) =>
   ({ exports }) as unknown as Parameters<typeof mock.module>[1];
 
-mock.module("@/lib/client/comments", {
+mock.module("@/lib/modules/comments/adapters/firestore/comment-client", {
   ...mockModuleOptions({
     addMealComment: async () => {
       callLog.createCalls += 1;
@@ -64,7 +64,7 @@ mock.module("@/lib/client/comments", {
   }),
 });
 
-mock.module("@/lib/meal-comments-store", {
+mock.module("@/lib/modules/comments/adapters/firestore/comment-subscription-store", {
   ...mockModuleOptions({
     subscribeToMealComments: (
       _mealId: string,

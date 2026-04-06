@@ -47,6 +47,21 @@ const config = [
               name: "@/lib/qa",
               message: "This compatibility barrel was removed. Import specific QA modules from lib/qa/* directly.",
             },
+            {
+              name: "@/lib/server/uploads/meal-image-use-cases",
+              message:
+                "This compatibility shim remains only for legacy callers. Import the module-local upload adapter from lib/modules/meals/adapters/storage/meal-image-upload.",
+            },
+            {
+              name: "@/lib/client/comments",
+              message:
+                "This compatibility shim remains only for legacy callers. Import the module-local comment adapter from lib/modules/comments/adapters/firestore/comment-client.",
+            },
+            {
+              name: "@/lib/meal-comments-store",
+              message:
+                "This compatibility shim remains only for legacy callers. Import the module-local comment subscription store from lib/modules/comments/adapters/firestore/comment-subscription-store.",
+            },
           ],
         },
       ],

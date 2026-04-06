@@ -158,6 +158,63 @@ test("meal helper files are implemented inside the meals module and legacy root 
   assert.match(read("lib/meal-errors.ts"), /from "@\/lib\/modules\/meals\/ui\/meal-error-messages"/);
 });
 
+test("meal upload and comment data adapters live inside feature modules while legacy paths stay as shims", () => {
+  const mealImageUploadPath = path.join(
+    process.cwd(),
+    "lib",
+    "modules",
+    "meals",
+    "adapters",
+    "storage",
+    "meal-image-upload.ts"
+  );
+  const commentClientPath = path.join(
+    process.cwd(),
+    "lib",
+    "modules",
+    "comments",
+    "adapters",
+    "firestore",
+    "comment-client.ts"
+  );
+  const commentStorePath = path.join(
+    process.cwd(),
+    "lib",
+    "modules",
+    "comments",
+    "adapters",
+    "firestore",
+    "comment-subscription-store.ts"
+  );
+  const uploadRoute = read("app/api/uploads/meal-image/route.ts");
+  const commentRuntime = read("lib/modules/comments/infrastructure/comment-runtime.ts");
+
+  assert.equal(fs.existsSync(mealImageUploadPath), true);
+  assert.equal(fs.existsSync(commentClientPath), true);
+  assert.equal(fs.existsSync(commentStorePath), true);
+
+  assert.match(
+    read("lib/server/uploads/meal-image-use-cases.ts"),
+    /from "@\/lib\/modules\/meals\/adapters\/storage\/meal-image-upload"/
+  );
+  assert.match(read("lib/client/comments.ts"), /from "@\/lib\/modules\/comments\/adapters\/firestore\/comment-client"/);
+  assert.match(
+    read("lib/meal-comments-store.ts"),
+    /from "@\/lib\/modules\/comments\/adapters\/firestore\/comment-subscription-store"/
+  );
+
+  assert.match(uploadRoute, /from "@\/lib\/modules\/meals\/adapters\/storage\/meal-image-upload"/);
+  assert.doesNotMatch(uploadRoute, /from "@\/lib\/server\/uploads\/meal-image-use-cases"/);
+
+  assert.match(commentRuntime, /from "@\/lib\/modules\/comments\/adapters\/firestore\/comment-client"/);
+  assert.match(
+    commentRuntime,
+    /from "@\/lib\/modules\/comments\/adapters\/firestore\/comment-subscription-store"/
+  );
+  assert.doesNotMatch(commentRuntime, /from "@\/lib\/client\/comments"/);
+  assert.doesNotMatch(commentRuntime, /from "@\/lib\/meal-comments-store"/);
+});
+
 test("add and edit pages delegate orchestration to meal page controllers", () => {
   const addPage = read("app/add/page.tsx");
   const editPage = read("app/edit/[id]/page.tsx");
@@ -189,6 +246,7 @@ test("selected API routes use the shared route handler wrapper for error deliver
     "app/api/meals/[id]/comments/[commentId]/reactions/route.ts",
     "app/api/archive/route.ts",
     "app/api/version/route.ts",
+    "app/api/uploads/meal-image/route.ts",
   ];
 
   routeFiles.forEach((relativePath) => {
@@ -296,7 +354,7 @@ test("server and client layers import platform auth and http helpers directly", 
   const routeHandler = read("lib/platform/http/route-handler.ts");
   const clientMeals = read("lib/client/meal-queries.ts");
   const clientMutations = read("lib/client/meal-mutations.ts");
-  const clientComments = read("lib/client/comments.ts");
+  const commentClient = read("lib/modules/comments/adapters/firestore/comment-client.ts");
   const clientReactions = read("lib/client/reactions.ts");
   const clientActivity = read("lib/client/activity.ts");
   const clientProfileSession = read("lib/client/profile-session.ts");
@@ -304,7 +362,7 @@ test("server and client layers import platform auth and http helpers directly", 
   const commentUseCases = read("lib/modules/comments/server/comment-use-cases.ts");
   const reactionUseCases = read("lib/modules/reactions/server/reaction-use-cases.ts");
   const profileUseCases = read("lib/modules/profile/server/profile-use-cases.ts");
-  const uploadUseCases = read("lib/server/uploads/meal-image-use-cases.ts");
+  const uploadAdapter = read("lib/modules/meals/adapters/storage/meal-image-upload.ts");
   const archiveRoute = read("app/api/archive/route.ts");
   const mealsRoute = read("app/api/meals/route.ts");
   const mealDetailRoute = read("app/api/meals/[id]/route.ts");
@@ -324,7 +382,7 @@ test("server and client layers import platform auth and http helpers directly", 
   for (const source of [
     clientMeals,
     clientMutations,
-    clientComments,
+    commentClient,
     clientReactions,
     clientActivity,
     clientProfileSession,
@@ -334,7 +392,7 @@ test("server and client layers import platform auth and http helpers directly", 
     assert.doesNotMatch(source, /@\/lib\/client\/auth-http/);
   }
 
-  for (const source of [commentUseCases, reactionUseCases, profileUseCases, uploadUseCases]) {
+  for (const source of [commentUseCases, reactionUseCases, profileUseCases, uploadAdapter]) {
     assert.match(source, /@\/lib\/platform\/http\/route-errors/);
     assert.doesNotMatch(source, /@\/lib\/route-errors/);
   }

@@ -97,14 +97,16 @@ test("profile routes delegate to extracted server profile use cases", () => {
 test("meal image uploads are handled by authenticated server route", () => {
   const uploadRoute = read("app/api/uploads/meal-image/route.ts");
   const uploadHelper = read("lib/uploadImage.ts");
+  const uploadAdapter = read("lib/modules/meals/adapters/storage/meal-image-upload.ts");
   const uploadUseCases = read("lib/server/uploads/meal-image-use-cases.ts");
   const imagePolicy = read("lib/modules/meals/domain/meal-image-policy.ts");
   const imagePolicyShim = read("lib/meal-image-policy.ts");
   const packageJson = read("package.json");
 
   assert.match(uploadRoute, /requireVerifiedUser/);
+  assert.match(uploadRoute, /from "@\/lib\/platform\/http\/route-handler"/);
   assert.match(uploadRoute, /serverEnv\.storageBucket/);
-  assert.match(uploadRoute, /from "@\/lib\/server\/uploads\/meal-image-use-cases"/);
+  assert.match(uploadRoute, /from "@\/lib\/modules\/meals\/adapters\/storage\/meal-image-upload"/);
   assert.match(uploadRoute, /export async function DELETE/);
   assert.match(uploadRoute, /deleteStorageObjectByUrl/);
   assert.match(uploadRoute, /validateUploadContentLength/);
@@ -113,14 +115,21 @@ test("meal image uploads are handled by authenticated server route", () => {
   assert.match(uploadRoute, /request\.headers\.get\("content-type"\)/);
   assert.match(uploadRoute, /multipart\/form-data/);
   assert.match(uploadRoute, /await request\.formData\(\)/);
-  assert.match(uploadUseCases, /export const storeMealImageFile = async/);
-  assert.match(uploadUseCases, /from "sharp"/);
+  assert.doesNotMatch(uploadRoute, /getRouteErrorPayload/);
+  assert.doesNotMatch(uploadRoute, /getRouteErrorStatus/);
+  assert.match(uploadAdapter, /export const storeMealImageFile = async/);
+  assert.match(uploadAdapter, /from "sharp"/);
+  assert.match(uploadAdapter, /\.rotate\(\)/);
+  assert.match(uploadAdapter, /\.resize\(/);
+  assert.match(uploadAdapter, /\.jpeg\(/);
+  assert.match(uploadAdapter, /adminStorage/);
+  assert.match(
+    uploadAdapter,
+    /const buildStoragePath = \(uid: string\): string => `meals\/\$\{uid\}\/\$\{Date\.now\(\)\}_\$\{randomUUID\(\)\}\.jpg`/
+  );
+  assert.match(uploadUseCases, /from "@\/lib\/modules\/meals\/adapters\/storage\/meal-image-upload"/);
+  assert.match(uploadUseCases, /export \{ storeMealImageFile \}/);
   assert.match(packageJson, /"sharp":\s*"/);
-  assert.match(uploadUseCases, /\.rotate\(\)/);
-  assert.match(uploadUseCases, /\.resize\(/);
-  assert.match(uploadUseCases, /\.jpeg\(/);
-  assert.match(uploadUseCases, /adminStorage/);
-  assert.match(uploadUseCases, /const buildStoragePath = \(uid: string\): string => `meals\/\$\{uid\}\/\$\{Date\.now\(\)\}_\$\{randomUUID\(\)\}\.jpg`/);
   assert.match(imagePolicyShim, /modules\/meals\/domain\/meal-image-policy/);
   assert.match(imagePolicy, /MAX_MEAL_IMAGE_REQUEST_BYTES/);
   assert.match(uploadHelper, /\/api\/uploads\/meal-image/);
@@ -133,16 +142,17 @@ test("meal image uploads are handled by authenticated server route", () => {
   assert.doesNotMatch(uploadHelper, /new Image\(/);
   assert.doesNotMatch(uploadHelper, /firebase\/storage/);
   assert.doesNotMatch(uploadRoute, /from "@\/lib\/firebase-admin"/);
+  assert.doesNotMatch(uploadRoute, /from "@\/lib\/server\/uploads\/meal-image-use-cases"/);
   assert.doesNotMatch(uploadRoute, /adminStorage\.bucket/);
 });
 
 test("meal image uploads no longer accept caller-controlled storage paths", () => {
   const uploadRoute = read("app/api/uploads/meal-image/route.ts");
-  const uploadUseCases = read("lib/server/uploads/meal-image-use-cases.ts");
+  const uploadAdapter = read("lib/modules/meals/adapters/storage/meal-image-upload.ts");
   const uploadHelper = read("lib/uploadImage.ts");
 
   assert.doesNotMatch(uploadRoute, /path:\s*z\.string/);
-  assert.match(uploadUseCases, /const buildStoragePath = \(uid: string\): string => `meals\/\$\{uid\}\/\$\{Date\.now\(\)\}_\$\{randomUUID\(\)\}\.jpg`/);
+  assert.match(uploadAdapter, /const buildStoragePath = \(uid: string\): string => `meals\/\$\{uid\}\/\$\{Date\.now\(\)\}_\$\{randomUUID\(\)\}\.jpg`/);
   assert.doesNotMatch(uploadRoute, /requestedPath/);
   assert.doesNotMatch(uploadHelper, /path\?: string/);
   assert.doesNotMatch(uploadHelper, /JSON\.stringify\(\{ imageData, path \}\)/);

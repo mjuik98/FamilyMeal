@@ -1,15 +1,10 @@
-import { NextResponse } from "next/server";
-
 import { serverEnv } from "@/lib/config/server-env";
+import { storeMealImageFile } from "@/lib/modules/meals/adapters/storage/meal-image-upload";
 import { MAX_MEAL_IMAGE_REQUEST_BYTES } from "@/lib/modules/meals/domain/meal-image-policy";
-import { requireVerifiedUser } from "@/lib/platform/auth/route-auth";
-import {
-  getRouteErrorPayload,
-  getRouteErrorStatus,
-  RouteError,
-} from "@/lib/platform/http/route-errors";
 import { deleteStorageObjectByUrl } from "@/lib/modules/meals/server/meal-storage";
-import { storeMealImageFile } from "@/lib/server/uploads/meal-image-use-cases";
+import { requireVerifiedUser } from "@/lib/platform/auth/route-auth";
+import { handleRoute } from "@/lib/platform/http/route-handler";
+import { RouteError } from "@/lib/platform/http/route-errors";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -30,7 +25,7 @@ const validateUploadContentType = (request: Request): void => {
 };
 
 export async function POST(request: Request) {
-  try {
+  return handleRoute(async () => {
     const user = await requireVerifiedUser(request);
     validateUploadContentLength(request);
     validateUploadContentType(request);
@@ -58,21 +53,16 @@ export async function POST(request: Request) {
       file,
     });
 
-    return NextResponse.json({
+    return {
       ok: true,
       imageUrl: uploaded.imageUrl,
       path: uploaded.path,
-    });
-  } catch (error) {
-    return NextResponse.json(
-      { ok: false, error: getRouteErrorPayload(error) },
-      { status: getRouteErrorStatus(error) }
-    );
-  }
+    };
+  });
 }
 
 export async function DELETE(request: Request) {
-  try {
+  return handleRoute(async () => {
     const user = await requireVerifiedUser(request);
 
     let body: unknown;
@@ -95,11 +85,6 @@ export async function DELETE(request: Request) {
       throw new RouteError("Invalid meal image URL", 400);
     }
 
-    return NextResponse.json({ ok: true });
-  } catch (error) {
-    return NextResponse.json(
-      { ok: false, error: getRouteErrorPayload(error) },
-      { status: getRouteErrorStatus(error) }
-    );
-  }
+    return { ok: true };
+  });
 }
