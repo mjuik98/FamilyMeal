@@ -47,6 +47,7 @@ npm run test:api:runtime
 npm run test:rules
 npm run test:e2e
 npm run test:smoke
+npm run test:smoke:pwa
 npm run test:smoke:meals
 npm run test:smoke:qa-token-required
 npm run audit:prod:check
@@ -157,7 +158,8 @@ docs/                 설계/계획 문서와 아키텍처 문서
 - QA 라우트는 개발 환경에서는 열려 있고, 운영 환경에서는 `NEXT_PUBLIC_ENABLE_QA=true` 와 `QA_ROUTE_TOKEN` 이 모두 필요합니다.
 - PWA 가 꺼져 있으면 레이아웃에서 기존 service worker 와 캐시를 정리합니다.
 - PWA service worker (`public/sw.js`) 와 workbox helper 파일은 빌드 시 생성되는 산출물이며 저장소에는 추적하지 않습니다.
-- `next.config.ts` 는 `turbopack: {}` 를 명시해 Next 16 기본 Turbopack 경로와 `next-pwa` 구성을 함께 사용합니다.
+- `next.config.ts` 는 `turbopack: {}` 를 유지하고, `npm run build` 는 `NEXT_PUBLIC_ENABLE_PWA=true` 일 때만 webpack 빌드로 자동 전환해 service worker 산출을 보장합니다.
+- PWA 관련 변경 후에는 `npm run test:smoke:pwa` 로 생성 자산과 cleanup 흐름을 함께 확인할 수 있습니다.
 - 클라이언트 오류 수집 엔드포인트 `/api/client-errors` 는 Upstash 가 없으면 메모리 rate limit 으로 동작합니다.
 - `test:smoke:meals` 는 Firebase Admin 자격 증명과 allowlist 계정이 있어야 동작합니다.
 - `test:rules` 는 Java 런타임이 필요하며, 없으면 스크립트가 즉시 실패합니다.
@@ -174,6 +176,7 @@ npm run lint
 npm run typecheck
 npm run build
 npm run test:smoke
+npm run test:smoke:pwa
 npm run test:smoke:qa-token-required
 npm run test:e2e
 ```

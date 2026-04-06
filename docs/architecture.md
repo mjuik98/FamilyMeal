@@ -65,7 +65,8 @@
 - PWA 활성 여부는 `lib/config/public-env.ts` 의 `enablePwa` 로 제어합니다.
 - `next.config.ts` 는 `@ducanh2912/next-pwa` 로 service worker 생성을 설정합니다.
 - 레이아웃은 PWA 비활성 환경에서 기존 service worker 와 cache 를 정리하고, 활성 환경에서는 `AppUpdateBanner` 로 업데이트를 감시합니다.
-- `next.config.ts` 의 `turbopack: {}` 설정으로 Next 16 기본 Turbopack 경로와 `next-pwa` 구성을 함께 사용합니다.
+- `next.config.ts` 의 `turbopack: {}` 설정은 유지하되, `scripts/run-next-build.mjs` 가 `NEXT_PUBLIC_ENABLE_PWA=true` 인 빌드만 webpack 경로로 전환해 service worker 생성 단계를 보장합니다.
+- `scripts/smoke-pwa-build.mjs` 는 `NEXT_PUBLIC_ENABLE_PWA=true` 빌드에서 `public/sw.js` 와 helper 자산 생성, 그리고 cleanup 스크립트 제거까지 확인합니다.
 
 ## 디렉터리 책임
 
@@ -104,7 +105,7 @@
 
 ## 현재 주의 지점
 
-- Turbopack 경로는 `next.config.ts` 의 `turbopack: {}` 전제로 검증됐지만, `next-pwa` 를 제거하거나 커스텀 캐싱 전략을 바꾸는 작업은 별도 회귀 검증이 필요합니다.
+- 기본 빌드는 Turbopack 경로를 사용하지만, PWA 빌드는 webpack fallback 에 의존합니다. PWA 관련 변경은 `npm run test:smoke:pwa` 로 생성/정리 회귀를 다시 확인해야 합니다.
 - 식사 삭제/수정은 `ownerUid` 기준으로만 허용되고, 레거시 문서는 마이그레이션 전까지 차단됩니다.
 - 아카이브 검색은 서버에서 제한된 batch scan 으로 동작하므로 넓은 검색에서는 `isPartial` 결과가 발생할 수 있습니다.
 - 새 코드는 항상 module-local 또는 platform 경로를 직접 import 해야 하며, 제거된 compat entrypoint 를 재도입하지 않습니다.

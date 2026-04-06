@@ -432,12 +432,16 @@ test("default dev and build scripts use the Turbopack-ready path and keep explic
   const packageJsonData = JSON.parse(packageJson);
   const gitignore = read(".gitignore");
   const cleanNextDir = read("scripts/clean-next-dir.mjs");
+  const buildRunner = read("scripts/run-next-build.mjs");
 
   assert.match(packageJson, /"dev":\s*"next dev"/);
-  assert.match(packageJson, /"build":\s*"next build"/);
-  assert.match(packageJson, /"build:clean":\s*"node scripts\/clean-next-dir\.mjs && next build"/);
+  assert.match(packageJson, /"build":\s*"node scripts\/run-next-build\.mjs"/);
+  assert.match(
+    packageJson,
+    /"build:clean":\s*"node scripts\/clean-next-dir\.mjs && node scripts\/run-next-build\.mjs"/
+  );
+  assert.match(packageJson, /"test:smoke:pwa":\s*"node scripts\/smoke-pwa-build\.mjs"/);
   assert.doesNotMatch(packageJson, /next dev --webpack/);
-  assert.doesNotMatch(packageJson, /next build --webpack/);
   assert.doesNotMatch(packageJson, /"build":\s*"node scripts\/clean-next-dir\.mjs/);
   assert.match(packageJson, /"@opentelemetry\/api":\s*"\^1\.9\.0"/);
   assert.match(
@@ -450,8 +454,29 @@ test("default dev and build scripts use the Turbopack-ready path and keep explic
   assert.match(cleanNextDir, /workbox-/);
   assert.match(cleanNextDir, /swe-worker-/);
   assert.match(cleanNextDir, /sw\\\.js/);
+  assert.match(buildRunner, /NEXT_PUBLIC_ENABLE_PWA === "true"/);
+  assert.match(buildRunner, /next\.cmd/);
+  assert.match(buildRunner, /"build", "--webpack"/);
+  assert.match(buildRunner, /"build"\]/);
+  assert.match(buildRunner, /using webpack for service worker generation/);
   assert.equal(packageJsonData.dependencies?.["@ducanh2912/next-pwa"], undefined);
   assert.match(packageJsonData.devDependencies?.["@ducanh2912/next-pwa"] ?? "", /^\^/);
+});
+
+test("pwa smoke script verifies generated assets and cleanup through the published npm command", () => {
+  const packageJson = read("package.json");
+  const smokeScript = read("scripts/smoke-pwa-build.mjs");
+  const readme = read("README.md");
+
+  assert.match(packageJson, /"test:smoke:pwa":\s*"node scripts\/smoke-pwa-build\.mjs"/);
+  assert.match(smokeScript, /NEXT_PUBLIC_ENABLE_PWA:\s*"true"/);
+  assert.match(smokeScript, /scripts\/clean-next-dir\.mjs/);
+  assert.match(smokeScript, /npm", \["run", "build"\]/);
+  assert.match(smokeScript, /sw\\\.js/);
+  assert.match(smokeScript, /workbox-\.\*\\\.js/);
+  assert.match(smokeScript, /swe-worker-\.\*\\\.js/);
+  assert.match(smokeScript, /PWA smoke passed/);
+  assert.match(readme, /npm run test:smoke:pwa/);
 });
 
 test("archive search defers remote querying until input settles", () => {
