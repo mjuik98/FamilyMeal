@@ -27,6 +27,7 @@ const TEST_SERVER_ENV = {
   deploymentVersion: "test",
   isProduction: false,
 } as const;
+const MEAL_IMAGE_SELECTION_MODULE = "../lib/modules/meals/ui/useMealImageSelection.ts";
 
 type StorageSaveCall = {
   bucketName: string;
@@ -312,8 +313,8 @@ test("useMealImageSelection manages preview lifecycle for local files", async ()
   };
 
   const { useMealImageSelection } = await importFresh<
-    typeof import("../components/hooks/useMealImageSelection.ts")
-  >("../components/hooks/useMealImageSelection.ts");
+    typeof import("../lib/modules/meals/ui/useMealImageSelection.ts")
+  >(MEAL_IMAGE_SELECTION_MODULE);
 
   type MealImageSelection = ReturnType<typeof useMealImageSelection>;
 
@@ -386,8 +387,8 @@ test("useMealImageSelection prefers data URL previews in Whale", async () => {
 
   try {
     const { useMealImageSelection } = await importFresh<
-      typeof import("../components/hooks/useMealImageSelection.ts")
-    >("../components/hooks/useMealImageSelection.ts");
+      typeof import("../lib/modules/meals/ui/useMealImageSelection.ts")
+    >(MEAL_IMAGE_SELECTION_MODULE);
 
     type MealImageSelection = ReturnType<typeof useMealImageSelection>;
 
@@ -434,8 +435,8 @@ test("useMealImageSelection clears the prior local image when Whale reselection 
 
   try {
     const { useMealImageSelection } = await importFresh<
-      typeof import("../components/hooks/useMealImageSelection.ts")
-    >("../components/hooks/useMealImageSelection.ts");
+      typeof import("../lib/modules/meals/ui/useMealImageSelection.ts")
+    >(MEAL_IMAGE_SELECTION_MODULE);
 
     type MealImageSelection = ReturnType<typeof useMealImageSelection>;
 
@@ -504,8 +505,8 @@ test("useMealImageSelection keeps the new file when Whale preview reading fails"
 
   try {
     const { useMealImageSelection } = await importFresh<
-      typeof import("../components/hooks/useMealImageSelection.ts")
-    >("../components/hooks/useMealImageSelection.ts");
+      typeof import("../lib/modules/meals/ui/useMealImageSelection.ts")
+    >(MEAL_IMAGE_SELECTION_MODULE);
 
     type MealImageSelection = ReturnType<typeof useMealImageSelection>;
 

@@ -21,7 +21,7 @@ const callLog = {
 const mockModuleOptions = (exports: Record<string, unknown>) =>
   ({ exports }) as unknown as Parameters<typeof mock.module>[1];
 
-mock.module("@/lib/client/reactions", {
+mock.module("@/lib/modules/reactions/adapters/http/reaction-client", {
   ...mockModuleOptions({
     toggleMealReaction: async () => {
       callLog.mealCalls += 1;

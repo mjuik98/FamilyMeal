@@ -1,7 +1,7 @@
 import {
   toggleMealCommentReaction,
   toggleMealReaction,
-} from "@/lib/client/reactions";
+} from "@/lib/modules/reactions/adapters/http/reaction-client";
 import type { ReactionEmoji, ReactionMap } from "@/lib/types";
 import {
   isQaReactionRuntimeActive,

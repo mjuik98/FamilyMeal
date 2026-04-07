@@ -58,7 +58,7 @@ mock.module("@/lib/logging", {
   }),
 });
 
-mock.module("@/lib/client/profile-session", {
+mock.module("@/lib/modules/profile/adapters/http/profile-session-client", {
   ...mockModuleOptions({
     buildFallbackUserProfile: (firebaseUser: { uid: string }) => ({
       uid: firebaseUser.uid,
@@ -83,8 +83,8 @@ const importFresh = async <T,>(specifier: string): Promise<T> =>
   import(`${specifier}?test=${Date.now()}-${Math.random()}`) as Promise<T>;
 
 test("UserProvider ignores stale profile loads after auth state changes", async () => {
-  const userContextModule = await importFresh<typeof import("../context/UserContext.tsx")>(
-    "../context/UserContext.tsx"
+  const userContextModule = await importFresh<typeof import("../lib/modules/profile/ui/UserSessionProvider.tsx")>(
+    "../lib/modules/profile/ui/UserSessionProvider.tsx"
   );
 
   const snapshots: Array<{ userUid: string | null; profileUid: string | null }> = [];
@@ -146,8 +146,8 @@ test("UserProvider ignores stale profile loads after auth state changes", async 
 test("UserProvider keeps the previous profile and exposes authError when notification preference save fails", async () => {
   nextNotificationSaveError = new Error("save failed");
 
-  const userContextModule = await importFresh<typeof import("../context/UserContext.tsx")>(
-    "../context/UserContext.tsx"
+  const userContextModule = await importFresh<typeof import("../lib/modules/profile/ui/UserSessionProvider.tsx")>(
+    "../lib/modules/profile/ui/UserSessionProvider.tsx"
   );
 
   const snapshots: Array<{ authError: string | null; profileRole: string | null }> = [];

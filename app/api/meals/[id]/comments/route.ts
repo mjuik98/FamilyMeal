@@ -1,5 +1,4 @@
 import { handleRoute } from "@/lib/platform/http/route-handler";
-import { requireValidatedUserRole } from "@/lib/platform/auth/route-auth";
 import {
   getMealId,
   parseCommentCreatePayload,
@@ -8,6 +7,7 @@ import {
   assertValidCommentRole,
   createMealComment,
 } from "@/lib/modules/comments/server/comment-use-cases";
+import { requireValidatedUserRole } from "@/lib/modules/profile/server/profile-route-auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

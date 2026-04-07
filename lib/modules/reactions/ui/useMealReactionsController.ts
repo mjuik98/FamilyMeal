@@ -7,8 +7,11 @@ import {
   toggleCommentReactionForViewer,
   toggleMealReactionForViewer,
 } from "@/lib/modules/reactions/application/meal-reaction-service";
+import {
+  normalizeReactionMap,
+  toggleReactionInMap,
+} from "@/lib/modules/reactions/domain/reaction-map";
 import { logError } from "@/lib/logging";
-import { normalizeReactionMap, toggleReactionInMap } from "@/lib/reactions";
 import type { Meal, MealComment, ReactionEmoji } from "@/lib/types";
 
 type ToastFn = (

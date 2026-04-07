@@ -1,4 +1,4 @@
-import { toggleReactionInMap } from "@/lib/reactions";
+import { toggleReactionInMap } from "@/lib/modules/reactions/domain/reaction-map";
 import type { ReactionEmoji, ReactionMap } from "@/lib/types";
 
 import { isQaMockMode } from "@/lib/qa/mode";

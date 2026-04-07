@@ -1,7 +1,7 @@
 import {
   VALID_MEAL_TYPE_SET,
-  VALID_USER_ROLE_SET,
-} from "@/lib/domain/meal-policy";
+} from "@/lib/modules/meals/domain/meal-policy";
+import { VALID_USER_ROLE_SET } from "@/lib/domain/user-role";
 import type { Meal, UserRole } from "@/lib/types";
 
 type MealDraftDefaults = {

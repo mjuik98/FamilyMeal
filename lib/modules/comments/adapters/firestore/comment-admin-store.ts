@@ -8,7 +8,7 @@ import type {
 } from "@/lib/modules/comments/server/comment-types";
 import { assertMealVisibleToRole } from "@/lib/modules/meals/server/meal-visibility";
 import { RouteError } from "@/lib/platform/http/route-errors";
-import { normalizeReactionMap } from "@/lib/reactions";
+import { normalizeReactionMap } from "@/lib/modules/reactions/domain/reaction-map";
 import type { UserRole } from "@/lib/types";
 
 const toMillis = (value: unknown, fallback: number): number => {

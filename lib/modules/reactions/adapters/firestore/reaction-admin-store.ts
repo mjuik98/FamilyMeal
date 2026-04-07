@@ -1,11 +1,11 @@
 import { adminDb } from "@/lib/firebase-admin";
 import { syncCommentReactionActivity, syncMealReactionActivity } from "@/lib/modules/activity/server/activity-log";
 import { assertMealVisibleToRole } from "@/lib/modules/meals/server/meal-visibility";
-import { RouteError } from "@/lib/platform/http/route-errors";
 import {
   normalizeReactionMap,
   toggleReactionInMap,
-} from "@/lib/reactions";
+} from "@/lib/modules/reactions/domain/reaction-map";
+import { RouteError } from "@/lib/platform/http/route-errors";
 import type { ReactionEmoji, ReactionMap, UserRole } from "@/lib/types";
 
 export const toggleStoredMealReactionForUser = async ({

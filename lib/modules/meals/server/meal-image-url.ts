@@ -1,4 +1,4 @@
-import { MAX_MEAL_IMAGE_URL_LENGTH } from "@/lib/domain/meal-policy";
+import { MAX_MEAL_IMAGE_URL_LENGTH } from "@/lib/modules/meals/domain/meal-policy";
 import { serverEnv } from "@/lib/config/server-env";
 
 const FIREBASE_STORAGE_HOSTNAME = "firebasestorage.googleapis.com";

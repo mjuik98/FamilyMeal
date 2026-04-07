@@ -7,6 +7,40 @@ const read = (relativePath) =>
   fs.readFileSync(path.join(process.cwd(), relativePath), "utf8");
 
 const exists = (relativePath) => fs.existsSync(path.join(process.cwd(), relativePath));
+const mealCardPath = "lib/modules/meals/ui/components/MealCard.tsx";
+const mealPreviewCardPath = "lib/modules/meals/ui/components/MealPreviewCard.tsx";
+const mealConversationPanelPath = "lib/modules/meals/ui/components/MealConversationPanel.tsx";
+const mealDateTimeFieldsPath = "lib/modules/meals/ui/components/MealDateTimeFields.tsx";
+const mealDetailsSectionPath = "lib/modules/meals/ui/components/MealDetailsSection.tsx";
+const mealImageFieldPath = "lib/modules/meals/ui/components/MealImageField.tsx";
+const useMealImageSelectionPath = "lib/modules/meals/ui/useMealImageSelection.ts";
+const useSelectedDatePath = "lib/modules/meals/ui/useSelectedDate.ts";
+const commentComposerPath = "lib/modules/comments/ui/components/CommentComposer.tsx";
+const commentItemPath = "lib/modules/comments/ui/components/CommentItem.tsx";
+const reactionBarPath = "lib/modules/reactions/ui/components/ReactionBar.tsx";
+const reactionMapPath = "lib/modules/reactions/domain/reaction-map.ts";
+const mealCardShimPath = "components/MealCard.tsx";
+const mealPreviewCardShimPath = "components/MealPreviewCard.tsx";
+const mealConversationPanelShimPath = "components/meal-detail/MealConversationPanel.tsx";
+const commentComposerShimPath = "components/comments/CommentComposer.tsx";
+const reactionBarShimPath = "components/ReactionBar.tsx";
+const mealDateTimeFieldsShimPath = "components/meal-editor/MealDateTimeFields.tsx";
+const mealDetailsSectionShimPath = "components/meal-editor/MealDetailsSection.tsx";
+const mealImageFieldShimPath = "components/meal-editor/MealImageField.tsx";
+const useMealImageSelectionShimPath = "components/hooks/useMealImageSelection.ts";
+const useSelectedDateShimPath = "components/hooks/useSelectedDate.ts";
+const profileLoginViewPath = "lib/modules/profile/ui/LoginView.tsx";
+const profileLoginViewShimPath = "components/LoginView.tsx";
+const profilePageControllerPath = "lib/modules/profile/ui/useProfilePageController.ts";
+const profileAccountSectionPath = "lib/modules/profile/ui/components/ProfileAccountSection.tsx";
+const profileRoleSectionPath = "lib/modules/profile/ui/components/ProfileRoleSection.tsx";
+const profileNotificationSectionPath = "lib/modules/profile/ui/components/ProfileNotificationSection.tsx";
+const toastShimPath = "components/Toast.tsx";
+const confirmDialogShimPath = "components/ConfirmDialog.tsx";
+const appUpdateBannerShimPath = "components/AppUpdateBanner.tsx";
+const clientErrorMonitorShimPath = "components/ClientErrorMonitor.tsx";
+const serviceWorkerCleanupShimPath = "components/ServiceWorkerCleanup.tsx";
+const updateMonitorShimPath = "components/hooks/useAppUpdateMonitor.ts";
 
 test("lint config blocks direct server imports from UI layers and direct QA internals imports from feature and module layers", () => {
   const eslintConfig = read("eslint.config.mjs");
@@ -37,14 +71,14 @@ test("module-scoped contracts exist only where shared runtime contracts are need
   const mealContractsPath = path.join(process.cwd(), "lib", "modules", "meals", "contracts.ts");
   const commentContractsPath = path.join(process.cwd(), "lib", "modules", "comments", "contracts.ts");
   const profileContractsPath = path.join(process.cwd(), "lib", "modules", "profile", "contracts.ts");
-  const mealMutations = read("lib/client/meal-mutations.ts");
+  const mealMutationClient = read("lib/modules/meals/adapters/http/meal-mutation-client.ts");
   const userSessionService = read("lib/modules/profile/application/user-session-service.ts");
 
   assert.equal(fs.existsSync(mealContractsPath), true);
   assert.equal(fs.existsSync(commentContractsPath), true);
   assert.equal(fs.existsSync(profileContractsPath), false);
-  assert.match(mealMutations, /from "@\/lib\/modules\/meals\/contracts"/);
-  assert.doesNotMatch(mealMutations, /Partial<Omit<Meal, "id" \| "imageUrl">>/);
+  assert.match(mealMutationClient, /from "@\/lib\/modules\/meals\/contracts"/);
+  assert.doesNotMatch(mealMutationClient, /Partial<Omit<Meal, "id" \| "imageUrl">>/);
   assert.doesNotMatch(userSessionService, /modules\/profile\/contracts/);
 });
 
@@ -77,19 +111,55 @@ test("active callers import module-local application and ui entrypoints instead 
   const homePage = read("app/page.tsx");
   const archivePage = read("app/archive/page.tsx");
   const mealDetailPage = read("app/meals/[id]/page.tsx");
+  const profilePage = read("app/profile/page.tsx");
+  const profilePageController = read(profilePageControllerPath);
+  const qaMealCardPage = read("app/qa/meal-card/page.tsx");
   const homeController = read("lib/modules/meals/ui/useHomePageController.ts");
   const archiveController = read("lib/modules/meals/ui/useArchivePageController.ts");
   const mealDetailController = read("lib/modules/meals/ui/useMealDetailPageController.ts");
-  const mealCard = read("components/MealCard.tsx");
-  const commentComposer = read("components/comments/CommentComposer.tsx");
-  const conversationPanel = read("components/meal-detail/MealConversationPanel.tsx");
+  const profileLoginView = read(profileLoginViewPath);
+  const profileAccountSection = read(profileAccountSectionPath);
+  const profileRoleSection = read(profileRoleSectionPath);
+  const profileNotificationSection = read(profileNotificationSectionPath);
+  const mealCard = read(mealCardPath);
+  const commentComposer = read(commentComposerPath);
+  const commentItem = read(commentItemPath);
+  const conversationPanel = read(mealConversationPanelPath);
+  const reactionBar = read(reactionBarPath);
+  const profileLoginViewShim = read(profileLoginViewShimPath);
+  const mealCardShim = read(mealCardShimPath);
+  const commentComposerShim = read(commentComposerShimPath);
+  const conversationPanelShim = read(mealConversationPanelShimPath);
+  const reactionBarShim = read(reactionBarShimPath);
+  const profileSessionProvider = read("lib/modules/profile/ui/UserSessionProvider.tsx");
   const userContext = read("context/UserContext.tsx");
   const addController = read("lib/modules/meals/ui/useAddMealPageController.ts");
   const editController = read("lib/modules/meals/ui/useEditMealPageController.ts");
+  const toastShim = read(toastShimPath);
+  const confirmDialogShim = read(confirmDialogShimPath);
+  const appUpdateBannerShim = read(appUpdateBannerShimPath);
+  const clientErrorMonitorShim = read(clientErrorMonitorShimPath);
+  const serviceWorkerCleanupShim = read(serviceWorkerCleanupShimPath);
+  const updateMonitorShim = read(updateMonitorShimPath);
+  const mealDateTimeFieldsShim = read(mealDateTimeFieldsShimPath);
+  const mealDetailsSectionShim = read(mealDetailsSectionShimPath);
+  const mealImageFieldShim = read(mealImageFieldShimPath);
+  const useMealImageSelectionShim = read(useMealImageSelectionShimPath);
+  const useSelectedDateShim = read(useSelectedDateShimPath);
 
   assert.match(homePage, /from "@\/lib\/modules\/meals\/ui\/useHomePageController"/);
+  assert.match(homePage, /from "@\/lib\/modules\/meals\/ui\/components\/MealPreviewCard"/);
+  assert.match(homePage, /from "@\/lib\/modules\/profile\/ui\/LoginView"/);
   assert.match(archivePage, /from "@\/lib\/modules\/meals\/ui\/useArchivePageController"/);
+  assert.match(archivePage, /from "@\/lib\/modules\/meals\/ui\/components\/MealPreviewCard"/);
   assert.match(mealDetailPage, /from "@\/lib\/modules\/meals\/ui\/useMealDetailPageController"/);
+  assert.match(mealDetailPage, /from "@\/lib\/modules\/meals\/ui\/components\/MealCard"/);
+  assert.match(profilePage, /from "@\/lib\/modules\/profile\/ui\/useProfilePageController"/);
+  assert.match(profilePage, /from "@\/lib\/modules\/profile\/ui\/components\/ProfileAccountSection"/);
+  assert.match(profilePage, /from "@\/lib\/modules\/profile\/ui\/components\/ProfileRoleSection"/);
+  assert.match(profilePage, /from "@\/lib\/modules\/profile\/ui\/components\/ProfileNotificationSection"/);
+  assert.match(qaMealCardPage, /from "@\/lib\/modules\/meals\/ui\/components\/MealCard"/);
+  assert.match(homeController, /from "@\/lib\/modules\/meals\/ui\/useSelectedDate"/);
   assert.match(homeController, /from "@\/lib\/modules\/meals\/application\/meal-read-service"/);
   assert.match(homeController, /from "@\/lib\/modules\/meals\/ui\/useMealsForDateController"/);
   assert.match(homeController, /from "@\/lib\/modules\/meals\/ui\/useWeeklyStatsController"/);
@@ -98,35 +168,87 @@ test("active callers import module-local application and ui entrypoints instead 
   assert.match(mealCard, /from "@\/lib\/modules\/meals\/application\/meal-editor-service"/);
   assert.match(mealCard, /from "@\/lib\/modules\/comments\/ui\/useMealCommentsController"/);
   assert.match(mealCard, /from "@\/lib\/modules\/reactions\/ui\/useMealReactionsController"/);
+  assert.match(mealCard, /from "@\/lib\/modules\/profile\/ui\/UserSessionProvider"/);
   assert.match(commentComposer, /from "@\/lib\/modules\/comments\/ui\/types"/);
+  assert.match(commentItem, /from "@\/lib\/modules\/reactions\/ui\/components\/ReactionBar"/);
   assert.match(conversationPanel, /from "@\/lib\/modules\/comments\/ui\/types"/);
-  assert.match(userContext, /from "@\/lib\/modules\/profile\/application\/user-session-service"/);
+  assert.match(conversationPanel, /from "@\/lib\/modules\/reactions\/ui\/components\/ReactionBar"/);
+  assert.match(reactionBar, /from "@\/lib\/modules\/reactions\/domain\/reaction-map"/);
+  assert.match(profileLoginView, /from "@\/lib\/modules\/profile\/ui\/UserSessionProvider"/);
+  assert.match(profilePageController, /from "@\/lib\/modules\/profile\/ui\/UserSessionProvider"/);
+  assert.match(profilePageController, /from "@\/lib\/modules\/profile\/domain\/notification-preferences"/);
+  assert.match(profileRoleSection, /from "@\/lib\/domain\/user-role"/);
+  assert.match(profileNotificationSection, /import type \{ NotificationPreferences \} from "@\/lib\/types"/);
+  assert.match(profileAccountSection, /title="계정 정보"/);
+  assert.match(profileLoginViewShim, /from "@\/lib\/modules\/profile\/ui\/LoginView"/);
+  assert.match(mealCardShim, /from "@\/lib\/modules\/meals\/ui\/components\/MealCard"/);
+  assert.match(commentComposerShim, /from "@\/lib\/modules\/comments\/ui\/components\/CommentComposer"/);
+  assert.match(conversationPanelShim, /from "@\/lib\/modules\/meals\/ui\/components\/MealConversationPanel"/);
+  assert.match(reactionBarShim, /from "@\/lib\/modules\/reactions\/ui\/components\/ReactionBar"/);
+  assert.match(mealDateTimeFieldsShim, /from "@\/lib\/modules\/meals\/ui\/components\/MealDateTimeFields"/);
+  assert.match(mealDetailsSectionShim, /from "@\/lib\/modules\/meals\/ui\/components\/MealDetailsSection"/);
+  assert.match(mealImageFieldShim, /from "@\/lib\/modules\/meals\/ui\/components\/MealImageField"/);
+  assert.match(useMealImageSelectionShim, /from "@\/lib\/modules\/meals\/ui\/useMealImageSelection"/);
+  assert.match(useSelectedDateShim, /from "@\/lib\/modules\/meals\/ui\/useSelectedDate"/);
+  assert.match(profileSessionProvider, /from "@\/lib\/modules\/profile\/application\/user-session-service"/);
+  assert.match(userContext, /from "@\/lib\/modules\/profile\/ui\/UserSessionProvider"/);
+  assert.match(addController, /from "@\/lib\/platform\/feedback\/ToastProvider"/);
+  assert.match(addController, /from "@\/lib\/modules\/meals\/ui\/useMealImageSelection"/);
   assert.match(addController, /from "@\/lib\/modules\/meals\/application\/meal-editor-service"/);
   assert.match(addController, /from "@\/lib\/modules\/meals\/application\/meal-read-service"/);
+  assert.match(addController, /from "@\/lib\/modules\/profile\/ui\/UserSessionProvider"/);
+  assert.match(editController, /from "@\/lib\/platform\/feedback\/ToastProvider"/);
+  assert.match(editController, /from "@\/lib\/modules\/meals\/ui\/useMealImageSelection"/);
   assert.match(editController, /from "@\/lib\/modules\/meals\/application\/meal-editor-service"/);
+  assert.match(editController, /from "@\/lib\/modules\/profile\/ui\/UserSessionProvider"/);
+  assert.match(mealCard, /from "@\/lib\/platform\/feedback\/ConfirmDialog"/);
+  assert.match(mealCard, /from "@\/lib\/platform\/feedback\/ToastProvider"/);
+  assert.match(profilePageController, /from "@\/lib\/platform\/feedback\/ToastProvider"/);
+  assert.match(toastShim, /from "@\/lib\/platform\/feedback\/ToastProvider"/);
+  assert.match(confirmDialogShim, /from "@\/lib\/platform\/feedback\/ConfirmDialog"/);
+  assert.match(appUpdateBannerShim, /from "@\/lib\/platform\/pwa\/AppUpdateBanner"/);
+  assert.match(clientErrorMonitorShim, /from "@\/lib\/platform\/monitoring\/ClientErrorMonitor"/);
+  assert.match(serviceWorkerCleanupShim, /from "@\/lib\/platform\/pwa\/ServiceWorkerCleanup"/);
+  assert.match(updateMonitorShim, /from "@\/lib\/platform\/pwa\/useAppUpdateMonitor"/);
+  assert.match(homeController, /from "@\/lib\/modules\/profile\/ui\/UserSessionProvider"/);
+  assert.match(archiveController, /from "@\/lib\/modules\/profile\/ui\/UserSessionProvider"/);
+  assert.match(mealDetailController, /from "@\/lib\/modules\/profile\/ui\/UserSessionProvider"/);
 
   assert.doesNotMatch(homePage, /from "@\/lib\/features\//);
   assert.doesNotMatch(archivePage, /from "@\/lib\/features\//);
   assert.doesNotMatch(mealDetailPage, /from "@\/lib\/features\//);
+  assert.doesNotMatch(profilePage, /from "@\/lib\/features\//);
+  assert.doesNotMatch(qaMealCardPage, /from "@\/lib\/features\//);
   assert.doesNotMatch(homeController, /from "@\/lib\/features\//);
   assert.doesNotMatch(archiveController, /from "@\/lib\/features\//);
   assert.doesNotMatch(mealDetailController, /from "@\/lib\/features\//);
   assert.doesNotMatch(mealCard, /from "@\/lib\/features\//);
   assert.doesNotMatch(commentComposer, /from "@\/lib\/features\//);
   assert.doesNotMatch(conversationPanel, /from "@\/lib\/features\//);
+  assert.doesNotMatch(profilePageController, /from "@\/lib\/features\//);
   assert.doesNotMatch(userContext, /from "@\/lib\/features\//);
   assert.doesNotMatch(addController, /from "@\/lib\/features\//);
   assert.doesNotMatch(editController, /from "@\/lib\/features\//);
 });
 
 test("UI layers do not import lib/client modules directly", () => {
-  const mealCard = read("components/MealCard.tsx");
-  const mealPreviewCard = read("components/MealPreviewCard.tsx");
+  const mealCard = read(mealCardPath);
+  const mealPreviewCard = read(mealPreviewCardPath);
   const profilePage = read("app/profile/page.tsx");
+  const addController = read("lib/modules/meals/ui/useAddMealPageController.ts");
+  const editController = read("lib/modules/meals/ui/useEditMealPageController.ts");
+  const profilePageController = read(profilePageControllerPath);
+  const mealPreviewCardShim = read(mealPreviewCardShimPath);
 
   assert.doesNotMatch(mealCard, /from "@\/lib\/client\//);
   assert.doesNotMatch(mealPreviewCard, /from "@\/lib\/client\//);
   assert.doesNotMatch(profilePage, /from "@\/lib\/client\//);
+  assert.doesNotMatch(addController, /from "@\/components\/Toast"/);
+  assert.doesNotMatch(editController, /from "@\/components\/Toast"/);
+  assert.doesNotMatch(profilePageController, /from "@\/components\/Toast"/);
+  assert.doesNotMatch(mealCard, /from "@\/components\/ConfirmDialog"/);
+  assert.doesNotMatch(mealCard, /from "@\/components\/Toast"/);
+  assert.match(mealPreviewCardShim, /from "@\/lib\/modules\/meals\/ui\/components\/MealPreviewCard"/);
 });
 
 test("module runtimes depend on feature-scoped QA adapters instead of shared QA internals", () => {
@@ -150,17 +272,26 @@ test("module runtimes depend on feature-scoped QA adapters instead of shared QA 
   assert.match(commentRuntime, /from "@\/lib\/qa\/adapters\/comments"/);
   assert.match(reactionRuntime, /from "@\/lib\/qa\/adapters\/reactions"/);
   assert.match(userSessionRuntime, /from "@\/lib\/qa\/adapters\/profile"/);
-  assert.match(mealReadRuntime, /from "@\/lib\/client\/meal-queries"/);
-  assert.match(mealEditorRuntime, /from "@\/lib\/client\/meal-mutations"/);
-  assert.match(mealEditorRuntime, /from "@\/lib\/client\/meal-queries"/);
+  assert.match(mealReadRuntime, /from "@\/lib\/modules\/meals\/adapters\/http\/meal-query-client"/);
+  assert.match(mealEditorRuntime, /from "@\/lib\/modules\/meals\/adapters\/http\/meal-mutation-client"/);
+  assert.match(mealEditorRuntime, /from "@\/lib\/modules\/meals\/adapters\/http\/meal-query-client"/);
+  assert.match(mealEditorRuntime, /from "@\/lib\/modules\/meals\/adapters\/http\/meal-image-client"/);
+  assert.match(commentRuntime, /from "@\/lib\/modules\/comments\/adapters\/http\/comment-command-client"/);
+  assert.match(reactionRuntime, /from "@\/lib\/modules\/reactions\/adapters\/http\/reaction-client"/);
+  assert.match(userSessionRuntime, /from "@\/lib\/modules\/profile\/adapters\/http\/profile-session-client"/);
 
   assert.doesNotMatch(mealReadRuntime, /from "@\/lib\/qa\/runtime"/);
   assert.doesNotMatch(mealEditorRuntime, /from "@\/lib\/qa\/runtime"/);
   assert.doesNotMatch(commentRuntime, /from "@\/lib\/qa\/runtime"/);
   assert.doesNotMatch(reactionRuntime, /from "@\/lib\/qa\/runtime"/);
   assert.doesNotMatch(userSessionRuntime, /from "@\/lib\/qa\/runtime"/);
-  assert.doesNotMatch(mealReadRuntime, /from "@\/lib\/client\/meals"/);
-  assert.doesNotMatch(mealEditorRuntime, /from "@\/lib\/client\/meals"/);
+  assert.doesNotMatch(mealReadRuntime, /from "@\/lib\/client\/meal-queries"/);
+  assert.doesNotMatch(mealEditorRuntime, /from "@\/lib\/client\/meal-mutations"/);
+  assert.doesNotMatch(mealEditorRuntime, /from "@\/lib\/client\/meal-queries"/);
+  assert.doesNotMatch(commentRuntime, /from "@\/lib\/modules\/comments\/adapters\/firestore\/comment-client"/);
+  assert.doesNotMatch(reactionRuntime, /from "@\/lib\/client\/reactions"/);
+  assert.doesNotMatch(userSessionRuntime, /from "@\/lib\/client\/profile-session"/);
+  assert.doesNotMatch(mealEditorRuntime, /from "@\/lib\/uploadImage"/);
 });
 
 test("meal helper files are implemented inside the meals module and legacy root files are removed", () => {
@@ -234,8 +365,8 @@ test("meal upload and comment data adapters live inside feature modules and remo
     "modules",
     "comments",
     "adapters",
-    "firestore",
-    "comment-client.ts"
+    "http",
+    "comment-command-client.ts"
   );
   const commentStorePath = path.join(
     process.cwd(),
@@ -262,12 +393,12 @@ test("meal upload and comment data adapters live inside feature modules and remo
   assert.match(uploadRoute, /from "@\/lib\/modules\/meals\/adapters\/storage\/meal-image-upload"/);
   assert.doesNotMatch(uploadRoute, /from "@\/lib\/server\/uploads\/meal-image-use-cases"/);
 
-  assert.match(commentRuntime, /from "@\/lib\/modules\/comments\/adapters\/firestore\/comment-client"/);
+  assert.match(commentRuntime, /from "@\/lib\/modules\/comments\/adapters\/http\/comment-command-client"/);
   assert.match(
     commentRuntime,
     /from "@\/lib\/modules\/comments\/adapters\/firestore\/comment-subscription-store"/
   );
-  assert.doesNotMatch(commentRuntime, /from "@\/lib\/client\/comments"/);
+  assert.doesNotMatch(commentRuntime, /from "@\/lib\/modules\/comments\/adapters\/firestore\/comment-client"/);
   assert.doesNotMatch(commentRuntime, /from "@\/lib\/meal-comments-store"/);
 });
 
@@ -377,7 +508,8 @@ test("activity logging and notification helpers live in module-local paths and l
   const moduleActivityLog = read("lib/modules/activity/server/activity-log.ts");
   const moduleActivityAdminStore = read("lib/modules/activity/adapters/firestore/activity-admin-store.ts");
   const profilePage = read("app/profile/page.tsx");
-  const profileSession = read("lib/client/profile-session.ts");
+  const profilePageController = read(profilePageControllerPath);
+  const profileSessionClient = read("lib/modules/profile/adapters/http/profile-session-client.ts");
   const qaSession = read("lib/qa/session.ts");
   const profileUseCases = read("lib/modules/profile/server/profile-use-cases.ts");
   const userSessionRuntime = read("lib/modules/profile/infrastructure/user-session-runtime.ts");
@@ -397,8 +529,9 @@ test("activity logging and notification helpers live in module-local paths and l
   assert.equal(exists("lib/activity.ts"), false);
   assert.equal(exists("lib/client/activity.ts"), false);
 
-  assert.match(profilePage, /from "@\/lib\/modules\/profile\/domain\/notification-preferences"/);
-  assert.match(profileSession, /from "@\/lib\/modules\/profile\/domain\/notification-preferences"/);
+  assert.match(profilePage, /from "@\/lib\/modules\/profile\/ui\/useProfilePageController"/);
+  assert.match(profilePageController, /from "@\/lib\/modules\/profile\/domain\/notification-preferences"/);
+  assert.match(profileSessionClient, /from "@\/lib\/modules\/profile\/domain\/notification-preferences"/);
   assert.match(qaSession, /from "@\/lib\/modules\/profile\/domain\/notification-preferences"/);
   assert.match(profileUseCases, /from "@\/lib\/modules\/profile\/domain\/notification-preferences"/);
   assert.match(
@@ -412,7 +545,8 @@ test("activity logging and notification helpers live in module-local paths and l
   assert.doesNotMatch(moduleActivityLog, /from "@\/lib\/firebase-admin"/);
 
   assert.doesNotMatch(profilePage, /from "@\/lib\/activity"/);
-  assert.doesNotMatch(profileSession, /from "@\/lib\/activity"/);
+  assert.doesNotMatch(profilePageController, /from "@\/lib\/activity"/);
+  assert.doesNotMatch(profileSessionClient, /from "@\/lib\/activity"/);
   assert.doesNotMatch(qaSession, /from "@\/lib\/activity"/);
   assert.doesNotMatch(profileUseCases, /from "@\/lib\/activity"/);
   assert.doesNotMatch(userSessionRuntime, /from "@\/lib\/client\/activity"/);
@@ -507,6 +641,14 @@ test("platform auth and http helpers own the real implementations and removed se
     "auth",
     "route-auth.ts"
   );
+  const profileRouteAuthPath = path.join(
+    process.cwd(),
+    "lib",
+    "modules",
+    "profile",
+    "server",
+    "profile-route-auth.ts"
+  );
   const profileAuthContextPath = path.join(
     process.cwd(),
     "lib",
@@ -521,6 +663,7 @@ test("platform auth and http helpers own the real implementations and removed se
   assert.equal(fs.existsSync(platformServerAuthPath), true);
   assert.equal(fs.existsSync(platformRouteAuthPath), true);
   assert.equal(fs.existsSync(profileAuthContextPath), true);
+  assert.equal(fs.existsSync(profileRouteAuthPath), true);
   assert.equal(fs.existsSync(path.join(process.cwd(), "lib", "server", "route-auth.ts")), false);
 
   assert.equal(exists("lib/route-errors.ts"), false);
@@ -573,19 +716,27 @@ test("server and client layers import platform auth and http helpers directly", 
   const platformRouteAuth = read("lib/platform/auth/route-auth.ts");
   const platformServerAuth = read("lib/platform/auth/server-auth.ts");
   const profileAuthContext = read("lib/modules/profile/server/profile-auth-context.ts");
+  const profileRouteAuth = read("lib/modules/profile/server/profile-route-auth.ts");
   const profileAdminAuth = read("lib/modules/profile/adapters/firebase/profile-admin-auth.ts");
   const profileAdminStore = read("lib/modules/profile/adapters/firebase/profile-admin-store.ts");
   const activityLog = read("lib/modules/activity/server/activity-log.ts");
   const activityAdminStore = read("lib/modules/activity/adapters/firestore/activity-admin-store.ts");
-  const clientMeals = read("lib/client/meal-queries.ts");
-  const clientMutations = read("lib/client/meal-mutations.ts");
-  const commentClient = read("lib/modules/comments/adapters/firestore/comment-client.ts");
-  const clientReactions = read("lib/client/reactions.ts");
+  const mealQueryClient = read("lib/modules/meals/adapters/http/meal-query-client.ts");
+  const mealMutationClient = read("lib/modules/meals/adapters/http/meal-mutation-client.ts");
+  const commentCommandClient = read("lib/modules/comments/adapters/http/comment-command-client.ts");
+  const reactionClient = read("lib/modules/reactions/adapters/http/reaction-client.ts");
+  const legacyReactionHelpers = read("lib/reactions.ts");
+  const moduleReactionMap = read(reactionMapPath);
   const moduleNotificationClient = read(
     "lib/modules/profile/adapters/http/profile-notification-client.ts"
   );
-  const clientProfileSession = read("lib/client/profile-session.ts");
-  const uploadHelper = read("lib/uploadImage.ts");
+  const profileSessionClient = read("lib/modules/profile/adapters/http/profile-session-client.ts");
+  const mealImageClient = read("lib/modules/meals/adapters/http/meal-image-client.ts");
+  const legacyMealQueryClient = read("lib/client/meal-queries.ts");
+  const legacyMealMutationClient = read("lib/client/meal-mutations.ts");
+  const legacyReactionClient = read("lib/client/reactions.ts");
+  const legacyProfileSessionClient = read("lib/client/profile-session.ts");
+  const legacyMealImageClient = read("lib/uploadImage.ts");
   const commentUseCases = read("lib/modules/comments/server/comment-use-cases.ts");
   const commentAdminStore = read("lib/modules/comments/adapters/firestore/comment-admin-store.ts");
   const reactionUseCases = read("lib/modules/reactions/server/reaction-use-cases.ts");
@@ -607,9 +758,11 @@ test("server and client layers import platform auth and http helpers directly", 
   const clientErrorsRoute = read("app/api/client-errors/route.ts");
 
   assert.match(routeHandler, /from "@\/lib\/platform\/http\/route-errors"/);
-  assert.match(platformRouteAuth, /modules\/profile\/server\/profile-auth-context/);
+  assert.doesNotMatch(platformRouteAuth, /modules\/profile\/server\/profile-auth-context/);
   assert.doesNotMatch(platformServerAuth, /adminDb/);
   assert.match(profileAuthContext, /from "@\/lib\/modules\/profile\/adapters\/firebase\/profile-admin-store"/);
+  assert.match(profileRouteAuth, /from "@\/lib\/modules\/profile\/server\/profile-auth-context"/);
+  assert.match(profileRouteAuth, /from "@\/lib\/platform\/auth\/server-auth"/);
   assert.doesNotMatch(profileAuthContext, /from "@\/lib\/firebase-admin"/);
   assert.match(profileAdminAuth, /from "@\/lib\/firebase-admin"/);
   assert.match(profileAdminStore, /from "@\/lib\/firebase-admin"/);
@@ -621,20 +774,29 @@ test("server and client layers import platform auth and http helpers directly", 
   assert.match(reactionUseCases, /from "@\/lib\/modules\/reactions\/adapters\/firestore\/reaction-admin-store"/);
   assert.doesNotMatch(reactionUseCases, /from "@\/lib\/firebase-admin"/);
   assert.match(reactionAdminStore, /from "@\/lib\/firebase-admin"/);
+  assert.match(reactionAdminStore, /from "@\/lib\/modules\/reactions\/domain\/reaction-map"/);
   assert.match(activityAdminStore, /from "@\/lib\/firebase-admin"/);
 
   for (const source of [
-    clientMeals,
-    clientMutations,
-    commentClient,
-    clientReactions,
+    mealQueryClient,
+    mealMutationClient,
+    commentCommandClient,
+    reactionClient,
     moduleNotificationClient,
-    clientProfileSession,
-    uploadHelper,
+    profileSessionClient,
+    mealImageClient,
   ]) {
     assert.match(source, /@\/lib\/platform\/http\/auth-http/);
     assert.doesNotMatch(source, /@\/lib\/client\/auth-http/);
   }
+
+  assert.match(legacyMealQueryClient, /from "@\/lib\/modules\/meals\/adapters\/http\/meal-query-client"/);
+  assert.match(legacyMealMutationClient, /from "@\/lib\/modules\/meals\/adapters\/http\/meal-mutation-client"/);
+  assert.match(legacyReactionClient, /from "@\/lib\/modules\/reactions\/adapters\/http\/reaction-client"/);
+  assert.match(legacyReactionHelpers, /from "@\/lib\/modules\/reactions\/domain\/reaction-map"/);
+  assert.match(moduleReactionMap, /export const ALLOWED_REACTION_EMOJIS/);
+  assert.match(legacyProfileSessionClient, /from "@\/lib\/modules\/profile\/adapters\/http\/profile-session-client"/);
+  assert.match(legacyMealImageClient, /from "@\/lib\/modules\/meals\/adapters\/http\/meal-image-client"/);
 
   assert.equal(exists("lib/client/activity.ts"), false);
 
@@ -643,22 +805,22 @@ test("server and client layers import platform auth and http helpers directly", 
     assert.doesNotMatch(source, /@\/lib\/route-errors/);
   }
 
+  for (const source of [uploadRoute, profileSessionRoute, profileRoleRoute, profileSettingsRoute, commentMutationRoute]) {
+    assert.match(source, /@\/lib\/platform\/auth\/route-auth/);
+    assert.doesNotMatch(source, /@\/lib\/server\/route-auth/);
+  }
+
   for (const source of [
     archiveRoute,
     mealsRoute,
     mealDetailRoute,
     weeklyStatsRoute,
-    uploadRoute,
-    profileSessionRoute,
-    profileRoleRoute,
-    profileSettingsRoute,
     commentsRoute,
-    commentMutationRoute,
     mealReactionsRoute,
     commentReactionsRoute,
   ]) {
-    assert.match(source, /@\/lib\/platform\/auth\/route-auth/);
-    assert.doesNotMatch(source, /@\/lib\/server\/route-auth/);
+    assert.match(source, /@\/lib\/modules\/profile\/server\/profile-route-auth/);
+    assert.doesNotMatch(source, /@\/lib\/platform\/auth\/route-auth/);
   }
 
   assert.match(clientErrorsRoute, /@\/lib\/platform\/http\/client-error-ingest/);

@@ -3,7 +3,7 @@
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
-import { useUser } from "@/context/UserContext";
+import { useUser } from "@/lib/modules/profile/ui/UserSessionProvider";
 import { logError } from "@/lib/logging";
 import {
   createMealRuntimeState,

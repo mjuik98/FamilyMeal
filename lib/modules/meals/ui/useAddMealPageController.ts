@@ -4,9 +4,8 @@ import type { ChangeEvent, FormEvent } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
-import { useMealImageSelection } from "@/components/hooks/useMealImageSelection";
-import { useToast } from "@/components/Toast";
-import { useUser } from "@/context/UserContext";
+import { useUser } from "@/lib/modules/profile/ui/UserSessionProvider";
+import { useToast } from "@/lib/platform/feedback/ToastProvider";
 import {
   combineDateAndTime,
   formatDateKey,
@@ -28,6 +27,7 @@ import {
 } from "@/lib/modules/meals/domain/meal-form";
 import { MEAL_IMAGE_INPUT_ACCEPT } from "@/lib/modules/meals/domain/meal-image-policy";
 import { toMealCreateErrorMessage } from "@/lib/modules/meals/ui/meal-error-messages";
+import { useMealImageSelection } from "@/lib/modules/meals/ui/useMealImageSelection";
 import type { Meal, UserRole } from "@/lib/types";
 
 type SubmitPhase = "idle" | "uploading" | "saving";

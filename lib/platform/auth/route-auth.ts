@@ -1,11 +1,7 @@
-import { isUserRole } from "@/lib/domain/meal-policy";
-import { loadUserRoleForUser } from "@/lib/modules/profile/server/profile-auth-context";
-import { RouteError } from "@/lib/platform/http/route-errors";
 import {
   verifyRequestUser,
   type VerifiedUser,
 } from "@/lib/platform/auth/server-auth";
-import type { UserRole } from "@/lib/types";
 
 export const requireVerifiedUser = async (
   request: Request
@@ -13,18 +9,11 @@ export const requireVerifiedUser = async (
 
 export const requireValidatedUserRole = async (
   request: Request,
-  validateRole?: (role: string | null) => UserRole
-): Promise<{ user: VerifiedUser; role: UserRole }> => {
-  const user = await verifyRequestUser(request);
-  const role = await loadUserRoleForUser(user.uid);
-
-  if (validateRole) {
-    return { user, role: validateRole(role) };
-  }
-
-  if (!isUserRole(role)) {
-    throw new RouteError("Valid user role is required", 403);
-  }
-
-  return { user, role };
-};
+  validateRole?: Parameters<
+    typeof import("@/lib/modules/profile/server/profile-route-auth").requireValidatedUserRole
+  >[1]
+) =>
+  (await import("@/lib/modules/profile/server/profile-route-auth")).requireValidatedUserRole(
+    request,
+    validateRole
+  );

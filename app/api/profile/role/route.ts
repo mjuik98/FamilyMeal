@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { serverEnv } from "@/lib/config/server-env";
-import { USER_ROLES } from "@/lib/domain/meal-policy";
+import { USER_ROLES } from "@/lib/domain/user-role";
 import { handleRoute } from "@/lib/platform/http/route-handler";
 import { requireVerifiedUser } from "@/lib/platform/auth/route-auth";
 import { parseJsonBody } from "@/lib/platform/http/request-body";

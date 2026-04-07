@@ -1,13 +1,16 @@
-import { addMeal, deleteMeal, updateMeal } from "@/lib/client/meal-mutations";
-import { getMealById } from "@/lib/client/meal-queries";
+import { addMeal, deleteMeal, updateMeal } from "@/lib/modules/meals/adapters/http/meal-mutation-client";
+import { getMealById } from "@/lib/modules/meals/adapters/http/meal-query-client";
 import { readMealImageDataUrl } from "@/lib/modules/meals/domain/meal-form";
+import {
+  cleanupUploadedMealImage,
+  uploadImage,
+} from "@/lib/modules/meals/adapters/http/meal-image-client";
 import {
   deleteQaMeal,
   isQaMealsRuntimeActive,
   saveQaMeal,
 } from "@/lib/qa/adapters/meals";
 import type { Meal, UserRole } from "@/lib/types";
-import { cleanupUploadedMealImage, uploadImage } from "@/lib/uploadImage";
 
 import type {
   CreateMealCommand,

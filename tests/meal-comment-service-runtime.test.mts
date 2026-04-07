@@ -43,7 +43,7 @@ const callLog = {
 const mockModuleOptions = (exports: Record<string, unknown>) =>
   ({ exports }) as unknown as Parameters<typeof mock.module>[1];
 
-mock.module("@/lib/modules/comments/adapters/firestore/comment-client", {
+mock.module("@/lib/modules/comments/adapters/http/comment-command-client", {
   ...mockModuleOptions({
     addMealComment: async () => {
       callLog.createCalls += 1;

@@ -38,8 +38,8 @@ const importFresh = async <T,>(specifier: string): Promise<T> =>
   import(`${specifier}?test=${Date.now()}-${Math.random()}`) as Promise<T>;
 
 test("requireValidatedUserRole composes verified auth with a profile-owned role loader", async () => {
-  const routeAuth = await importFresh<typeof import("../lib/platform/auth/route-auth.ts")>(
-    "../lib/platform/auth/route-auth.ts"
+  const routeAuth = await importFresh<typeof import("../lib/modules/profile/server/profile-route-auth.ts")>(
+    "../lib/modules/profile/server/profile-route-auth.ts"
   );
 
   const result = await routeAuth.requireValidatedUserRole(
@@ -60,8 +60,8 @@ test("requireValidatedUserRole composes verified auth with a profile-owned role 
 
 test("requireValidatedUserRole supports custom role validation over the loaded profile role", async () => {
   loadedRole = "아빠";
-  const routeAuth = await importFresh<typeof import("../lib/platform/auth/route-auth.ts")>(
-    "../lib/platform/auth/route-auth.ts"
+  const routeAuth = await importFresh<typeof import("../lib/modules/profile/server/profile-route-auth.ts")>(
+    "../lib/modules/profile/server/profile-route-auth.ts"
   );
 
   const result = await routeAuth.requireValidatedUserRole(
@@ -81,8 +81,8 @@ test("requireValidatedUserRole supports custom role validation over the loaded p
 
 test("requireValidatedUserRole fails closed when the loaded profile role is missing", async () => {
   loadedRole = null;
-  const routeAuth = await importFresh<typeof import("../lib/platform/auth/route-auth.ts")>(
-    "../lib/platform/auth/route-auth.ts"
+  const routeAuth = await importFresh<typeof import("../lib/modules/profile/server/profile-route-auth.ts")>(
+    "../lib/modules/profile/server/profile-route-auth.ts"
   );
 
   await assert.rejects(

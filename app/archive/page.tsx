@@ -4,8 +4,8 @@ import Link from "next/link";
 import { ChevronLeft, Search } from "lucide-react";
 
 import FilterChips from "@/components/FilterChips";
-import MealPreviewCard from "@/components/MealPreviewCard";
 import PageHeader from "@/components/PageHeader";
+import MealPreviewCard from "@/lib/modules/meals/ui/components/MealPreviewCard";
 import {
   formatArchiveMonth,
   useArchivePageController,

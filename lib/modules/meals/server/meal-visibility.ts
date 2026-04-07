@@ -1,4 +1,4 @@
-import { isUserRole } from "@/lib/domain/meal-policy";
+import { isUserRole } from "@/lib/domain/user-role";
 import { RouteError } from "@/lib/platform/http/route-errors";
 import type { UserRole } from "@/lib/types";
 

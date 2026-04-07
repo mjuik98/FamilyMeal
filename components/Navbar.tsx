@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Home, PlusCircle, User } from "lucide-react";
 
-import { useUser } from "@/context/UserContext";
+import { useUser } from "@/lib/modules/profile/ui/UserSessionProvider";
 
 export default function Navbar() {
   const pathname = usePathname();

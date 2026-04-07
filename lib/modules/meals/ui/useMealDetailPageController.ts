@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
-import { useUser } from "@/context/UserContext";
+import { useUser } from "@/lib/modules/profile/ui/UserSessionProvider";
 import { logError } from "@/lib/logging";
 import type { MealDeleteResult } from "@/lib/modules/meals/application/meal-editor-service";
 import {

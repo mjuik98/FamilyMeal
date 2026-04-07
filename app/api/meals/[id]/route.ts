@@ -1,14 +1,12 @@
 import { z } from "zod";
 
 import {
-  isUserRole,
   MAX_MEAL_DESCRIPTION_LENGTH,
   MAX_MEAL_IMAGE_URL_LENGTH,
-  USER_ROLES,
   VALID_MEAL_TYPES,
-} from "@/lib/domain/meal-policy";
+} from "@/lib/modules/meals/domain/meal-policy";
+import { isUserRole, USER_ROLES } from "@/lib/domain/user-role";
 import { logError } from "@/lib/logging";
-import { requireValidatedUserRole } from "@/lib/platform/auth/route-auth";
 import { AuthError } from "@/lib/platform/auth/server-auth";
 import { parseJsonBody } from "@/lib/platform/http/request-body";
 import { handleRoute } from "@/lib/platform/http/route-handler";
@@ -24,6 +22,7 @@ import { getMealByIdForActor } from "@/lib/modules/meals/server/meal-read-use-ca
 import { deleteStorageObjectByUrl } from "@/lib/modules/meals/server/meal-storage";
 import { MealRouteError, type UpdateMealInput } from "@/lib/modules/meals/server/meal-types";
 import { updateMealDocument } from "@/lib/modules/meals/server/meal-write-use-cases";
+import { requireValidatedUserRole } from "@/lib/modules/profile/server/profile-route-auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

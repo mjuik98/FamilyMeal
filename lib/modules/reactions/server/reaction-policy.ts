@@ -1,6 +1,9 @@
 import { z } from "zod";
 
-import { ALLOWED_REACTION_EMOJIS, isReactionEmoji } from "@/lib/reactions";
+import {
+  ALLOWED_REACTION_EMOJIS,
+  isReactionEmoji,
+} from "@/lib/modules/reactions/domain/reaction-map";
 import { parseJsonBody } from "@/lib/platform/http/request-body";
 import { RouteError } from "@/lib/platform/http/route-errors";
 import type { ReactionEmoji } from "@/lib/types";

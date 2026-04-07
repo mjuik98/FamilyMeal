@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { MAX_COMMENT_LENGTH } from "@/lib/domain/meal-policy";
+import { MAX_COMMENT_LENGTH } from "@/lib/modules/comments/domain/comment-policy";
 import { parseJsonBody } from "@/lib/platform/http/request-body";
 import { RouteError } from "@/lib/platform/http/route-errors";
 

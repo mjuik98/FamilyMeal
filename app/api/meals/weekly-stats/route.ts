@@ -1,8 +1,8 @@
 import { parseDateKey } from "@/lib/date-utils";
-import { requireValidatedUserRole } from "@/lib/platform/auth/route-auth";
 import { handleRoute } from "@/lib/platform/http/route-handler";
 import { RouteError } from "@/lib/platform/http/route-errors";
 import { listWeeklyMealStats } from "@/lib/modules/meals/server/meal-read-use-cases";
+import { requireValidatedUserRole } from "@/lib/modules/profile/server/profile-route-auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

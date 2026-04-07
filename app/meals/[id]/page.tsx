@@ -4,8 +4,8 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { ChevronLeft, Images } from "lucide-react";
 
-import MealCard from "@/components/MealCard";
 import PageHeader from "@/components/PageHeader";
+import MealCard from "@/lib/modules/meals/ui/components/MealCard";
 import { useMealDetailPageController } from "@/lib/modules/meals/ui/useMealDetailPageController";
 
 export default function MealDetailPage() {

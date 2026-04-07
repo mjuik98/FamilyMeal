@@ -1,11 +1,12 @@
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
 
-import { isMealType, isUserRole } from "@/lib/domain/meal-policy";
+import { isUserRole } from "@/lib/domain/user-role";
 import { logError } from "@/lib/logging";
 import {
   createStoredMealRecord,
   runStoredMealTransaction,
 } from "@/lib/modules/meals/adapters/firestore/meal-admin-store";
+import { isMealType } from "@/lib/modules/meals/domain/meal-policy";
 import { isOwnedMealImageUrl } from "@/lib/modules/meals/server/meal-image-url";
 import { deleteStorageObjectByUrl } from "@/lib/modules/meals/server/meal-storage";
 import {

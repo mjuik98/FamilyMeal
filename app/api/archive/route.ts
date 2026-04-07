@@ -1,5 +1,5 @@
 import { handleRoute } from "@/lib/platform/http/route-handler";
-import { requireValidatedUserRole } from "@/lib/platform/auth/route-auth";
+import { requireValidatedUserRole } from "@/lib/modules/profile/server/profile-route-auth";
 import { RouteError } from "@/lib/platform/http/route-errors";
 import { parseArchiveQueryParams } from "@/lib/modules/meals/server/archive-types";
 import { listArchiveMeals } from "@/lib/modules/meals/server/archive-use-cases";

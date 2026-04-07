@@ -1,4 +1,4 @@
-import { isUserRole } from "@/lib/domain/meal-policy";
+import { isUserRole } from "@/lib/domain/user-role";
 import { loadStoredUserProfile } from "@/lib/modules/profile/adapters/firebase/profile-admin-store";
 import { AuthError } from "@/lib/platform/auth/server-auth";
 import type { UserRole } from "@/lib/types";

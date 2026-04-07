@@ -1,4 +1,4 @@
-import MealCard from "@/components/MealCard";
+import MealCard from "@/lib/modules/meals/ui/components/MealCard";
 import { publicEnv } from "@/lib/config/public-env";
 import { getQaDefaultRole } from "@/lib/qa/session";
 import { Meal } from "@/lib/types";

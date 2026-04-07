@@ -5,11 +5,11 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { Calendar as CalendarIcon, Images, LogOut, Plus } from "lucide-react";
 
-import LoginView from "@/components/LoginView";
-import MealPreviewCard from "@/components/MealPreviewCard";
 import SurfaceSection from "@/components/SurfaceSection";
 import WeekDateStrip from "@/components/WeekDateStrip";
+import MealPreviewCard from "@/lib/modules/meals/ui/components/MealPreviewCard";
 import { useHomePageController } from "@/lib/modules/meals/ui/useHomePageController";
+import LoginView from "@/lib/modules/profile/ui/LoginView";
 
 const roleEmoji: Record<string, string> = {
   아빠: "👨",

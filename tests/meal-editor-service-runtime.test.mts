@@ -16,7 +16,7 @@ let shouldFailUpdate = false;
 const mockModuleOptions = (exports: Record<string, unknown>) =>
   ({ exports }) as unknown as Parameters<typeof mock.module>[1];
 
-mock.module("@/lib/client/meal-mutations", {
+mock.module("@/lib/modules/meals/adapters/http/meal-mutation-client", {
   ...mockModuleOptions({
     addMeal: async (payload: Record<string, unknown>) => {
       addMealCalls.push(payload);
@@ -39,7 +39,7 @@ mock.module("@/lib/client/meal-mutations", {
   }),
 });
 
-mock.module("@/lib/client/meal-queries", {
+mock.module("@/lib/modules/meals/adapters/http/meal-query-client", {
   ...mockModuleOptions({
     getMealById: async (mealId: string) =>
       mealId === "legacy"
@@ -67,7 +67,7 @@ mock.module("@/lib/client/meal-queries", {
   }),
 });
 
-mock.module("@/lib/uploadImage", {
+mock.module("@/lib/modules/meals/adapters/http/meal-image-client", {
   ...mockModuleOptions({
     uploadImage: async () => "https://example.com/uploaded.jpg",
     cleanupUploadedMealImage: async (imageUrl: string) => {

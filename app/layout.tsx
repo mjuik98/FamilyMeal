@@ -1,15 +1,15 @@
 import type { Metadata, Viewport } from "next";
 import dynamic from "next/dynamic";
 import "./globals.css";
-import ClientErrorMonitor from "@/components/ClientErrorMonitor";
+import { ConfirmProvider } from "@/lib/platform/feedback/ConfirmDialog";
+import { ToastProvider } from "@/lib/platform/feedback/ToastProvider";
+import ClientErrorMonitor from "@/lib/platform/monitoring/ClientErrorMonitor";
+import ServiceWorkerCleanup from "@/lib/platform/pwa/ServiceWorkerCleanup";
 import Navbar from "@/components/Navbar";
-import ServiceWorkerCleanup from "@/components/ServiceWorkerCleanup";
-import { UserProvider } from "@/context/UserContext";
-import { ToastProvider } from "@/components/Toast";
-import { ConfirmProvider } from "@/components/ConfirmDialog";
 import { publicEnv } from "@/lib/config/public-env";
+import { UserProvider } from "@/lib/modules/profile/ui/UserSessionProvider";
 
-const AppUpdateBanner = dynamic(() => import("@/components/AppUpdateBanner"));
+const AppUpdateBanner = dynamic(() => import("@/lib/platform/pwa/AppUpdateBanner"));
 
 export const metadata: Metadata = {
   title: "가족 식사 기록",

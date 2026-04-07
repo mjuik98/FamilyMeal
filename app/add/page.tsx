@@ -3,10 +3,10 @@
 import { Suspense } from "react";
 import { Send } from "lucide-react";
 
-import { MealDateTimeFields } from "@/components/meal-editor/MealDateTimeFields";
-import { MealDetailsSection } from "@/components/meal-editor/MealDetailsSection";
-import { MealImageField } from "@/components/meal-editor/MealImageField";
 import PageHeader from "@/components/PageHeader";
+import { MealDateTimeFields } from "@/lib/modules/meals/ui/components/MealDateTimeFields";
+import { MealDetailsSection } from "@/lib/modules/meals/ui/components/MealDetailsSection";
+import { MealImageField } from "@/lib/modules/meals/ui/components/MealImageField";
 import {
   useAddMealPageController,
 } from "@/lib/modules/meals/ui/useAddMealPageController";

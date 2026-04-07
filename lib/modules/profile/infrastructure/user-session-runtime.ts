@@ -5,7 +5,7 @@ import {
   buildFallbackUserProfile,
   loadUserProfile,
   saveUserRole,
-} from "@/lib/client/profile-session";
+} from "@/lib/modules/profile/adapters/http/profile-session-client";
 import type {
   NotificationPreferences,
   UserProfile,

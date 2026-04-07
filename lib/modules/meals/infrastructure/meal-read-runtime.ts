@@ -4,7 +4,7 @@ import {
   getWeeklyStats,
   listArchiveMeals,
   subscribeMealsForDate,
-} from "@/lib/client/meal-queries";
+} from "@/lib/modules/meals/adapters/http/meal-query-client";
 import {
   getQaArchiveMeals,
   getQaMealDetail,

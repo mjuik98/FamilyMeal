@@ -1,4 +1,4 @@
-import { isUserRole } from "@/lib/domain/meal-policy";
+import { isUserRole } from "@/lib/domain/user-role";
 import {
   toggleStoredCommentReactionForUser,
   toggleStoredMealReactionForUser,

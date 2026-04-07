@@ -48,13 +48,14 @@ test("archive matching checks query, type, and participant together", () => {
 
 test("archive route threads authenticated caller identity into the server use case", () => {
   const archiveRoute = read("app/api/archive/route.ts");
-  const routeAuth = read("lib/platform/auth/route-auth.ts");
+  const profileRouteAuth = read("lib/modules/profile/server/profile-route-auth.ts");
   const profileAuthContext = read("lib/modules/profile/server/profile-auth-context.ts");
 
   assert.match(archiveRoute, /const \{ user, role \} = await requireValidatedUserRole\(request\);/);
   assert.equal(fs.existsSync(path.join(process.cwd(), "lib", "server", "route-auth.ts")), false);
-  assert.match(routeAuth, /verifyRequestUser/);
-  assert.match(routeAuth, /loadUserRoleForUser/);
+  assert.match(archiveRoute, /@\/lib\/modules\/profile\/server\/profile-route-auth/);
+  assert.match(profileRouteAuth, /verifyRequestUser/);
+  assert.match(profileRouteAuth, /loadUserRoleForUser/);
   assert.match(profileAuthContext, /export const loadUserRoleForUser = async/);
   assert.match(archiveRoute, /const result = await listArchiveMeals\(\{\s*\.\.\.query,\s*uid: user\.uid,\s*actorRole: role,\s*\}\);/s);
 });

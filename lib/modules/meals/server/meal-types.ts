@@ -1,11 +1,11 @@
 import {
   isMealType,
-  isUserRole,
   MAX_MEAL_DESCRIPTION_LENGTH,
   MAX_MEAL_IMAGE_URL_LENGTH,
-} from "@/lib/domain/meal-policy";
+} from "@/lib/modules/meals/domain/meal-policy";
+import { isUserRole } from "@/lib/domain/user-role";
 import { normalizeErrorCode } from "@/lib/platform/errors/error-contract";
-import { normalizeReactionMap } from "@/lib/reactions";
+import { normalizeReactionMap } from "@/lib/modules/reactions/domain/reaction-map";
 import type { Meal, UserRole } from "@/lib/types";
 
 export type StoredMealDoc = {

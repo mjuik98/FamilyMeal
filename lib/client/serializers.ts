@@ -1,7 +1,8 @@
 import type { DocumentData, QueryDocumentSnapshot } from "firebase/firestore";
 
 import { normalizeReactionMap } from "@/lib/reactions";
-import { isMealType, isUserRole } from "@/lib/domain/meal-policy";
+import { isUserRole } from "@/lib/domain/user-role";
+import { isMealType } from "@/lib/modules/meals/domain/meal-policy";
 import type { Meal, MealComment, UserRole } from "@/lib/types";
 
 const toMillis = (value: unknown, fallback: number): number => {

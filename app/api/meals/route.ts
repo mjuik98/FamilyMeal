@@ -4,11 +4,10 @@ import { parseDateKey } from "@/lib/date-utils";
 import {
   MAX_MEAL_DESCRIPTION_LENGTH,
   MAX_MEAL_IMAGE_URL_LENGTH,
-  USER_ROLES,
   VALID_MEAL_TYPES,
-} from "@/lib/domain/meal-policy";
+} from "@/lib/modules/meals/domain/meal-policy";
+import { USER_ROLES } from "@/lib/domain/user-role";
 import { logError } from "@/lib/logging";
-import { requireValidatedUserRole } from "@/lib/platform/auth/route-auth";
 import { parseJsonBody } from "@/lib/platform/http/request-body";
 import { handleRoute } from "@/lib/platform/http/route-handler";
 import { RouteError } from "@/lib/platform/http/route-errors";
@@ -16,6 +15,7 @@ import { listMealsForDate } from "@/lib/modules/meals/server/meal-read-use-cases
 import { deleteStorageObjectByUrl } from "@/lib/modules/meals/server/meal-storage";
 import { createMealDocument } from "@/lib/modules/meals/server/meal-write-use-cases";
 import { MealRouteError } from "@/lib/modules/meals/server/meal-types";
+import { requireValidatedUserRole } from "@/lib/modules/profile/server/profile-route-auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

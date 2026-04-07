@@ -65,7 +65,7 @@ const callLog = {
 const mockModuleOptions = (exports: Record<string, unknown>) =>
   ({ exports }) as unknown as Parameters<typeof mock.module>[1];
 
-mock.module("@/lib/client/meal-queries", {
+mock.module("@/lib/modules/meals/adapters/http/meal-query-client", {
   ...mockModuleOptions({
     subscribeMealsForDate: (
       _date: Date,

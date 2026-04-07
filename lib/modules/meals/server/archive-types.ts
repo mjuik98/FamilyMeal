@@ -1,6 +1,7 @@
 import { z } from "zod";
 
-import { isUserRole, USER_ROLES, VALID_MEAL_TYPES } from "@/lib/domain/meal-policy";
+import { isUserRole, USER_ROLES } from "@/lib/domain/user-role";
+import { VALID_MEAL_TYPES } from "@/lib/modules/meals/domain/meal-policy";
 import type { Meal, UserRole } from "@/lib/types";
 
 export const ARCHIVE_PAGE_SIZE_DEFAULT = 24;

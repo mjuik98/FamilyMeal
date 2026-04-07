@@ -2,10 +2,10 @@
 
 import { useMemo, useState } from "react";
 
-import { useSelectedDate } from "@/components/hooks/useSelectedDate";
-import { useUser } from "@/context/UserContext";
+import { useUser } from "@/lib/modules/profile/ui/UserSessionProvider";
 import { formatDateKey } from "@/lib/date-utils";
 import { createMealRuntimeState } from "@/lib/modules/meals/application/meal-read-service";
+import { useSelectedDate } from "@/lib/modules/meals/ui/useSelectedDate";
 import { useMealsForDateController as useMealsForDate } from "@/lib/modules/meals/ui/useMealsForDateController";
 import { useWeeklyStatsController as useWeeklyStats } from "@/lib/modules/meals/ui/useWeeklyStatsController";
 

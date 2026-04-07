@@ -1,4 +1,4 @@
-import { USER_ROLES } from "@/lib/domain/meal-policy";
+import { USER_ROLES } from "@/lib/domain/user-role";
 import {
   createStoredMealComment,
   deleteStoredMealCommentById,

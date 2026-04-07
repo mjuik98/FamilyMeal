@@ -8,7 +8,7 @@ import {
   runStoredUserProfileTransaction,
   saveStoredUserProfile,
 } from "@/lib/modules/profile/adapters/firebase/profile-admin-store";
-import { isUserRole } from "@/lib/domain/meal-policy";
+import { isUserRole } from "@/lib/domain/user-role";
 import { type VerifiedUser } from "@/lib/platform/auth/server-auth";
 import { RouteError } from "@/lib/platform/http/route-errors";
 import type {
