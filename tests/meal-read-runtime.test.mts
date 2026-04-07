@@ -178,6 +178,24 @@ test("date utils expose explicit Korea day boundaries", async () => {
   );
 });
 
+test("date utils derive meal form date/time defaults from query date and current time", async () => {
+  const dateUtils = await importFresh<typeof import("../lib/date-utils.ts")>(
+    "../lib/date-utils.ts"
+  );
+
+  const now = new Date(Date.UTC(2026, 3, 4, 3, 30, 0, 0));
+
+  assert.deepEqual(dateUtils.getMealFormDateTimeDefaults("2026-04-02", now), {
+    recordDateValue: "2026-04-02",
+    recordTimeValue: "12:30",
+  });
+
+  assert.deepEqual(dateUtils.getMealFormDateTimeDefaults(null, now), {
+    recordDateValue: "2026-04-04",
+    recordTimeValue: "12:30",
+  });
+});
+
 test("listMealsForDate returns only visible meals for the actor role including legacy meals", async () => {
   mealRecords.push(
     {

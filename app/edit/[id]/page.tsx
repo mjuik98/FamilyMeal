@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { Save } from "lucide-react";
 
+import { MealDateTimeFields } from "@/components/meal-editor/MealDateTimeFields";
 import { MealDetailsSection } from "@/components/meal-editor/MealDetailsSection";
 import { MealImageField } from "@/components/meal-editor/MealImageField";
 import PageHeader from "@/components/PageHeader";
@@ -60,47 +61,15 @@ export default function EditMealPage() {
 
           <MealDetailsSection
             dateTimeFields={
-              <div>
-                <label className="form-label">언제 먹었나요</label>
-                <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
-                  <input
-                    type="date"
-                    value={controller.recordDateValue}
-                    onChange={(event) =>
-                      controller.onRecordDateChange(event.target.value)
-                    }
-                    required
-                    disabled={controller.requiresLegacyMigration}
-                    className="input-base"
-                    data-testid="edit-meal-date-input"
-                    style={{
-                      flex: "1 1 220px",
-                      minHeight: "48px",
-                      borderRadius: "14px",
-                      padding: "0 14px",
-                      outline: "none",
-                    }}
-                  />
-                  <input
-                    type="time"
-                    value={controller.recordTimeValue}
-                    onChange={(event) =>
-                      controller.onRecordTimeChange(event.target.value)
-                    }
-                    required
-                    disabled={controller.requiresLegacyMigration}
-                    className="input-base"
-                    data-testid="edit-meal-time-input"
-                    style={{
-                      flex: "1 1 160px",
-                      minHeight: "48px",
-                      borderRadius: "14px",
-                      padding: "0 14px",
-                      outline: "none",
-                    }}
-                  />
-                </div>
-              </div>
+              <MealDateTimeFields
+                dateValue={controller.recordDateValue}
+                timeValue={controller.recordTimeValue}
+                onDateChange={controller.onRecordDateChange}
+                onTimeChange={controller.onRecordTimeChange}
+                disabled={controller.requiresLegacyMigration}
+                dateTestId="edit-meal-date-input"
+                timeTestId="edit-meal-time-input"
+              />
             }
             description={controller.description}
             descriptionPlaceholder="어떤 식사를 했는지 적어주세요"

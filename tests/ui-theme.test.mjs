@@ -27,6 +27,7 @@ test("comment and form inputs use shared input classes", () => {
   const commentComposer = read("components/comments/CommentComposer.tsx");
   const addPage = read("app/add/page.tsx");
   const editPage = read("app/edit/[id]/page.tsx");
+  const mealDateTimeFields = read("components/meal-editor/MealDateTimeFields.tsx");
   const mealDetailsSection = read("components/meal-editor/MealDetailsSection.tsx");
   const profilePage = read("app/profile/page.tsx");
   const homePage = read("app/page.tsx");
@@ -44,10 +45,10 @@ test("comment and form inputs use shared input classes", () => {
   assert.match(pageHeader, /export default function PageHeader/);
   assert.match(surfaceSection, /export default function SurfaceSection/);
   assert.match(mealDetailsSection, /className="input-base textarea-base"/);
-  assert.match(editPage, /type="date"/);
-  assert.match(editPage, /type="time"/);
-  assert.match(editPage, /data-testid="edit-meal-date-input"/);
-  assert.match(editPage, /data-testid="edit-meal-time-input"/);
+  assert.match(mealDateTimeFields, /type="date"/);
+  assert.match(mealDateTimeFields, /type="time"/);
+  assert.match(editPage, /dateTestId="edit-meal-date-input"/);
+  assert.match(editPage, /timeTestId="edit-meal-time-input"/);
 });
 
 test("edit page waits for auth loading before redirecting", () => {
@@ -704,6 +705,7 @@ test("profile notification settings stay wired after removing dead activity feed
 test("add flow remembers recent meal draft defaults", () => {
   const addPage = read("app/add/page.tsx");
   const addController = read("lib/modules/meals/ui/useAddMealPageController.ts");
+  const mealDateTimeFields = read("components/meal-editor/MealDateTimeFields.tsx");
   const homeController = read("lib/modules/meals/ui/useHomePageController.ts");
   const mealImageField = read("components/meal-editor/MealImageField.tsx");
   const mealDraft = read("lib/modules/meals/domain/meal-draft.ts");
@@ -715,10 +717,17 @@ test("add flow remembers recent meal draft defaults", () => {
   const mealMutations = read("lib/client/meal-mutations.ts");
 
   assert.match(addPage, /useAddMealPageController/);
+  assert.match(addPage, /from "@\/components\/meal-editor\/MealDateTimeFields"/);
+  assert.match(mealDateTimeFields, /type="date"/);
+  assert.match(mealDateTimeFields, /type="time"/);
+  assert.match(addPage, /dateTestId="add-meal-date-input"/);
+  assert.match(addPage, /timeTestId="add-meal-time-input"/);
   assert.match(addController, /getMealDraftDefaults/);
   assert.match(addController, /saveMealDraftDefaults/);
   assert.match(addController, /buildAutoMealDescription/);
   assert.match(addController, /createMealRecord/);
+  assert.match(addController, /combineDateAndTime/);
+  assert.match(addController, /getMealFormDateTimeDefaults/);
   assert.match(mealImageField, /data-testid=\{inputTestId\}/);
   assert.match(addPage, /data-testid="add-quick-save"/);
   assert.match(addController, /toMealCreateErrorMessage/);

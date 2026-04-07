@@ -113,6 +113,21 @@ export const combineDateAndTime = (
   return nextDate;
 };
 
+export const getMealFormDateTimeDefaults = (
+  queryDate: string | null,
+  now: Date
+): {
+  recordDateValue: string;
+  recordTimeValue: string;
+} => {
+  const initialDate = parseDateKey(queryDate) ?? now;
+
+  return {
+    recordDateValue: formatDateKey(initialDate),
+    recordTimeValue: formatTimeKey(now),
+  };
+};
+
 export const getDayRangeForDate = (
   date: Date
 ): { startOfDay: Date; endOfDay: Date } => {

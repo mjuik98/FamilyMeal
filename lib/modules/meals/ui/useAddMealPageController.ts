@@ -7,7 +7,11 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useMealImageSelection } from "@/components/hooks/useMealImageSelection";
 import { useToast } from "@/components/Toast";
 import { useUser } from "@/context/UserContext";
-import { formatDateKey, parseDateKey } from "@/lib/date-utils";
+import {
+  combineDateAndTime,
+  formatDateKey,
+  getMealFormDateTimeDefaults,
+} from "@/lib/date-utils";
 import { logError } from "@/lib/logging";
 import { createMealRecord } from "@/lib/modules/meals/application/meal-editor-service";
 import { createMealRuntimeState } from "@/lib/modules/meals/application/meal-read-service";
@@ -41,15 +45,15 @@ export const useAddMealPageController = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitPhase, setSubmitPhase] = useState<SubmitPhase>("idle");
   const [draftReady, setDraftReady] = useState(false);
+  const [recordDateTime, setRecordDateTime] = useState(() =>
+    getMealFormDateTimeDefaults(
+      searchParams.get("date"),
+      runtimeState.qaMode ? runtimeState.qaAnchorDate : new Date()
+    )
+  );
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageSelection = useMealImageSelection();
-  const recordDate = useMemo(
-    () =>
-      parseDateKey(searchParams.get("date")) ??
-      (runtimeState.qaMode ? runtimeState.qaAnchorDate : new Date()),
-    [runtimeState, searchParams]
-  );
   const autoDescription = useMemo(
     () => buildAutoMealDescription(type, selectedUsers),
     [selectedUsers, type]
@@ -127,6 +131,14 @@ export const useAddMealPageController = () => {
       showToast("함께 먹은 사람을 1명 이상 선택해 주세요.", "error");
       return;
     }
+    const nextRecordDate = combineDateAndTime(
+      recordDateTime.recordDateValue,
+      recordDateTime.recordTimeValue
+    );
+    if (!nextRecordDate) {
+      showToast("날짜와 시간을 올바르게 입력해 주세요.", "error");
+      return;
+    }
 
     setIsSubmitting(true);
     try {
@@ -137,13 +149,13 @@ export const useAddMealPageController = () => {
         autoDescription,
         type,
         imageFile: imageSelection.imageFile,
-        recordDate,
+        recordDate: nextRecordDate,
         runtimeState,
         onPhaseChange: (phase) => setSubmitPhase(phase),
       });
 
       showToast("식사 기록이 저장되었습니다.", "success");
-      router.push(`/?date=${formatDateKey(recordDate)}`);
+      router.push(`/?date=${formatDateKey(nextRecordDate)}`);
       router.refresh();
     } catch (error) {
       logError("Failed to add meal", error);
@@ -173,10 +185,16 @@ export const useAddMealPageController = () => {
     inputAccept: MEAL_IMAGE_INPUT_ACCEPT,
     isSubmitting,
     loading,
+    onRecordDateChange: (value: string) =>
+      setRecordDateTime((prev) => ({ ...prev, recordDateValue: value })),
+    onRecordTimeChange: (value: string) =>
+      setRecordDateTime((prev) => ({ ...prev, recordTimeValue: value })),
     persistMeal,
     previewStatusMessage: imageSelection.previewUnavailable
       ? "미리보기를 표시하지 못했습니다. 업로드 시 서버에서 변환을 시도합니다."
       : null,
+    recordDateValue: recordDateTime.recordDateValue,
+    recordTimeValue: recordDateTime.recordTimeValue,
     selectedUsers,
     setDescription,
     setSelectedUsers,

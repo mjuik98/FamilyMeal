@@ -3,6 +3,7 @@
 import { Suspense } from "react";
 import { Send } from "lucide-react";
 
+import { MealDateTimeFields } from "@/components/meal-editor/MealDateTimeFields";
 import { MealDetailsSection } from "@/components/meal-editor/MealDetailsSection";
 import { MealImageField } from "@/components/meal-editor/MealImageField";
 import PageHeader from "@/components/PageHeader";
@@ -48,6 +49,16 @@ function AddMealPageContent() {
           />
 
           <MealDetailsSection
+            dateTimeFields={
+              <MealDateTimeFields
+                dateValue={controller.recordDateValue}
+                timeValue={controller.recordTimeValue}
+                onDateChange={controller.onRecordDateChange}
+                onTimeChange={controller.onRecordTimeChange}
+                dateTestId="add-meal-date-input"
+                timeTestId="add-meal-time-input"
+              />
+            }
             description={controller.description}
             descriptionNote={
               <>

@@ -137,6 +137,30 @@ test("createMealRecord cleans up uploaded image when saving the meal fails", asy
   assert.deepEqual(cleanupCalls, ["https://example.com/uploaded.jpg"]);
 });
 
+test("createMealRecord forwards the selected timestamp through the create payload", async () => {
+  const service = await importFresh<typeof import("../lib/modules/meals/application/meal-editor-service.ts")>(
+    "../lib/modules/meals/application/meal-editor-service.ts"
+  );
+
+  await service.createMealRecord({
+    userUid: "user-1",
+    selectedUsers: ["엄마"],
+    description: "",
+    autoDescription: "auto meal",
+    type: "점심",
+    imageFile: {} as File,
+    recordDate: new Date(TEST_NOW + 90 * 60_000),
+    runtimeState: {
+      qaMode: false,
+      qaAnchorDate: new Date(TEST_NOW),
+    },
+  });
+
+  assert.equal(addMealCalls.length, 1);
+  assert.equal(addMealCalls[0]?.description, "auto meal");
+  assert.equal(addMealCalls[0]?.timestamp, TEST_NOW + 90 * 60_000);
+});
+
 test("createMealRecord saves QA meals without remote upload and loadEditableMeal marks legacy records", async () => {
   const service = await importFresh<typeof import("../lib/modules/meals/application/meal-editor-service.ts")>(
     "../lib/modules/meals/application/meal-editor-service.ts"
