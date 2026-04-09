@@ -173,6 +173,7 @@ test("meal image uploads are handled by authenticated server route", () => {
   );
   assert.match(packageJson, /"sharp":\s*"/);
   assert.match(packageJson, /"busboy":\s*"/);
+  assert.match(packageJson, /"@types\/busboy":\s*"/);
   assert.equal(exists("lib/meal-image-policy.ts"), false);
   assert.match(imagePolicy, /MAX_MEAL_IMAGE_REQUEST_BYTES/);
   assert.match(mealImageClient, /\/api\/uploads\/meal-image/);
