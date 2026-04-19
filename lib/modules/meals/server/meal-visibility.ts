@@ -22,7 +22,7 @@ const getMealParticipantRoles = (meal: MealVisibilitySource): UserRole[] => {
 export const isMealVisibleToRole = (
   meal: MealVisibilitySource,
   actorRole: UserRole
-): boolean => getMealParticipantRoles(meal).includes(actorRole);
+): boolean => isUserRole(actorRole) && getMealParticipantRoles(meal).length > 0;
 
 export const assertMealVisibleToRole = (
   meal: MealVisibilitySource,

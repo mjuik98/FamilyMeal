@@ -60,11 +60,12 @@ test("archive route threads authenticated caller identity into the server use ca
   assert.match(archiveRoute, /const result = await listArchiveMeals\(\{\s*\.\.\.query,\s*uid: user\.uid,\s*actorRole: role,\s*\}\);/s);
 });
 
-test("archive listing enforces participant visibility and returns partial-scan metadata", () => {
+test("archive listing keeps family visibility separate from explicit participant filters", () => {
   const archiveUseCases = read("lib/modules/meals/server/archive-use-cases.ts");
   const archiveStore = read("lib/modules/meals/adapters/firestore/meal-archive-store.ts");
 
   assert.match(archiveUseCases, /actorRole: UserRole/);
+  assert.match(archiveUseCases, /if \(!params\.participant\) \{/);
   assert.match(archiveStore, /where\("userIds", "array-contains", targetRole\)/);
   assert.match(archiveStore, /where\("userId", "==", targetRole\)/);
   assert.match(
@@ -73,7 +74,7 @@ test("archive listing enforces participant visibility and returns partial-scan m
   );
   assert.match(
     archiveUseCases,
-    /const isMealVisibleToActor = \(meal: Meal, actorRole: UserRole\): boolean =>/
+    /isMealVisibleToRole\(meal, params\.actorRole\)/
   );
   assert.match(archiveUseCases, /isPartial: exhaustedScanLimit && hasMore/);
   assert.match(

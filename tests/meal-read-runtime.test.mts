@@ -196,7 +196,7 @@ test("date utils derive meal form date/time defaults from query date and current
   });
 });
 
-test("listMealsForDate returns only visible meals for the actor role including legacy meals", async () => {
+test("listMealsForDate returns family meals even when the actor role is not a participant", async () => {
   mealRecords.push(
     {
       id: "visible-modern",
@@ -217,10 +217,10 @@ test("listMealsForDate returns only visible meals for the actor role including l
       commentCount: 0,
     },
     {
-      id: "hidden-other-role",
+      id: "other-role",
       ownerUid: "owner-2",
       userIds: ["아들"],
-      description: "보이면 안 되는 기록",
+      description: "다른 가족 구성원 기록",
       type: "간식",
       timestamp: TEST_NOW - 120_000,
       commentCount: 0,
@@ -238,11 +238,11 @@ test("listMealsForDate returns only visible meals for the actor role including l
 
   assert.deepEqual(
     meals.map((meal) => meal.id),
-    ["visible-modern", "visible-legacy"]
+    ["visible-modern", "visible-legacy", "other-role"]
   );
 });
 
-test("listWeeklyMealStats aggregates only visible meals within the selected week", async () => {
+test("listWeeklyMealStats aggregates all family meals within the selected week", async () => {
   mealRecords.push(
     {
       id: "sun-1",
@@ -264,12 +264,12 @@ test("listWeeklyMealStats aggregates only visible meals within the selected week
       commentCount: 0,
     },
     {
-      id: "sat-hidden",
+      id: "sat-other-role",
       ownerUid: "owner-2",
       userIds: ["아들"],
-      description: "보이면 안 되는 주간 기록",
+      description: "다른 가족 구성원 주간 기록",
       type: "저녁",
-      timestamp: Date.UTC(2026, 3, 4, 19, 0, 0, 0),
+      timestamp: Date.UTC(2026, 3, 4, 13, 30, 0, 0),
       commentCount: 0,
     }
   );
@@ -286,7 +286,7 @@ test("listWeeklyMealStats aggregates only visible meals within the selected week
   assert.equal(stats.length, 7);
   assert.equal(stats[0]?.count, 1);
   assert.equal(stats[0]?.previewImageUrl, "https://example.com/sun.jpg");
-  assert.equal(stats[6]?.count, 1);
+  assert.equal(stats[6]?.count, 2);
 });
 
 test("meal route exposes authenticated GET date reads", async () => {
@@ -314,7 +314,7 @@ test("meal route exposes authenticated GET date reads", async () => {
   assert.deepEqual(payload.meals?.map((meal) => meal.id), ["route-visible"]);
 });
 
-test("meal detail route exposes authenticated GET reads for a visible meal", async () => {
+test("meal detail route exposes authenticated GET reads for any family meal", async () => {
   mealRecords.push(
     {
       id: "detail-visible",
@@ -326,10 +326,10 @@ test("meal detail route exposes authenticated GET reads for a visible meal", asy
       commentCount: 0,
     },
     {
-      id: "detail-hidden",
+      id: "detail-other-role",
       ownerUid: "owner-2",
       userIds: ["아들"],
-      description: "보이면 안 되는 상세 기록",
+      description: "다른 가족 구성원 상세 기록",
       type: "저녁",
       timestamp: TEST_NOW - 60_000,
       commentCount: 0,
@@ -351,4 +351,16 @@ test("meal detail route exposes authenticated GET reads for a visible meal", asy
   const payload = (await response.json()) as { ok?: boolean; meal?: { id: string } | null };
   assert.equal(payload.ok, true);
   assert.equal(payload.meal?.id, "detail-visible");
+
+  const otherRoleResponse = await mealRoute.GET!(
+    new Request("http://localhost/api/meals/detail-other-role"),
+    {
+      params: Promise.resolve({ id: "detail-other-role" }),
+    }
+  );
+
+  assert.equal(otherRoleResponse.status, 200);
+  const otherRolePayload = (await otherRoleResponse.json()) as { ok?: boolean; meal?: { id: string } | null };
+  assert.equal(otherRolePayload.ok, true);
+  assert.equal(otherRolePayload.meal?.id, "detail-other-role");
 });

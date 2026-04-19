@@ -78,12 +78,16 @@ service cloud.firestore {
         && mealData.userIds.hasOnly(['아빠', '엄마', '딸', '아들']);
     }
 
-    function isMealParticipant(mealData) {
-      return hasUserProfile()
-        && (
-          (mealData.userIds is list && mealData.userIds.hasAny([currentUserRole()]))
-          || (isLegacyMeal(mealData) && mealData.userId is string && mealData.userId == currentUserRole())
-        );
+    function hasFamilyProfile() {
+      return hasUserProfile() && validRole(currentUserRole());
+    }
+
+    function hasReadableMealParticipant(mealData) {
+      return (
+          mealData.userIds is list
+          && mealData.userIds.hasAny(['아빠', '엄마', '딸', '아들'])
+        )
+        || (isLegacyMeal(mealData) && mealData.userId is string && validRole(mealData.userId));
     }
 
     function isMealOwner(mealData) {
@@ -96,7 +100,7 @@ service cloud.firestore {
     }
 
     function canReadMeal(mealData) {
-      return isMealParticipant(mealData);
+      return hasFamilyProfile() && hasReadableMealParticipant(mealData);
     }
 
     function validMealDocument(mealData) {

@@ -116,10 +116,10 @@ afterEach(() => {
   activityCalls.length = 0;
 });
 
-test("createStoredMealComment rejects commenters who cannot view the meal", async () => {
+test("createStoredMealComment rejects meals without a valid family participant", async () => {
   mealRecords.set("meal-1", {
     ownerUid: "owner-1",
-    userIds: ["엄마"],
+    userIds: [],
     commentCount: 0,
   });
 
@@ -138,7 +138,7 @@ test("createStoredMealComment rejects commenters who cannot view the meal", asyn
         mealId: "meal-1",
         uid: "user-2",
         actorRole: "아빠",
-        text: "숨겨진 식사에 댓글 시도",
+        text: "유효하지 않은 식사에 댓글 시도",
       }),
     (error: unknown) =>
       error instanceof RouteError &&

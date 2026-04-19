@@ -261,17 +261,17 @@ test("meal participants can read meal", async () => {
   await assertSucceeds(getDoc(doc(momDb, "meals", MEAL_ID)));
 });
 
-test("modern meals ignore legacy userId fallback for read access", async () => {
+test("family profiles can read modern meals regardless of legacy userId fallback", async () => {
   const ownerDb = testEnv.authenticatedContext(OWNER_UID).firestore();
   const momDb = testEnv.authenticatedContext(MOM_UID).firestore();
 
   await assertSucceeds(getDoc(doc(ownerDb, "meals", MODERN_USER_ID_MEAL_ID)));
-  await assertFails(getDoc(doc(momDb, "meals", MODERN_USER_ID_MEAL_ID)));
+  await assertSucceeds(getDoc(doc(momDb, "meals", MODERN_USER_ID_MEAL_ID)));
 });
 
-test("non-participant with profile cannot read meal", async () => {
+test("family profile can read meal even when not a participant", async () => {
   const outsiderDb = testEnv.authenticatedContext(OUTSIDER_UID).firestore();
-  await assertFails(getDoc(doc(outsiderDb, "meals", MEAL_ID)));
+  await assertSucceeds(getDoc(doc(outsiderDb, "meals", MEAL_ID)));
 });
 
 test("authenticated user without profile cannot read meal", async () => {

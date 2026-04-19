@@ -110,11 +110,11 @@ afterEach(() => {
   commentActivityCalls.length = 0;
 });
 
-test("toggleStoredMealReactionForUser rejects users who cannot view the meal", async () => {
+test("toggleStoredMealReactionForUser rejects meals without a valid family participant", async () => {
   mealRecords.set("meal-1", {
     ownerUid: "owner-1",
-    userIds: ["엄마"],
-    description: "비공개 식사",
+    userIds: [],
+    description: "유효하지 않은 식사",
     reactions: {},
   });
 
@@ -145,16 +145,16 @@ test("toggleStoredMealReactionForUser rejects users who cannot view the meal", a
   assert.equal(mealActivityCalls.length, 0);
 });
 
-test("toggleStoredCommentReactionForUser rejects users who cannot view the meal", async () => {
+test("toggleStoredCommentReactionForUser rejects meals without a valid family participant", async () => {
   mealRecords.set("meal-1", {
     ownerUid: "owner-1",
-    userIds: ["엄마"],
-    description: "비공개 식사",
+    userIds: [],
+    description: "유효하지 않은 식사",
     reactions: {},
   });
   commentRecords.set("meal-1:comment-1", {
     authorUid: "user-3",
-    text: "숨겨진 댓글",
+    text: "유효하지 않은 댓글",
     reactions: {},
   });
 

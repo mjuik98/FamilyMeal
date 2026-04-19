@@ -4,6 +4,7 @@ import {
   listStoredOptimizedArchiveMealRecords,
 } from "@/lib/modules/meals/adapters/firestore/meal-archive-store";
 import { serializeMealDocument } from "@/lib/modules/meals/server/meal-types";
+import { isMealVisibleToRole } from "@/lib/modules/meals/server/meal-visibility";
 import {
   ARCHIVE_SCAN_BATCH_SIZE,
   ARCHIVE_SCAN_LIMIT,
@@ -38,9 +39,6 @@ const compareMealsDesc = (left: Meal, right: Meal): number => {
 
   return right.id.localeCompare(left.id, "en");
 };
-
-const isMealVisibleToActor = (meal: Meal, actorRole: UserRole): boolean =>
-  meal.userIds?.includes(actorRole) || meal.userId === actorRole;
 
 const isArchiveOptimizationUnavailable = (error: unknown): boolean => {
   if (!error || typeof error !== "object") {
@@ -88,13 +86,17 @@ const fetchOptimizedArchiveBatch = async (
   params: ArchiveListParams,
   cursor: ArchiveCursor | null
 ): Promise<ArchiveBatchResult> => {
-  const targetRole = params.participant ?? params.actorRole;
+  if (!params.participant) {
+    return fetchArchiveBatch(cursor);
+  }
+
+  const targetRole = params.participant;
   const batch = await listStoredOptimizedArchiveMealRecords({
     targetRole,
     type: params.type,
     cursor,
     limit: ARCHIVE_SCAN_BATCH_SIZE,
-    includeLegacyUserFallback: targetRole === params.actorRole,
+    includeLegacyUserFallback: true,
   });
 
   return {
@@ -133,7 +135,7 @@ const scanArchiveMeals = async (
       scannedCount += 1;
       lastScannedMeal = meal;
 
-      if (!isMealVisibleToActor(meal, params.actorRole)) {
+      if (!isMealVisibleToRole(meal, params.actorRole)) {
         continue;
       }
 

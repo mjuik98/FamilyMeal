@@ -60,7 +60,9 @@ test("firestore rules lock client-side role changes and validate optional fields
   assert.match(rules, /function validImageUrl/);
   assert.match(rules, /function validKeywords/);
   assert.doesNotMatch(rules, /isLegacyMeal\(resource\.data\) && isMealParticipant\(resource\.data\)/);
-  assert.match(rules, /isLegacyMeal\(mealData\) && mealData\.userId is string && mealData\.userId == currentUserRole\(\)/);
+  assert.match(rules, /function hasFamilyProfile/);
+  assert.match(rules, /hasFamilyProfile\(\) && hasReadableMealParticipant\(mealData\)/);
+  assert.match(rules, /isLegacyMeal\(mealData\) && mealData\.userId is string && validRole\(mealData\.userId\)/);
   assert.match(rules, /resource\.data\.ownerUid is string/);
   assert.match(rules, /!\('userId' in request\.resource\.data\)/);
   assert.match(rules, /!changedKeys\.hasAny\(\['ownerUid', 'commentCount', 'reactions', 'userId'\]\)/);
